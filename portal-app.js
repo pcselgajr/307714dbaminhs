@@ -137,7 +137,8 @@ document.getElementById('parentDash').classList.add('act');
 document.getElementById('pdAv').textContent=user.fname[0];
 document.getElementById('pdName').textContent=user.fname+' '+user.lname;
 document.getElementById('pdWelcome').textContent=user.fname;
-document.getElementById('pdChild').textContent=user.childName||'Your Child';
+if(document.getElementById('pdChild'))document.getElementById('pdChild').textContent=user.childName||'Your Child';
+setTimeout(function() { loadParentGrades(); loadParentAttendance(); }, 200);
 }
 toast('Welcome, '+user.fname+'!');
 }
@@ -791,6 +792,128 @@ function populateSectionDropdowns() {
     if (current) el.value = current;
   });
   console.log('Section dropdowns populated:', secs.length, 'sections');
+}
+
+
+
+// ============================================
+// PARENT DASHBOARD - LIVE GRADES & ATTENDANCE
+// ============================================
+
+function loadParentGrades() {
+  if (!curUser || curUser.type !== 'parent') return;
+  var lrn = curUser.childLrn;
+  if (!lrn) return;
+  
+  var allSubjects = ['Filipino','English','Mathematics','Science','AP','EsP','TLE','Music & Arts','PE & Health','MAPEH'];
+  var grades = null;
+  var childName = curUser.childName || 'Your Child';
+  
+  var keys = Object.keys(_cache);
+  keys.forEach(function(k) {
+    if (k.startsWith('grades_')) {
+      var data = _cache[k];
+      if (data && data[lrn]) {
+        grades = data[lrn];
+        if (grades.name) childName = grades.name;
+      }
+    }
+  });
+  
+  var el = document.getElementById('pdGradesContent');
+  if (!el) return;
+  
+  if (!grades || !grades.grades) {
+    el.innerHTML = '<h3>&#128202; Child\'s Grades &mdash; ' + childName + '</h3>' +
+      '<div style="text-align:center;padding:32px;color:var(--g5)">' +
+      '<div style="font-size:48px;margin-bottom:12px">&#128203;</div>' +
+      '<p>No grades uploaded yet for your child (LRN: ' + lrn + ').</p>' +
+      '<p style="font-size:13px;margin-top:8px">Grades will appear here once the teacher uploads them.</p></div>';
+    return;
+  }
+  
+  var g = grades.grades;
+  var html = '<h3>&#128202; Child\'s Grades &mdash; ' + childName + '</h3>';
+  html += '<div style="overflow-x:auto"><table><thead><tr><th>Subject</th><th>Final Grade</th><th>Remarks</th></tr></thead><tbody>';
+  
+  var total = 0, count = 0;
+  allSubjects.forEach(function(s) {
+    var v = g[s];
+    if (v === undefined) return;
+    total += v; count++;
+    var remarks = v >= 75 ? 'Passed' : 'Failed';
+    var badge = v >= 75 ? 'b-g' : 'b-r';
+    var isMAPEH = s === 'MAPEH';
+    html += '<tr style="' + (isMAPEH ? 'background:#f0f7ff;font-weight:600' : '') + '">';
+    html += '<td>' + (isMAPEH ? '&#128900; ' : '') + s + '</td>';
+    html += '<td style="text-align:center"><strong>' + v + '</strong></td>';
+    html += '<td><span class="badge ' + badge + '">' + remarks + '</span></td></tr>';
+  });
+  
+  var avg = count > 0 ? Math.round((total / count) * 10) / 10 : '';
+  html += '<tr style="background:#f9f9f9;border-top:2px solid #ddd"><td><strong>General Average</strong></td>';
+  html += '<td style="text-align:center"><strong style="font-size:18px;color:' + (avg >= 75 ? '#22c55e' : '#ef4444') + '">' + avg + '</strong></td>';
+  html += '<td><span class="badge ' + (avg >= 75 ? 'b-g' : 'b-r') + '">' + (avg >= 75 ? 'Passed' : 'Failed') + '</span></td></tr>';
+  html += '</tbody></table></div>';
+  
+  el.innerHTML = html;
+  
+  // Update parent stat cards
+  var statEls = document.querySelectorAll('#parentDash .dash-stat b');
+  if (statEls.length >= 1 && avg) statEls[0].textContent = avg;
+}
+
+function loadParentAttendance() {
+  if (!curUser || curUser.type !== 'parent') return;
+  var lrn = curUser.childLrn;
+  if (!lrn) return;
+  
+  var attendance = null;
+  var keys = Object.keys(_cache);
+  keys.forEach(function(k) {
+    if (k.startsWith('attendance_')) {
+      var data = _cache[k];
+      if (data && data[lrn]) {
+        attendance = data[lrn];
+      }
+    }
+  });
+  
+  var el = document.getElementById('pdAttContent');
+  if (!el) return;
+  
+  if (!attendance) {
+    el.innerHTML = '<h3>&#128203; Child\'s Attendance</h3>' +
+      '<div style="text-align:center;padding:32px;color:var(--g5)">' +
+      '<div style="font-size:48px;margin-bottom:12px">&#128203;</div>' +
+      '<p>No attendance records yet.</p>' +
+      '<p style="font-size:13px;margin-top:8px">Attendance will appear here once the teacher uploads it.</p></div>';
+    return;
+  }
+  
+  var r = attendance;
+  var rateColor = r.rate >= 90 ? '#22c55e' : (r.rate >= 80 ? '#f59e0b' : '#ef4444');
+  var rateLabel = r.rate >= 90 ? 'Excellent' : (r.rate >= 80 ? 'Good' : 'Needs Improvement');
+  
+  var html = '<h3>&#128203; Child\'s Attendance Record</h3>';
+  html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin:20px 0">';
+  html += '<div style="background:#f0fdf4;border-radius:12px;padding:16px;text-align:center"><div style="font-size:28px;font-weight:800;color:#22c55e">' + r.present + '</div><div style="font-size:12px;color:#666;margin-top:4px">Days Present</div></div>';
+  html += '<div style="background:#fef2f2;border-radius:12px;padding:16px;text-align:center"><div style="font-size:28px;font-weight:800;color:#ef4444">' + r.absent + '</div><div style="font-size:12px;color:#666;margin-top:4px">Days Absent</div></div>';
+  html += '<div style="background:#fffbeb;border-radius:12px;padding:16px;text-align:center"><div style="font-size:28px;font-weight:800;color:#f59e0b">' + r.late + '</div><div style="font-size:12px;color:#666;margin-top:4px">Days Late</div></div>';
+  html += '<div style="background:#f8fafc;border-radius:12px;padding:16px;text-align:center"><div style="font-size:28px;font-weight:800;color:#334155">' + r.totalDays + '</div><div style="font-size:12px;color:#666;margin-top:4px">Total School Days</div></div>';
+  html += '</div>';
+  
+  html += '<div style="background:#f7f7f7;border-radius:20px;height:32px;overflow:hidden;margin:16px 0">';
+  html += '<div style="height:100%;background:linear-gradient(90deg,' + rateColor + ',' + rateColor + '80);border-radius:20px;width:' + r.rate + '%;display:flex;align-items:center;justify-content:center;transition:width 1s ease">';
+  html += '<span style="color:#fff;font-size:13px;font-weight:700">' + r.rate + '% Attendance Rate</span>';
+  html += '</div></div>';
+  html += '<div style="text-align:center;font-size:14px;color:' + rateColor + ';font-weight:600">' + rateLabel + '</div>';
+  
+  el.innerHTML = html;
+  
+  // Update parent stat card for attendance
+  var statEls = document.querySelectorAll('#parentDash .dash-stat b');
+  if (statEls.length >= 2) statEls[1].textContent = r.rate + '%';
 }
 
 // Hook into login to load grades

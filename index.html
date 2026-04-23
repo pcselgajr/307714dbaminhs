@@ -427,18 +427,8 @@ Attendance Rate is auto-computed: (Days Present &divide; Total School Days) &tim
 <div class="dash-welcome" style="background:linear-gradient(135deg,#2D8B46,#1a6830)"><h2>&#128075; Welcome, <span id="pdWelcome">Parent</span>!</h2><p>Monitor your child's academic progress</p></div>
 <div class="dash-stat-row"><div class="dash-stat"><b>88.5</b><small>Child's Average</small></div><div class="dash-stat"><b>95%</b><small>Attendance</small></div><div class="dash-stat"><b>3</b><small>Pending Tasks</small></div><div class="dash-stat"><b>0</b><small>Violations</small></div></div>
 <div class="dash-nav"><button class="act" onclick="pdTab(this,'pdGrades')">&#128202; Child's Grades</button><button onclick="pdTab(this,'pdAtt')">&#128203; Attendance</button><button onclick="pdTab(this,'pdMsg')">&#128172; Message Teacher</button></div>
-<div id="pdGrades" class="dash-card"><h3>&#128202; Child's Grades &mdash; <span id="pdChild">Student</span></h3><table><thead><tr><th>Subject</th><th>1st Qtr</th><th>2nd Qtr</th><th>3rd Qtr</th><th>4th Qtr</th><th>Final</th><th>Remarks</th></tr></thead><tbody>
-<tr><td>Mathematics</td><td>87</td><td>89</td><td>90</td><td>88</td><td>88.5</td><td><span class="badge b-g">Passed</span></td></tr>
-<tr><td>Science</td><td>91</td><td>88</td><td>92</td><td>90</td><td>90.3</td><td><span class="badge b-g">Passed</span></td></tr>
-<tr><td>English</td><td>85</td><td>87</td><td>86</td><td>88</td><td>86.5</td><td><span class="badge b-g">Passed</span></td></tr>
-<tr><td>Filipino</td><td>90</td><td>92</td><td>91</td><td>93</td><td>91.5</td><td><span class="badge b-g">Passed</span></td></tr>
-</tbody></table></div>
-<div id="pdAtt" class="dash-card" style="display:none"><h3>&#128203; Attendance Record</h3><table><thead><tr><th>Date</th><th>Status</th><th>Remarks</th></tr></thead><tbody>
-<tr><td>April 1</td><td><span class="badge b-g">Present</span></td><td></td></tr>
-<tr><td>April 2</td><td><span class="badge b-g">Present</span></td><td></td></tr>
-<tr><td>April 3</td><td><span class="badge b-r">Absent</span></td><td>Excused</td></tr>
-<tr><td>April 4</td><td><span class="badge b-g">Present</span></td><td></td></tr>
-</tbody></table></div>
+<div id="pdGrades" class="dash-card"><div id="pdGradesContent"><div style="text-align:center;padding:24px;color:var(--g5)">Loading child's grades...</div></div></div>
+<div id="pdAtt" class="dash-card" style="display:none"><div id="pdAttContent"><div style="text-align:center;padding:24px;color:var(--g5)">Loading attendance...</div></div></div>
 <div id="pdMsg" class="dash-card" style="display:none"><h3>&#128172; Message a Teacher</h3>
 <div class="fg"><label>Teacher</label><select><option>Mrs. Elena Bautista - Mathematics</option><option>Mr. Ricardo Torres - Science</option><option>Ms. Patricia Lim - English</option><option>Mr. Jose Fernandez - Filipino</option></select></div>
 <div class="fg"><label>Subject</label><input placeholder="e.g. Inquiry about grades"></div>
