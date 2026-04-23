@@ -241,6 +241,7 @@ function loadSettings(){
   document.getElementById('setStat3').value=SETTINGS.stat3||'17';
   document.getElementById('setStat4').value=SETTINGS.stat4||'98%';
   if(document.getElementById('setG7'))document.getElementById('setG7').value=SETTINGS.g7||'210';
+  renderSections();
   if(document.getElementById('setG8'))document.getElementById('setG8').value=SETTINGS.g8||'198';
   if(document.getElementById('setG9'))document.getElementById('setG9').value=SETTINGS.g9||'185';
   if(document.getElementById('setG10'))document.getElementById('setG10').value=SETTINGS.g10||'172';
@@ -249,7 +250,7 @@ function loadSettings(){
 }
 function saveSettings(){
   SETTINGS={schoolName:document.getElementById('setName').value,schoolId:document.getElementById('setId').value,schoolYear:document.getElementById('setSY').value,address:document.getElementById('setAddr').value,phone:document.getElementById('setPhone').value,email:document.getElementById('setEmail').value,motto:document.getElementById('setMotto').value,principal:document.getElementById('setPrincipal').value,division:document.getElementById('setDiv').value,stat1:document.getElementById('setStat1').value,stat2:document.getElementById('setStat2').value,stat3:document.getElementById('setStat3').value,stat4:document.getElementById('setStat4').value,
-  g7:document.getElementById('setG7')?document.getElementById('setG7').value:'210',
+  sections:SETTINGS.sections||[],g7:document.getElementById('setG7')?document.getElementById('setG7').value:'210',
   g8:document.getElementById('setG8')?document.getElementById('setG8').value:'198',
   g9:document.getElementById('setG9')?document.getElementById('setG9').value:'185',
   g10:document.getElementById('setG10')?document.getElementById('setG10').value:'172',
@@ -303,4 +304,61 @@ function updateDashChart(){
     if(bv)bv.textContent=vals[i];
     if(bar)bar.style.height=Math.round((parseInt(vals[i])||0)/max*100)+'%';
   }
+}
+
+
+// ============================================
+// SECTIONS MANAGEMENT
+// ============================================
+var DEFAULT_SECTIONS = [
+  'Grade 7 - Bonifacio','Grade 8 - Luna','Grade 9 - Mabini','Grade 10 - Rizal',
+  'Grade 11 - ABM','Grade 11 - HUMSS','Grade 12 - ABM','Grade 12 - HUMSS'
+];
+
+function getSections() {
+  return (SETTINGS && SETTINGS.sections && SETTINGS.sections.length > 0) ? SETTINGS.sections : DEFAULT_SECTIONS;
+}
+
+function renderSections() {
+  var el = document.getElementById('sectionsList');
+  if (!el) return;
+  var secs = getSections();
+  var html = '';
+  secs.forEach(function(s, i) {
+    html += '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--g1);border-radius:8px;margin-bottom:6px;border:1px solid var(--g2)">';
+    html += '<span style="flex:1;font-size:14px">' + s + '</span>';
+    html += '<button class="abtn del" title="Remove" onclick="removeSection(' + i + ')" style="width:28px;height:28px;font-size:12px">&#10005;</button>';
+    html += '</div>';
+  });
+  if (secs.length === 0) {
+    html = '<div style="text-align:center;padding:16px;color:var(--g5);font-size:13px">No sections added yet. Add your first section above.</div>';
+  }
+  el.innerHTML = html;
+}
+
+function addSection() {
+  var input = document.getElementById('newSection');
+  var name = input.value.trim();
+  if (!name) { toast('Enter section name','er'); return; }
+  
+  if (!SETTINGS.sections) SETTINGS.sections = getSections().slice();
+  
+  // Check duplicate
+  if (SETTINGS.sections.indexOf(name) > -1) { toast('Section already exists!','er'); return; }
+  
+  SETTINGS.sections.push(name);
+  saveData('settings', SETTINGS);
+  input.value = '';
+  renderSections();
+  toast(name + ' added!', 'su');
+}
+
+function removeSection(index) {
+  if (!SETTINGS.sections) SETTINGS.sections = getSections().slice();
+  var name = SETTINGS.sections[index];
+  if (!confirm('Remove "' + name + '"?')) return;
+  SETTINGS.sections.splice(index, 1);
+  saveData('settings', SETTINGS);
+  renderSections();
+  toast(name + ' removed', 'su');
 }

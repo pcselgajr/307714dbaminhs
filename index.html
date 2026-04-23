@@ -355,14 +355,6 @@ td{padding:12px 16px;border-bottom:1px solid var(--g1);font-size:13.5px}
 
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px">
 <div class="fg"><label>Class / Section</label><select id="gradeClass" onchange="updateGradeView()">
-<option value="Grade 7 - Bonifacio">Grade 7 - Bonifacio</option>
-<option value="Grade 8 - Luna">Grade 8 - Luna</option>
-<option value="Grade 9 - Mabini">Grade 9 - Mabini</option>
-<option value="Grade 10 - Rizal">Grade 10 - Rizal</option>
-<option value="Grade 11 - ABM">Grade 11 - ABM</option>
-<option value="Grade 11 - HUMSS">Grade 11 - HUMSS</option>
-<option value="Grade 12 - ABM">Grade 12 - ABM</option>
-<option value="Grade 12 - HUMSS">Grade 12 - HUMSS</option>
 </select></div>
 <div class="fg"><label>School Year</label><select id="gradeSchoolYear">
 <option value="2025-2026">SY 2025-2026</option>
@@ -396,14 +388,6 @@ Grade: Number from 60-100 only. Save as .csv file from Excel or Google Sheets.
 
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px">
 <div class="fg"><label>Class / Section</label><select id="attClass" onchange="updateAttView()">
-<option value="Grade 7 - Bonifacio">Grade 7 - Bonifacio</option>
-<option value="Grade 8 - Luna">Grade 8 - Luna</option>
-<option value="Grade 9 - Mabini">Grade 9 - Mabini</option>
-<option value="Grade 10 - Rizal">Grade 10 - Rizal</option>
-<option value="Grade 11 - ABM">Grade 11 - ABM</option>
-<option value="Grade 11 - HUMSS">Grade 11 - HUMSS</option>
-<option value="Grade 12 - ABM">Grade 12 - ABM</option>
-<option value="Grade 12 - HUMSS">Grade 12 - HUMSS</option>
 </select></div>
 <div class="fg"><label>School Year</label><select id="attSchoolYear">
 <option value="2025-2026">SY 2025-2026</option>
@@ -432,7 +416,7 @@ Attendance Rate is auto-computed: (Days Present &divide; Total School Days) &tim
 
 <div id="tdAnnounce" class="dash-card" style="display:none"><h3>&#128227; Post Announcement</h3>
 <div class="fg"><label>Title</label><input placeholder="e.g. Reminder: Quiz on Monday"></div>
-<div class="fg"><label>Class</label><select><option>All My Classes</option><option>Grade 7 - Bonifacio</option><option>Grade 8 - Luna</option><option>Grade 9 - Mabini</option><option>Grade 10 - Rizal</option></select></div>
+<div class="fg"><label>Class</label><select id="announceClass"></select></div>
 <div class="fg"><label>Message</label><textarea placeholder="Write your announcement..."></textarea></div>
 <button class="btn btn-p btn-sm" onclick="toast('Announcement posted!')">&#128227; Post Announcement</button></div>
 </div></div>

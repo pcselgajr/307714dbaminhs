@@ -92,6 +92,7 @@ function renderPortalContent() {
 loadAllFromFirebase(function() {
   try {
     renderPortalContent();
+    populateSectionDropdowns();
     console.log('Portal content rendered from Firebase!');
   } catch(e) {
     console.error('renderPortalContent ERROR:', e);
@@ -100,6 +101,7 @@ loadAllFromFirebase(function() {
 // Listen for real-time changes from admin
 listenForChanges(function() {
   renderPortalContent();
+    populateSectionDropdowns();
   console.log('Real-time update received!');
 });
 
@@ -747,6 +749,42 @@ function loadStudentAttendance() {
   html += '<div style="text-align:center;font-size:14px;color:' + rateColor + ';font-weight:600">' + rateLabel + '</div>';
   
   el.innerHTML = html;
+}
+
+
+// ============================================
+// DYNAMIC SECTIONS FROM SETTINGS
+// ============================================
+var DEFAULT_SECTIONS = [
+  'Grade 7 - Bonifacio','Grade 8 - Luna','Grade 9 - Mabini','Grade 10 - Rizal',
+  'Grade 11 - ABM','Grade 11 - HUMSS','Grade 12 - ABM','Grade 12 - HUMSS'
+];
+
+function populateSectionDropdowns() {
+  var settings = loadData('settings', DEFAULT_SETTINGS);
+  var secs = (settings.sections && settings.sections.length > 0) ? settings.sections : DEFAULT_SECTIONS;
+  
+  var dropdowns = ['gradeClass', 'attClass', 'announceClass'];
+  dropdowns.forEach(function(id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    var current = el.value;
+    el.innerHTML = '';
+    if (id === 'announceClass') {
+      var opt = document.createElement('option');
+      opt.value = 'All My Classes';
+      opt.textContent = 'All My Classes';
+      el.appendChild(opt);
+    }
+    secs.forEach(function(s) {
+      var opt = document.createElement('option');
+      opt.value = s;
+      opt.textContent = s;
+      el.appendChild(opt);
+    });
+    if (current) el.value = current;
+  });
+  console.log('Section dropdowns populated:', secs.length, 'sections');
 }
 
 // Hook into login to load grades

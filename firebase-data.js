@@ -136,5 +136,5 @@ var DEFAULT_SETTINGS = {
   schoolName:'Dr. Bonifacio A. Masilungan Integrated National High School',
   schoolId:'307714',schoolYear:'2025-2026',address:'Brgy. Lalayat, San Jose, Batangas',
   phone:'(043) 332 8939',email:'307714@deped.gov.ph',
-  motto:'Nurturing Minds, Building Futures, Serving the Community',principal:'',division:'Division of Batangas'
+  motto:'Nurturing Minds, Building Futures, Serving the Community',principal:'',division:'Division of Batangas',sections:['Grade 7 - Bonifacio','Grade 8 - Luna','Grade 9 - Mabini','Grade 10 - Rizal','Grade 11 - ABM','Grade 11 - HUMSS','Grade 12 - ABM','Grade 12 - HUMSS']
 };
