@@ -112,7 +112,7 @@ function openM(m){document.getElementById('authModal').classList.add('act');swit
 function closeM(){document.getElementById('authModal').classList.remove('act')}
 function switchMode(m){var l=m==='login';document.getElementById('loginForm').style.display=l?'block':'none';document.getElementById('signupForm').style.display=l?'none':'block';document.getElementById('mtL').className='tab'+(l?' act':'');document.getElementById('mtS').className='tab'+(l?'':' act')}
 function stab(el){el.parentElement.querySelectorAll('.tab').forEach(function(t){t.className='tab'});el.className='tab act'}
-function stype(el,t){stab(el);signupType=t;document.getElementById('fLrn').style.display=t==='s'?'block':'none';document.getElementById('fEmp').style.display=t==='t'?'block':'none';document.getElementById('fChild').style.display=t==='p'?'block':'none';document.getElementById('fGrade').style.display=t==='s'?'grid':'none'}
+function stype(el,t){stab(el);signupType=t;document.getElementById('fLrn').style.display=t==='s'?'block':'none';document.getElementById('fEmp').style.display=t==='t'?'block':'none';document.getElementById('fChild').style.display=t==='p'?'block':'none';document.getElementById('fGrade').style.display=t==='s'?'block':'none'}
 
 function doLogin(){
 loadSavedAccounts();
@@ -165,7 +165,7 @@ if(!ag){toast('Please agree to Terms & Conditions.','er');return}
 var newAcc={id:em.toLowerCase(),pw:p1,type:signupType==='s'?'student':signupType==='t'?'teacher':'parent',fname:fn,lname:ln,email:em};
 if(signupType==='s'){
 newAcc.lrn=document.getElementById('sLrn').value;
-newAcc.grade=(document.getElementById('sGrade').value||'TBA')+' - '+(document.getElementById('sSec').value||'TBA');
+newAcc.grade=document.getElementById('sGradeSection').value||'TBA';
 if(!newAcc.lrn){toast('Please enter LRN.','er');return}
 newAcc.id=newAcc.lrn;
 }else if(signupType==='t'){
@@ -764,7 +764,7 @@ function populateSectionDropdowns() {
   var settings = loadData('settings', DEFAULT_SETTINGS);
   var secs = (settings.sections && settings.sections.length > 0) ? settings.sections : DEFAULT_SECTIONS;
   
-  var dropdowns = ['gradeClass', 'attClass', 'announceClass'];
+  var dropdowns = ['gradeClass', 'attClass', 'announceClass', 'sGradeSection'];
   dropdowns.forEach(function(id) {
     var el = document.getElementById(id);
     if (!el) return;
@@ -774,6 +774,12 @@ function populateSectionDropdowns() {
       var opt = document.createElement('option');
       opt.value = 'All My Classes';
       opt.textContent = 'All My Classes';
+      el.appendChild(opt);
+    }
+    if (id === 'sGradeSection') {
+      var opt = document.createElement('option');
+      opt.value = '';
+      opt.textContent = 'Select Section';
       el.appendChild(opt);
     }
     secs.forEach(function(s) {
