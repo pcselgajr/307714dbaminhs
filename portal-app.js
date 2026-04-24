@@ -213,7 +213,7 @@ document.getElementById('liPw').value='';
 }
 
 function sdTab(el,id){el.parentElement.querySelectorAll('button').forEach(function(b){b.className=''});el.className='act';['sdGrades','sdSched','sdTasks','sdAtt'].forEach(function(x){document.getElementById(x).style.display=x===id?'block':'none'})}
-function tdTab(el,id){el.parentElement.querySelectorAll('button').forEach(function(b){b.className=''});el.className='act';['tdClasses','tdGrade','tdAnnounce'].forEach(function(x){document.getElementById(x).style.display=x===id?'block':'none'})}
+function tdTab(el,id){el.parentElement.querySelectorAll('button').forEach(function(b){b.className=''});el.className='act';['tdClasses','tdGrade','tdAttendance','tdSchedule','tdAnnounce'].forEach(function(x){var e=document.getElementById(x);if(e)e.style.display=x===id?'block':'none'})}
 function pdTab(el,id){el.parentElement.querySelectorAll('button').forEach(function(b){b.className=''});el.className='act';['pdGrades','pdAtt','pdMsg'].forEach(function(x){document.getElementById(x).style.display=x===id?'block':'none'})}
 
 var tt;
@@ -777,7 +777,7 @@ function populateSectionDropdowns() {
   var settings = loadData('settings', DEFAULT_SETTINGS);
   var secs = (settings.sections && settings.sections.length > 0) ? settings.sections : DEFAULT_SECTIONS;
   
-  var dropdowns = ['gradeClass', 'attClass', 'announceClass', 'sGradeSection'];
+  var dropdowns = ['gradeClass', 'attClass', 'schedClass', 'announceClass', 'sGradeSection'];
   dropdowns.forEach(function(id) {
     var el = document.getElementById(id);
     if (!el) return;
@@ -930,11 +930,219 @@ function loadParentAttendance() {
   if (statEls.length >= 2) statEls[1].textContent = r.rate + '%';
 }
 
+
+
+// ============================================
+// SCHEDULE UPLOAD SYSTEM
+// ============================================
+
+function downloadSchedTemplate() {
+  var cls = document.getElementById('schedClass').value;
+  
+  var csv = 'Day,Time,Subject,Teacher,Room\n';
+  var days = ['Monday','Tuesday','Wednesday','Thursday','Friday'];
+  days.forEach(function(d) {
+    csv += d + ',,,,\n';
+  });
+  
+  var blob = new Blob([csv], {type: 'text/csv'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'schedule_' + cls.replace(/\s/g,'_') + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+  
+  showSchedStatus('Template downloaded! Fill in the schedule, save as CSV, then upload.', 'success');
+}
+
+function handleSchedUpload(event) {
+  var file = event.target.files[0];
+  if (!file) return;
+  
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var text = e.target.result;
+    var lines = text.trim().split('\n');
+    
+    if (lines.length < 2) {
+      showSchedStatus('Error: CSV is empty.', 'error');
+      return;
+    }
+    
+    var records = [];
+    for (var i = 1; i < lines.length; i++) {
+      var row = lines[i].split(',');
+      if (!row[0] || !row[0].trim()) continue;
+      
+      var day = row[0].trim();
+      var time = row[1] ? row[1].trim() : '';
+      var subject = row[2] ? row[2].trim() : '';
+      var teacher = row[3] ? row[3].trim() : '';
+      var room = row[4] ? row[4].trim() : '';
+      
+      if (!time && !subject) continue;
+      
+      records.push({day: day, time: time, subject: subject, teacher: teacher, room: room});
+    }
+    
+    if (records.length === 0) {
+      showSchedStatus('Error: No valid records found.', 'error');
+      return;
+    }
+    
+    var cls = document.getElementById('schedClass').value;
+    
+    var html = '<div style="margin-bottom:12px"><strong>' + records.length + ' entries</strong> parsed</div>';
+    html += '<div style="overflow-x:auto"><table><thead><tr><th>Day</th><th>Time</th><th>Subject</th><th>Teacher</th><th>Room</th></tr></thead><tbody>';
+    
+    var dayColors = {Monday:'#e8733a',Tuesday:'#0891b2',Wednesday:'#7c3aed',Thursday:'#059669',Friday:'#dc2626'};
+    records.forEach(function(r) {
+      var color = dayColors[r.day] || '#666';
+      html += '<tr><td style="font-weight:600;color:' + color + '">' + r.day + '</td>';
+      html += '<td>' + r.time + '</td>';
+      html += '<td style="font-weight:600">' + r.subject + '</td>';
+      html += '<td>' + r.teacher + '</td>';
+      html += '<td>' + r.room + '</td></tr>';
+    });
+    
+    html += '</tbody></table></div>';
+    html += '<div style="display:flex;gap:10px;margin-top:16px">';
+    html += '<button class="btn btn-p btn-sm" onclick="saveSchedule()">&#128190; Save Schedule</button>';
+    html += '<button class="btn btn-s btn-sm" onclick="cancelSched()">Cancel</button>';
+    html += '</div>';
+    
+    document.getElementById('schedPreview').innerHTML = html;
+    window._pendingSched = records;
+    window._pendingSchedClass = cls;
+    
+    showSchedStatus('CSV parsed! Review and click Save.', 'success');
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+function saveSchedule() {
+  if (!window._pendingSched || !window._pendingSchedClass) {
+    toast('No schedule to save.', 'er');
+    return;
+  }
+  
+  var cls = window._pendingSchedClass;
+  var records = window._pendingSched;
+  var key = 'schedule_' + cls.replace(/\s/g, '_');
+  
+  saveData(key, records);
+  
+  window._pendingSched = null;
+  window._pendingSchedClass = null;
+  document.getElementById('schedPreview').innerHTML = '';
+  
+  toast(records.length + ' schedule entries saved!', 'su');
+  showSchedStatus(records.length + ' entries saved for ' + cls + '!', 'success');
+  updateSchedView();
+}
+
+function cancelSched() {
+  window._pendingSched = null;
+  window._pendingSchedClass = null;
+  document.getElementById('schedPreview').innerHTML = '';
+  var el = document.getElementById('schedUploadStatus');
+  if (el) el.style.display = 'none';
+}
+
+function updateSchedView() {
+  var cls = document.getElementById('schedClass').value;
+  var key = 'schedule_' + cls.replace(/\s/g, '_');
+  var data = loadData(key, []);
+  
+  var el = document.getElementById('savedSchedule');
+  if (!el) return;
+  if (!data || data.length === 0) {
+    el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--g5);font-size:14px">No schedule uploaded yet.</div>';
+    return;
+  }
+  
+  var dayColors = {Monday:'#e8733a',Tuesday:'#0891b2',Wednesday:'#7c3aed',Thursday:'#059669',Friday:'#dc2626'};
+  var html = '<h4 style="font-size:15px;margin-bottom:12px">&#128197; Saved Schedule &mdash; ' + cls + '</h4>';
+  html += '<div style="overflow-x:auto"><table><thead><tr><th>Day</th><th>Time</th><th>Subject</th><th>Teacher</th><th>Room</th></tr></thead><tbody>';
+  
+  data.forEach(function(r) {
+    var color = dayColors[r.day] || '#666';
+    html += '<tr><td style="font-weight:600;color:' + color + '">' + r.day + '</td>';
+    html += '<td>' + r.time + '</td>';
+    html += '<td style="font-weight:600">' + r.subject + '</td>';
+    html += '<td>' + r.teacher + '</td>';
+    html += '<td>' + r.room + '</td></tr>';
+  });
+  
+  html += '</tbody></table></div>';
+  el.innerHTML = html;
+}
+
+function showSchedStatus(msg, type) {
+  var el = document.getElementById('schedUploadStatus');
+  if (!el) return;
+  el.style.display = 'block';
+  el.textContent = msg;
+  if (type === 'success') {
+    el.style.background = 'var(--sub)'; el.style.color = 'var(--su)'; el.style.border = '1px solid var(--su)';
+  } else {
+    el.style.background = 'var(--dab)'; el.style.color = 'var(--da)'; el.style.border = '1px solid var(--da)';
+  }
+}
+
+// Load student schedule from Firebase
+function loadStudentSchedule() {
+  if (!curUser || curUser.type !== 'student') return;
+  var grade = curUser.grade;
+  if (!grade) return;
+  
+  var key = 'schedule_' + grade.replace(/\s/g, '_');
+  var data = loadData(key, []);
+  
+  var el = document.getElementById('sdSchedContent');
+  if (!el) return;
+  
+  if (!data || data.length === 0) {
+    el.innerHTML = '<h3>&#128197; Class Schedule</h3><div style="text-align:center;padding:32px;color:var(--g5)"><div style="font-size:48px;margin-bottom:12px">&#128197;</div><p>No schedule uploaded yet.</p><p style="font-size:13px;margin-top:8px">Schedule will appear here once your adviser uploads it.</p></div>';
+    return;
+  }
+  
+  var days = ['Monday','Tuesday','Wednesday','Thursday','Friday'];
+  var dayColors = {Monday:'#e8733a',Tuesday:'#0891b2',Wednesday:'#7c3aed',Thursday:'#059669',Friday:'#dc2626'};
+  
+  var html = '<h3>&#128197; Class Schedule</h3>';
+  
+  days.forEach(function(day) {
+    var entries = data.filter(function(r) { return r.day === day; });
+    if (entries.length === 0) return;
+    
+    var color = dayColors[day] || '#666';
+    html += '<div style="margin-bottom:16px">';
+    html += '<h4 style="font-size:14px;color:' + color + ';margin-bottom:8px;padding-bottom:4px;border-bottom:2px solid ' + color + '40">' + day + '</h4>';
+    html += '<div style="display:flex;flex-direction:column;gap:6px">';
+    
+    entries.forEach(function(r) {
+      html += '<div style="display:flex;gap:12px;padding:8px 12px;background:var(--g1);border-radius:8px;border-left:3px solid ' + color + ';align-items:center;flex-wrap:wrap">';
+      html += '<span style="font-family:monospace;font-size:13px;color:var(--g5);min-width:90px">' + r.time + '</span>';
+      html += '<span style="font-weight:600;flex:1;min-width:120px">' + r.subject + '</span>';
+      html += '<span style="font-size:13px;color:var(--g5)">' + r.teacher + '</span>';
+      if (r.room) html += '<span style="font-size:12px;padding:2px 8px;background:' + color + '15;color:' + color + ';border-radius:12px">' + r.room + '</span>';
+      html += '</div>';
+    });
+    
+    html += '</div></div>';
+  });
+  
+  el.innerHTML = html;
+}
+
 // Hook into login to load grades
 var _origLogin = doLogin;
 doLogin = function() {
   _origLogin();
   if (curUser) {
-    setTimeout(function() { loadStudentGrades(); loadStudentAttendance(); }, 100);
+    setTimeout(function() { loadStudentGrades(); loadStudentAttendance(); loadStudentSchedule(); }, 100);
   }
 };
