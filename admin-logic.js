@@ -311,51 +311,64 @@ function updateDashChart(){
 // SECTIONS MANAGEMENT
 // ============================================
 var DEFAULT_SECTIONS = [
-  'Grade 7 - Bonifacio','Grade 8 - Luna','Grade 9 - Mabini','Grade 10 - Rizal',
-  'Grade 11 - ABM','Grade 11 - HUMSS','Grade 12 - ABM','Grade 12 - HUMSS'
+  {name:'Grade 7 - Bonifacio',cluster:'JHS'},{name:'Grade 8 - Luna',cluster:'JHS'},
+  {name:'Grade 9 - Mabini',cluster:'JHS'},{name:'Grade 10 - Rizal',cluster:'JHS'},
+  {name:'Grade 11 - ABM',cluster:'Business'},{name:'Grade 11 - HUMSS',cluster:'ASSH'},
+  {name:'Grade 12 - ABM',cluster:'Business'},{name:'Grade 12 - HUMSS',cluster:'ASSH'}
 ];
 
 function getSections() {
-  return (SETTINGS && SETTINGS.sections && SETTINGS.sections.length > 0) ? SETTINGS.sections : DEFAULT_SECTIONS;
+  var secs = (SETTINGS && SETTINGS.sections && SETTINGS.sections.length > 0) ? SETTINGS.sections : DEFAULT_SECTIONS;
+  // Convert old string format to new object format
+  return secs.map(function(s) {
+    if (typeof s === 'string') return {name: s, cluster: (s.indexOf('Grade 7')>-1||s.indexOf('Grade 8')>-1||s.indexOf('Grade 9')>-1||s.indexOf('Grade 10')>-1) ? 'JHS' : 'ASSH'};
+    return s;
+  });
 }
 
 function renderSections() {
   var el = document.getElementById('sectionsList');
   if (!el) return;
   var secs = getSections();
+  var clusterColors = {JHS:'#e8733a',ASSH:'#7c3aed',Business:'#0891b2',STEM:'#059669',Sports:'#dc2626'};
   var html = '';
   secs.forEach(function(s, i) {
+    var color = clusterColors[s.cluster] || '#666';
     html += '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--g1);border-radius:8px;margin-bottom:6px;border:1px solid var(--g2)">';
-    html += '<span style="flex:1;font-size:14px">' + s + '</span>';
+    html += '<span style="flex:1;font-size:14px">' + s.name + '</span>';
+    html += '<span style="font-size:11px;padding:3px 8px;border-radius:12px;background:' + color + '20;color:' + color + ';font-weight:600">' + s.cluster + '</span>';
     html += '<button class="abtn del" title="Remove" onclick="removeSection(' + i + ')" style="width:28px;height:28px;font-size:12px">&#10005;</button>';
     html += '</div>';
   });
   if (secs.length === 0) {
-    html = '<div style="text-align:center;padding:16px;color:var(--g5);font-size:13px">No sections added yet. Add your first section above.</div>';
+    html = '<div style="text-align:center;padding:16px;color:var(--g5);font-size:13px">No sections added yet.</div>';
   }
   el.innerHTML = html;
 }
 
 function addSection() {
   var input = document.getElementById('newSection');
+  var cluster = document.getElementById('newCluster').value;
   var name = input.value.trim();
   if (!name) { toast('Enter section name','er'); return; }
   
   if (!SETTINGS.sections) SETTINGS.sections = getSections().slice();
   
   // Check duplicate
-  if (SETTINGS.sections.indexOf(name) > -1) { toast('Section already exists!','er'); return; }
+  var dup = SETTINGS.sections.find(function(s) { return (typeof s === 'object' ? s.name : s) === name; });
+  if (dup) { toast('Section already exists!','er'); return; }
   
-  SETTINGS.sections.push(name);
+  SETTINGS.sections.push({name: name, cluster: cluster});
   saveData('settings', SETTINGS);
   input.value = '';
   renderSections();
-  toast(name + ' added!', 'su');
+  toast(name + ' (' + cluster + ') added!', 'su');
 }
 
 function removeSection(index) {
   if (!SETTINGS.sections) SETTINGS.sections = getSections().slice();
-  var name = SETTINGS.sections[index];
+  var sec = SETTINGS.sections[index];
+  var name = typeof sec === 'object' ? sec.name : sec;
   if (!confirm('Remove "' + name + '"?')) return;
   SETTINGS.sections.splice(index, 1);
   saveData('settings', SETTINGS);

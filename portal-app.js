@@ -252,9 +252,11 @@ if(lpw)lpw.addEventListener('keydown',function(e){if(e.key==='Enter')doLogin()})
 // ============================================
 
 
-var ALL_SUBJECTS = ['Filipino','English','Mathematics','Science','AP','EsP','TLE','Music & Arts','PE & Health'];
 function downloadTemplate() {
   var cls = document.getElementById('gradeClass').value;
+  var settings = loadData('settings', DEFAULT_SETTINGS);
+  var secs = (settings.sections && settings.sections.length > 0) ? settings.sections : DEFAULT_SECTIONS;
+  var subjects = getSubjectsForSection(cls, secs);
   
   var students = loadData('students', DEFAULT_STUDENTS);
   var classStudents = students.filter(function(s) { return s.grade === cls && s.status === 'Active'; });
@@ -262,10 +264,10 @@ function downloadTemplate() {
     classStudents = students.filter(function(s) { return s.status === 'Active'; });
   }
   
-  var csv = 'LRN,Name,' + ALL_SUBJECTS.join(',') + '\n';
+  var csv = 'LRN,Name,' + subjects.join(',') + '\n';
   classStudents.forEach(function(s) {
     csv += s.lrn + ',' + s.name;
-    ALL_SUBJECTS.forEach(function() { csv += ','; });
+    subjects.forEach(function() { csv += ','; });
     csv += '\n';
   });
   
@@ -323,7 +325,7 @@ function handleCSVUpload(event) {
         grades[header[j]] = Math.round(num * 10) / 10;
       }
       
-      // Auto-compute MAPEH
+      // Auto-compute MAPEH (JHS only)
       var ma = grades['Music & Arts'];
       var pe = grades['PE & Health'];
       if (ma !== undefined && pe !== undefined) {
@@ -341,7 +343,11 @@ function handleCSVUpload(event) {
     }
     
     var cls = document.getElementById('gradeClass').value;
-    var allSubjects = ALL_SUBJECTS.concat(['MAPEH']);
+    var settings = loadData('settings', DEFAULT_SETTINGS);
+    var secs = (settings.sections && settings.sections.length > 0) ? settings.sections : DEFAULT_SECTIONS;
+    var baseSubjects = getSubjectsForSection(cls, secs);
+    var allSubjects = baseSubjects.slice();
+    if (baseSubjects.indexOf('Music & Arts') > -1) allSubjects.push('MAPEH');
     
     var html = '<div style="margin-bottom:12px"><strong>' + records.length + ' students</strong> parsed';
     if (errors.length > 0) html += ' <span style="color:var(--da)">(' + errors.length + ' warnings)</span>';
@@ -432,7 +438,11 @@ function updateGradeView() {
     return;
   }
   
-  var allSubjects = ALL_SUBJECTS.concat(['MAPEH']);
+  var settings = loadData('settings', DEFAULT_SETTINGS);
+  var secs = (settings.sections && settings.sections.length > 0) ? settings.sections : DEFAULT_SECTIONS;
+  var baseSubjects = getSubjectsForSection(cls, secs);
+  var allSubjects = baseSubjects.slice();
+  if (baseSubjects.indexOf('Music & Arts') > -1) allSubjects.push('MAPEH');
   var html = '<h4 style="font-size:15px;margin-bottom:12px">&#128202; Grades &mdash; ' + cls + '</h4>';
   html += '<div style="overflow-x:auto"><table><thead><tr><th>LRN</th><th>Name</th>';
   allSubjects.forEach(function(s) {
@@ -483,7 +493,6 @@ function loadStudentGrades() {
   var lrn = curUser.lrn;
   if (!lrn) return;
   
-  var allSubjects = ['Filipino','English','Mathematics','Science','AP','EsP','TLE','Music & Arts','PE & Health','MAPEH'];
   var grades = null;
   var keys = Object.keys(_cache);
   
@@ -502,6 +511,7 @@ function loadStudentGrades() {
   if (!el) return;
   
   var g = grades.grades;
+  var allSubjects = Object.keys(g);
   var html = '<h3>&#128202; My Grades</h3>';
   html += '<div style="overflow-x:auto"><table><thead><tr><th>Subject</th><th>Final Grade</th><th>Remarks</th></tr></thead><tbody>';
   
@@ -757,8 +767,10 @@ function loadStudentAttendance() {
 // DYNAMIC SECTIONS FROM SETTINGS
 // ============================================
 var DEFAULT_SECTIONS = [
-  'Grade 7 - Bonifacio','Grade 8 - Luna','Grade 9 - Mabini','Grade 10 - Rizal',
-  'Grade 11 - ABM','Grade 11 - HUMSS','Grade 12 - ABM','Grade 12 - HUMSS'
+  {name:'Grade 7 - Bonifacio',cluster:'JHS'},{name:'Grade 8 - Luna',cluster:'JHS'},
+  {name:'Grade 9 - Mabini',cluster:'JHS'},{name:'Grade 10 - Rizal',cluster:'JHS'},
+  {name:'Grade 11 - ABM',cluster:'Business'},{name:'Grade 11 - HUMSS',cluster:'ASSH'},
+  {name:'Grade 12 - ABM',cluster:'Business'},{name:'Grade 12 - HUMSS',cluster:'ASSH'}
 ];
 
 function populateSectionDropdowns() {
@@ -784,9 +796,11 @@ function populateSectionDropdowns() {
       el.appendChild(opt);
     }
     secs.forEach(function(s) {
+      var name = typeof s === 'object' ? s.name : s;
+      var cluster = typeof s === 'object' ? s.cluster : '';
       var opt = document.createElement('option');
-      opt.value = s;
-      opt.textContent = s;
+      opt.value = name;
+      opt.textContent = name + (cluster ? ' [' + cluster + ']' : '');
       el.appendChild(opt);
     });
     if (current) el.value = current;
@@ -805,7 +819,6 @@ function loadParentGrades() {
   var lrn = curUser.childLrn;
   if (!lrn) return;
   
-  var allSubjects = ['Filipino','English','Mathematics','Science','AP','EsP','TLE','Music & Arts','PE & Health','MAPEH'];
   var grades = null;
   var childName = curUser.childName || 'Your Child';
   
@@ -833,6 +846,7 @@ function loadParentGrades() {
   }
   
   var g = grades.grades;
+  var allSubjects = Object.keys(g);
   var html = '<h3>&#128202; Child\'s Grades &mdash; ' + childName + '</h3>';
   html += '<div style="overflow-x:auto"><table><thead><tr><th>Subject</th><th>Final Grade</th><th>Remarks</th></tr></thead><tbody>';
   

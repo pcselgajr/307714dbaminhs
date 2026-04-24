@@ -138,3 +138,41 @@ var DEFAULT_SETTINGS = {
   phone:'(043) 332 8939',email:'307714@deped.gov.ph',
   motto:'Nurturing Minds, Building Futures, Serving the Community',principal:'',division:'Division of Batangas',sections:['Grade 7 - Bonifacio','Grade 8 - Luna','Grade 9 - Mabini','Grade 10 - Rizal','Grade 11 - ABM','Grade 11 - HUMSS','Grade 12 - ABM','Grade 12 - HUMSS']
 };
+
+
+// ============================================
+// SUBJECT DEFINITIONS PER CLUSTER
+// ============================================
+var CLUSTER_SUBJECTS = {
+  'JHS': ['Filipino','English','Mathematics','Science','AP','EsP','TLE','Music & Arts','PE & Health'],
+  'SHS-Core': ['Mabisang Komunikasyon','Effective Communication','General Mathematics','General Science','Life and Career Skills','Pag-aaral ng Kasaysayan at Lipunang Pilipino'],
+  'ASSH': ['Arts 1','Arts 2','Citizenship and Civic Engagement','Contemporary Literature 1','Contemporary Literature 2','Creative Composition 1','Creative Composition 2','Filipino 1','Filipino 2','Filipino Identity Through the Arts','Introduction to Philosophy','Leadership and Management in the Arts','Malikhaing Pagsulat','Philippine Governance','Social Sciences Theory and Practice'],
+  'Business': ['Business 1 - Basic Accounting','Business 2 - Business Finance','Business 3 - Business Economics','Contemporary Marketing','Entrepreneurship','Intro to Organization and Management'],
+  'STEM': ['Biology 1','Biology 2','Chemistry 1','Chemistry 2','Earth and Space Science 1','Earth and Space Science 2','Finite Mathematics 1','Finite Mathematics 2','Physics 1','Physics 2'],
+  'Sports': ['Human Movement 1','Human Movement 2','Physical Education 1','Physical Education 2','Sports Activity Management','Sports Coaching','Sports Officiating']
+};
+
+function getSubjectsForSection(sectionName, sections) {
+  var sec = null;
+  if (sections) {
+    for (var i = 0; i < sections.length; i++) {
+      if (typeof sections[i] === 'object' && sections[i].name === sectionName) {
+        sec = sections[i]; break;
+      } else if (typeof sections[i] === 'string' && sections[i] === sectionName) {
+        break;
+      }
+    }
+  }
+  if (!sec || !sec.cluster) {
+    if (sectionName.indexOf('Grade 7') > -1 || sectionName.indexOf('Grade 8') > -1 || sectionName.indexOf('Grade 9') > -1 || sectionName.indexOf('Grade 10') > -1) {
+      return CLUSTER_SUBJECTS['JHS'];
+    }
+    return CLUSTER_SUBJECTS['JHS'];
+  }
+  if (sec.cluster === 'JHS') return CLUSTER_SUBJECTS['JHS'];
+  var subjects = CLUSTER_SUBJECTS['SHS-Core'].slice();
+  if (CLUSTER_SUBJECTS[sec.cluster]) {
+    subjects = subjects.concat(CLUSTER_SUBJECTS[sec.cluster]);
+  }
+  return subjects;
+}
