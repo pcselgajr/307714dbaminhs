@@ -517,5 +517,20 @@ Example: <code style="background:var(--w);padding:2px 6px;border-radius:4px;font
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="firebase-data.js"></script>
 <script src="portal-app.js"></script>
+
+<div id="resourcesModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.5);display:none;align-items:center;justify-content:center;padding:20px">
+<div style="background:#fff;border-radius:16px;max-width:700px;width:100%;max-height:85vh;overflow-y:auto;padding:28px;position:relative">
+<button onclick="closeResModal()" style="position:absolute;top:12px;right:16px;border:none;background:none;font-size:22px;cursor:pointer;color:#666">&#10005;</button>
+<div id="resModalContent">
+<h2 style="margin-bottom:8px">&#128274; Teacher Resources</h2>
+<p style="color:#666;margin-bottom:20px">Enter password to access resources</p>
+<div style="display:flex;gap:8px;margin-bottom:16px">
+<input id="resPassInput" type="password" placeholder="Enter password" style="flex:1;padding:12px 16px;border:1.5px solid #ddd;border-radius:10px;font-size:15px">
+<button onclick="checkResPassword()" style="padding:12px 24px;background:#e8733a;color:#fff;border:none;border-radius:10px;font-weight:600;cursor:pointer">Open</button>
+</div>
+<div id="resPassError" style="display:none;color:#ef4444;font-size:13px;margin-bottom:12px"></div>
+</div>
+</div>
+</div>
 </body>
 </html>

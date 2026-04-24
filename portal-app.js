@@ -1334,6 +1334,110 @@ function changeMonth(dir) {
   renderCalendar();
 }
 
+
+
+// ============================================
+// TEACHER RESOURCES (PASSWORD PROTECTED)
+// ============================================
+
+function openResourcesModal() {
+  var modal = document.getElementById('resourcesModal');
+  if (!modal) return;
+  modal.style.display = 'flex';
+  document.getElementById('resPassInput').value = '';
+  document.getElementById('resPassError').style.display = 'none';
+  
+  // Reset to password screen
+  document.getElementById('resModalContent').innerHTML = 
+    '<h2 style="margin-bottom:8px">&#128274; Teacher Resources</h2>' +
+    '<p style="color:#666;margin-bottom:20px">Enter password to access resources</p>' +
+    '<div style="display:flex;gap:8px;margin-bottom:16px">' +
+    '<input id="resPassInput" type="password" placeholder="Enter password" style="flex:1;padding:12px 16px;border:1.5px solid #ddd;border-radius:10px;font-size:15px" onkeypress="if(event.key===\'Enter\')checkResPassword()">' +
+    '<button onclick="checkResPassword()" style="padding:12px 24px;background:#e8733a;color:#fff;border:none;border-radius:10px;font-weight:600;cursor:pointer">Open</button>' +
+    '</div>' +
+    '<div id="resPassError" style="display:none;color:#ef4444;font-size:13px"></div>';
+  
+  setTimeout(function() {
+    var inp = document.getElementById('resPassInput');
+    if (inp) inp.focus();
+  }, 100);
+}
+
+function closeResModal() {
+  var modal = document.getElementById('resourcesModal');
+  if (modal) modal.style.display = 'none';
+}
+
+function checkResPassword() {
+  var input = document.getElementById('resPassInput');
+  if (!input) return;
+  var pw = input.value;
+  
+  var res = loadData('resources', {password:'', links:[]});
+  
+  if (!res.password) {
+    document.getElementById('resPassError').style.display = 'block';
+    document.getElementById('resPassError').textContent = 'No password set yet. Contact admin.';
+    return;
+  }
+  
+  if (pw !== res.password) {
+    document.getElementById('resPassError').style.display = 'block';
+    document.getElementById('resPassError').textContent = 'Incorrect password. Try again.';
+    input.value = '';
+    input.focus();
+    return;
+  }
+  
+  // Password correct - show resources
+  showResources(res.links || []);
+}
+
+function showResources(links) {
+  var el = document.getElementById('resModalContent');
+  if (!el) return;
+  
+  var html = '<h2 style="margin-bottom:4px">&#128194; Teacher Resources</h2>';
+  html += '<p style="color:#666;margin-bottom:20px;font-size:14px">' + links.length + ' resources available</p>';
+  
+  if (links.length === 0) {
+    html += '<div style="text-align:center;padding:32px;color:#999"><div style="font-size:48px;margin-bottom:12px">&#128194;</div><p>No resources added yet.</p><p style="font-size:13px">Ask the admin to add resource links.</p></div>';
+    el.innerHTML = html;
+    return;
+  }
+  
+  var catColors = {Modules:'#e8733a',Textbooks:'#1a365d',Handouts:'#059669',Worksheets:'#7c3aed',Training:'#0891b2',Forms:'#dc2626',General:'#666'};
+  
+  // Group by category
+  var grouped = {};
+  links.forEach(function(l) {
+    var cat = l.category || 'General';
+    if (!grouped[cat]) grouped[cat] = [];
+    grouped[cat].push(l);
+  });
+  
+  Object.keys(grouped).forEach(function(cat) {
+    var color = catColors[cat] || '#666';
+    html += '<div style="margin-bottom:18px">';
+    html += '<h4 style="font-size:14px;color:' + color + ';margin-bottom:10px;padding-bottom:4px;border-bottom:2px solid ' + color + '30">' + cat + '</h4>';
+    
+    grouped[cat].forEach(function(l) {
+      html += '<a href="' + l.url + '" target="_blank" style="display:block;text-decoration:none;color:inherit;padding:12px 14px;background:#f8f8f8;border-radius:10px;margin-bottom:8px;border:1px solid #eee;transition:all .2s">';
+      html += '<div style="display:flex;align-items:center;gap:10px">';
+      html += '<div style="width:36px;height:36px;border-radius:8px;background:' + color + '15;display:flex;align-items:center;justify-content:center;font-size:18px">&#128279;</div>';
+      html += '<div style="flex:1"><div style="font-weight:600;font-size:14px;color:#333">' + l.title + '</div>';
+      if (l.desc) html += '<div style="font-size:12px;color:#888;margin-top:2px">' + l.desc + '</div>';
+      html += '</div>';
+      html += '<span style="color:' + color + ';font-size:13px">Open &#8599;</span>';
+      html += '</div></a>';
+    });
+    
+    html += '</div>';
+  });
+  
+  el.innerHTML = html;
+}
+
 // Hook into login to load grades
 var _origLogin = doLogin;
 doLogin = function() {

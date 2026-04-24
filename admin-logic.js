@@ -58,7 +58,7 @@ function go(p,el){
   document.getElementById('sidebar').classList.remove('open');
 }
 
-function renderAll(){rN();rE();rS();rT();rP();uS();loadSettings();setTimeout(updateDashChart,100)}
+function renderAll(){rN();rE();rS();rT();rP();uS();loadSettings();loadResources();setTimeout(updateDashChart,100)}
 function uS(){
   document.getElementById('sS').textContent=S.length.toLocaleString();
   document.getElementById('sT').textContent=T.length;
@@ -376,4 +376,112 @@ function removeSection(index) {
   saveData('settings', SETTINGS);
   renderSections();
   toast(name + ' removed', 'su');
+}
+
+
+// ============================================
+// TEACHER RESOURCES MANAGEMENT
+// ============================================
+
+function loadResources() {
+  var res = loadData('resources', {password:'', links:[]});
+  var pwEl = document.getElementById('resPassword');
+  if (pwEl) pwEl.value = res.password || '';
+  renderResources();
+}
+
+function saveResPassword() {
+  var res = loadData('resources', {password:'', links:[]});
+  res.password = document.getElementById('resPassword').value;
+  saveData('resources', res);
+  toast('Password saved!', 'su');
+}
+
+function renderResources() {
+  var res = loadData('resources', {password:'', links:[]});
+  var links = res.links || [];
+  var el = document.getElementById('resourcesList');
+  if (!el) return;
+  
+  if (links.length === 0) {
+    el.innerHTML = '<div style="text-align:center;padding:32px;color:var(--g5)"><div style="font-size:48px;margin-bottom:12px">&#128194;</div><p>No resources added yet. Click "+ Add Link" to add your first resource.</p></div>';
+    return;
+  }
+  
+  var html = '<table><thead><tr><th>Title</th><th>Category</th><th>Link</th><th>Actions</th></tr></thead><tbody>';
+  links.forEach(function(l, i) {
+    html += '<tr><td><strong>' + l.title + '</strong>';
+    if (l.desc) html += '<br><span style="font-size:12px;color:var(--g5)">' + l.desc + '</span>';
+    html += '</td>';
+    html += '<td><span class="badge b-b">' + (l.category || 'General') + '</span></td>';
+    html += '<td><a href="' + l.url + '" target="_blank" style="color:var(--p);font-size:13px">Open &#8599;</a></td>';
+    html += '<td><div style="display:flex;gap:4px"><button class="abtn edt" onclick="editResource(' + i + ')">&#9998;</button><button class="abtn del" onclick="deleteResource(' + i + ')">&#128465;</button></div></td></tr>';
+  });
+  html += '</tbody></table>';
+  el.innerHTML = html;
+}
+
+function openAddResource(data) {
+  var x = data || {title:'', url:'', category:'Modules', desc:''};
+  var isEdit = !!data;
+  var idx = isEdit ? (data._index || 0) : -1;
+  opM(isEdit ? 'Edit Resource' : 'Add Resource Link',
+    '<div class="fg"><label>Title</label><input id="resTitle" value="' + x.title + '" placeholder="e.g. Grade 7 Math Modules"></div>' +
+    '<div class="fg"><label>Link / URL</label><input id="resUrl" value="' + x.url + '" placeholder="https://drive.google.com/..."></div>' +
+    '<div class="fg-row"><div class="fg"><label>Category</label><select id="resCat">' +
+    '<option' + (x.category === 'Modules' ? ' selected' : '') + '>Modules</option>' +
+    '<option' + (x.category === 'Textbooks' ? ' selected' : '') + '>Textbooks</option>' +
+    '<option' + (x.category === 'Handouts' ? ' selected' : '') + '>Handouts</option>' +
+    '<option' + (x.category === 'Worksheets' ? ' selected' : '') + '>Worksheets</option>' +
+    '<option' + (x.category === 'Training' ? ' selected' : '') + '>Training</option>' +
+    '<option' + (x.category === 'Forms' ? ' selected' : '') + '>Forms</option>' +
+    '<option' + (x.category === 'General' ? ' selected' : '') + '>General</option>' +
+    '</select></div></div>' +
+    '<div class="fg"><label>Description (optional)</label><input id="resDesc" value="' + (x.desc || '') + '" placeholder="Brief description"></div>' +
+    '<div style="display:flex;gap:10px;margin-top:18px">' +
+    '<button class="btn btn-p" onclick="saveResource(' + idx + ')">Save &#10148;</button>' +
+    '<button class="btn btn-s" onclick="clM()">Cancel</button></div>'
+  );
+}
+
+function saveResource(idx) {
+  var title = document.getElementById('resTitle').value;
+  var url = document.getElementById('resUrl').value;
+  var cat = document.getElementById('resCat').value;
+  var desc = document.getElementById('resDesc').value;
+  if (!title || !url) { toast('Enter title and URL', 'er'); return; }
+  
+  var res = loadData('resources', {password:'', links:[]});
+  if (!res.links) res.links = [];
+  
+  var link = {title: title, url: url, category: cat, desc: desc};
+  
+  if (idx >= 0) {
+    res.links[idx] = link;
+  } else {
+    res.links.unshift(link);
+  }
+  
+  saveData('resources', res);
+  clM();
+  renderResources();
+  toast(idx >= 0 ? 'Resource updated!' : 'Resource added!', 'su');
+}
+
+function editResource(idx) {
+  var res = loadData('resources', {password:'', links:[]});
+  var link = res.links[idx];
+  if (!link) return;
+  link._index = idx;
+  openAddResource(link);
+}
+
+function deleteResource(idx) {
+  var res = loadData('resources', {password:'', links:[]});
+  var link = res.links[idx];
+  if (!confirm('Delete "' + link.title + '"?')) return;
+  res.links.splice(idx, 1);
+  saveData('resources', res);
+  renderResources();
+  toast('Resource deleted', 'su');
 }
