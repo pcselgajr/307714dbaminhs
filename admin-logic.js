@@ -71,7 +71,13 @@ function rN(){document.getElementById('nB').innerHTML=N.map(function(n){return '
 
 function rE(){document.getElementById('eB').innerHTML=E.map(function(e){return '<tr><td><strong>'+e.name+'</strong></td><td>'+formatDate(e.date)+'</td><td>'+e.time+'</td><td>'+(e.venue||'')+'</td><td><span class="badge b-ac">'+e.status+'</span></td><td><div class="ab"><button class="abtn" title="Edit" onclick="edE('+e.id+')">&#9998;</button><button class="abtn del" title="Delete" onclick="del(\'e\','+e.id+')">&#128465;</button></div></td></tr>'}).join('')}
 
-function rS(){document.getElementById('sB').innerHTML=S.map(function(s){return '<tr><td style="font-family:monospace;font-size:12px">'+s.lrn+'</td><td><strong>'+s.name+'</strong></td><td>'+s.grade+'</td><td>'+s.contact+'</td><td><span class="badge '+(s.status==='Active'?'b-ac':'b-in')+'">'+s.status+'</span></td><td><div class="ab"><button class="abtn" title="Edit" onclick="edS('+s.id+')">&#9998;</button><button class="abtn del" title="Delete" onclick="del(\'s\','+s.id+')">&#128465;</button></div></td></tr>'}).join('')}
+function rS(){
+  document.getElementById('sB').innerHTML=S.map(function(s){
+    return '<tr><td><input type="checkbox" class="sCb" value="'+s.id+'" onchange="updateSelectedCount()"></td><td style="font-family:monospace;font-size:12px">'+s.lrn+'</td><td><strong>'+s.name+'</strong></td><td>'+s.grade+'</td><td>'+s.contact+'</td><td><span class="badge '+(s.status==='Active'?'b-ac':'b-in')+'">'+s.status+'</span></td><td><div class="ab"><button class="abtn" title="Edit" onclick="edS('+s.id+')">&#9998;</button><button class="abtn del" title="Delete" onclick="del(\'s\','+s.id+')">&#128465;</button></div></td></tr>';
+  }).join('');
+  populateSectionFilter();
+  updateSelectedCount();
+}
 
 function rT(){document.getElementById('tB').innerHTML=T.map(function(t){return '<tr><td style="font-family:monospace;font-size:12px">'+t.eid+'</td><td><strong>'+t.name+'</strong></td><td>'+t.dept+'</td><td>'+t.pos+'</td><td>'+t.contact+'</td><td><div class="ab"><button class="abtn" title="Edit" onclick="edT('+t.id+')">&#9998;</button><button class="abtn del" title="Delete" onclick="del(\'t\','+t.id+')">&#128465;</button></div></td></tr>'}).join('')}
 
@@ -693,3 +699,93 @@ function saveAlumni(idx) {
 
 function editAlumni(i) { var d = loadData('alumni',[]); d[i]._index = i; openAlumniM(d[i]); }
 function deleteAlumni(i) { var d = loadData('alumni',[]); if(!confirm('Delete?'))return; d.splice(i,1); saveData('alumni',d); loadAlumni(); toast('Deleted','su'); }
+
+// ============================================
+// STUDENT BULK ACTIONS
+// ============================================
+
+function populateSectionFilter() {
+  var el = document.getElementById('filterSection');
+  if (!el) return;
+  var sections = {};
+  S.forEach(function(s) { if (s.grade) sections[s.grade] = true; });
+  var current = el.value;
+  el.innerHTML = '<option value="">All Sections (' + S.length + ')</option>';
+  Object.keys(sections).sort().forEach(function(sec) {
+    var count = S.filter(function(s) { return s.grade === sec; }).length;
+    el.innerHTML += '<option value="' + sec + '">' + sec + ' (' + count + ')</option>';
+  });
+  if (current) el.value = current;
+}
+
+function filterStudents() {
+  var sec = document.getElementById('filterSection').value;
+  var rows = document.querySelectorAll('#sB tr');
+  rows.forEach(function(row) {
+    if (!sec) { row.style.display = ''; return; }
+    var gradeCell = row.cells[3];
+    if (gradeCell && gradeCell.textContent.trim() === sec) {
+      row.style.display = '';
+    } else {
+      row.style.display = 'none';
+    }
+  });
+}
+
+function toggleAllStudents(cb) {
+  var checkboxes = document.querySelectorAll('.sCb');
+  checkboxes.forEach(function(c) {
+    if (c.closest('tr').style.display !== 'none') {
+      c.checked = cb.checked;
+    }
+  });
+  updateSelectedCount();
+}
+
+function updateSelectedCount() {
+  var checked = document.querySelectorAll('.sCb:checked').length;
+  var el = document.getElementById('selectedCount');
+  if (el) el.textContent = checked > 0 ? checked + ' selected' : '';
+}
+
+function getSelectedIds() {
+  var ids = [];
+  document.querySelectorAll('.sCb:checked').forEach(function(c) {
+    ids.push(parseInt(c.value));
+  });
+  return ids;
+}
+
+function deleteSelected() {
+  var ids = getSelectedIds();
+  if (ids.length === 0) { toast('No students selected. Check the boxes first.', 'er'); return; }
+  if (!confirm('Delete ' + ids.length + ' selected student(s)? This cannot be undone.')) return;
+  S = S.filter(function(s) { return ids.indexOf(s.id) === -1; });
+  saveData('students', S);
+  rS(); uS();
+  document.getElementById('selectAllStudents').checked = false;
+  toast(ids.length + ' student(s) deleted!', 'su');
+}
+
+function deleteBySection() {
+  var sec = document.getElementById('filterSection').value;
+  if (!sec) { toast('Select a section first from the dropdown.', 'er'); return; }
+  var count = S.filter(function(s) { return s.grade === sec; }).length;
+  if (count === 0) { toast('No students in this section.', 'er'); return; }
+  if (!confirm('Delete ALL ' + count + ' students in "' + sec + '"? This cannot be undone.')) return;
+  S = S.filter(function(s) { return s.grade !== sec; });
+  saveData('students', S);
+  document.getElementById('filterSection').value = '';
+  rS(); uS();
+  toast(count + ' students in ' + sec + ' deleted!', 'su');
+}
+
+function clearAllStudents() {
+  if (S.length === 0) { toast('No students to delete.', 'er'); return; }
+  if (!confirm('DELETE ALL ' + S.length + ' STUDENTS? This cannot be undone!')) return;
+  if (!confirm('Are you REALLY sure? This will remove ALL student records.')) return;
+  S = [];
+  saveData('students', S);
+  rS(); uS();
+  toast('All students cleared!', 'su');
+}

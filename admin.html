@@ -227,7 +227,16 @@ tr:hover td{background:var(--cr)}
 
 <!-- STUDENTS -->
 <div class="pg" id="pg-students"><div class="panel"><div class="ph"><h3>&#127891; Students</h3><div class="pa"><div class="sbox">&#128269;<input placeholder="Search..." oninput="ft('sT',this.value)"></div><button class="btn btn-p btn-sm" onclick="openSM()">+ Add Student</button></div></div>
-<table id="sT"><thead><tr><th>LRN</th><th>Name</th><th>Grade &amp; Section</th><th>Contact</th><th>Status</th><th>Actions</th></tr></thead><tbody id="sB"></tbody></table></div></div>
+<div style="padding:12px 22px;border-bottom:1px solid var(--g2);display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+<select id="filterSection" onchange="filterStudents()" style="padding:7px 12px;border:1.5px solid var(--g2);border-radius:6px;font-size:13px;font-family:var(--fb)">
+<option value="">All Sections</option>
+</select>
+<button class="btn btn-d btn-sm" onclick="deleteSelected()">&#128465; Delete Selected</button>
+<button class="btn btn-d btn-sm" onclick="deleteBySection()">&#128465; Delete by Section</button>
+<button class="btn btn-d btn-sm" onclick="clearAllStudents()">&#128465; Clear All</button>
+<span id="selectedCount" style="font-size:12px;color:var(--g5);margin-left:auto"></span>
+</div>
+<table id="sT"><thead><tr><th style="width:30px"><input type="checkbox" id="selectAllStudents" onchange="toggleAllStudents(this)"></th><th>LRN</th><th>Name</th><th>Grade &amp; Section</th><th>Contact</th><th>Status</th><th>Actions</th></tr></thead><tbody id="sB"></tbody></table></div></div>
 
 <!-- TEACHERS -->
 <div class="pg" id="pg-teachers"><div class="panel"><div class="ph"><h3>&#128104;&#8205;&#127979; Teachers &amp; Staff</h3><div class="pa"><div class="sbox">&#128269;<input placeholder="Search..." oninput="ft('tT',this.value)"></div><button class="btn btn-p btn-sm" onclick="openTM()">+ Add Teacher</button></div></div>
