@@ -93,6 +93,7 @@ loadAllFromFirebase(function() {
   try {
     renderPortalContent();
     populateSectionDropdowns();
+    renderCalendar();
     console.log('Portal content rendered from Firebase!');
   } catch(e) {
     console.error('renderPortalContent ERROR:', e);
@@ -102,6 +103,7 @@ loadAllFromFirebase(function() {
 listenForChanges(function() {
   renderPortalContent();
     populateSectionDropdowns();
+    renderCalendar();
   console.log('Real-time update received!');
 });
 
@@ -1213,6 +1215,118 @@ function loadMyClasses() {
   
   html += '</div>';
   el.innerHTML = html;
+}
+
+
+
+// ============================================
+// SCHOOL CALENDAR
+// ============================================
+
+var calMonth = new Date().getMonth();
+var calYear = new Date().getFullYear();
+
+function renderCalendar() {
+  var months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  var el = document.getElementById('calMonthYear');
+  var grid = document.getElementById('calGrid');
+  if (!el || !grid) return;
+  
+  el.textContent = months[calMonth] + ' ' + calYear;
+  
+  var events = loadData('events', DEFAULT_EVENTS);
+  
+  // Get event dates for this month
+  var eventDates = {};
+  events.forEach(function(ev) {
+    if (!ev.date) return;
+    var d = new Date(ev.date + 'T00:00:00');
+    if (d.getMonth() === calMonth && d.getFullYear() === calYear) {
+      var day = d.getDate();
+      if (!eventDates[day]) eventDates[day] = [];
+      eventDates[day].push(ev);
+    }
+  });
+  
+  var firstDay = new Date(calYear, calMonth, 1).getDay();
+  var daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  var today = new Date();
+  var isCurrentMonth = today.getMonth() === calMonth && today.getFullYear() === calYear;
+  var todayDate = today.getDate();
+  
+  var html = '';
+  
+  // Empty cells before first day
+  for (var i = 0; i < firstDay; i++) {
+    html += '<div style="padding:8px;min-height:50px"></div>';
+  }
+  
+  // Day cells
+  for (var d = 1; d <= daysInMonth; d++) {
+    var isToday = isCurrentMonth && d === todayDate;
+    var hasEvent = eventDates[d];
+    var isSunday = (firstDay + d - 1) % 7 === 0;
+    
+    var bg = isToday ? '#e8733a' : (hasEvent ? '#FFF3EB' : '#f8f8f8');
+    var color = isToday ? '#fff' : (isSunday ? '#e8733a' : '#333');
+    var border = hasEvent ? '2px solid #e8733a' : '1px solid #eee';
+    var cursor = hasEvent ? 'pointer' : 'default';
+    
+    html += '<div onclick="' + (hasEvent ? 'showDayEvents(' + d + ')' : '') + '" style="padding:6px;min-height:50px;border-radius:8px;background:' + bg + ';border:' + border + ';cursor:' + cursor + ';position:relative;transition:all .2s">';
+    html += '<div style="font-size:14px;font-weight:' + (isToday || hasEvent ? '700' : '400') + ';color:' + color + '">' + d + '</div>';
+    
+    if (hasEvent) {
+      var count = eventDates[d].length;
+      html += '<div style="position:absolute;bottom:4px;left:50%;transform:translateX(-50%);display:flex;gap:2px">';
+      for (var j = 0; j < Math.min(count, 3); j++) {
+        html += '<div style="width:5px;height:5px;border-radius:50%;background:#e8733a"></div>';
+      }
+      html += '</div>';
+    }
+    
+    html += '</div>';
+  }
+  
+  grid.innerHTML = html;
+}
+
+function showDayEvents(day) {
+  var events = loadData('events', DEFAULT_EVENTS);
+  var dayEvents = events.filter(function(ev) {
+    if (!ev.date) return false;
+    var d = new Date(ev.date + 'T00:00:00');
+    return d.getDate() === day && d.getMonth() === calMonth && d.getFullYear() === calYear;
+  });
+  
+  var el = document.getElementById('calEventDetails');
+  if (!el || dayEvents.length === 0) return;
+  
+  var months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  var html = '<h4 style="font-size:15px;margin-bottom:12px;color:#e8733a">' + months[calMonth] + ' ' + day + ', ' + calYear + '</h4>';
+  
+  dayEvents.forEach(function(ev) {
+    var statusColor = ev.status === 'Upcoming' ? '#059669' : (ev.status === 'Completed' ? '#666' : '#ef4444');
+    html += '<div style="padding:12px;background:#fff;border-radius:10px;margin-bottom:8px;border-left:3px solid #e8733a">';
+    html += '<div style="font-weight:700;font-size:15px">' + ev.name + '</div>';
+    html += '<div style="display:flex;gap:12px;margin-top:6px;font-size:13px;color:#666;flex-wrap:wrap">';
+    if (ev.time) html += '<span>&#128336; ' + ev.time + '</span>';
+    if (ev.venue) html += '<span>&#128205; ' + ev.venue + '</span>';
+    html += '<span style="color:' + statusColor + ';font-weight:600">' + ev.status + '</span>';
+    html += '</div>';
+    if (ev.desc) html += '<p style="margin-top:6px;font-size:13px;color:#555">' + ev.desc + '</p>';
+    html += '</div>';
+  });
+  
+  el.innerHTML = html;
+  el.style.display = 'block';
+}
+
+function changeMonth(dir) {
+  calMonth += dir;
+  if (calMonth > 11) { calMonth = 0; calYear++; }
+  if (calMonth < 0) { calMonth = 11; calYear--; }
+  document.getElementById('calEventDetails').style.display = 'none';
+  renderCalendar();
 }
 
 // Hook into login to load grades
