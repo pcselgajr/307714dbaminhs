@@ -149,7 +149,8 @@ var CLUSTER_SUBJECTS = {
   'ASSH': ['Arts 1','Arts 2','Citizenship and Civic Engagement','Contemporary Literature 1','Contemporary Literature 2','Creative Composition 1','Creative Composition 2','Filipino 1','Filipino 2','Filipino Identity Through the Arts','Introduction to Philosophy','Leadership and Management in the Arts','Malikhaing Pagsulat','Philippine Governance','Social Sciences Theory and Practice'],
   'Business': ['Business 1 - Basic Accounting','Business 2 - Business Finance','Business 3 - Business Economics','Contemporary Marketing','Entrepreneurship','Intro to Organization and Management'],
   'STEM': ['Biology 1','Biology 2','Chemistry 1','Chemistry 2','Earth and Space Science 1','Earth and Space Science 2','Finite Mathematics 1','Finite Mathematics 2','Physics 1','Physics 2'],
-  'Sports': ['Human Movement 1','Human Movement 2','Physical Education 1','Physical Education 2','Sports Activity Management','Sports Coaching','Sports Officiating']
+  'Sports': ['Human Movement 1','Human Movement 2','Physical Education 1','Physical Education 2','Sports Activity Management','Sports Coaching','Sports Officiating'],
+  'ICT': ['Broadband Installation','Computer Programming (.NET Technology)','Computer Programming (Java)','Computer Programming (Oracle Database)','Computer Systems Servicing','Contact Center Services']
 };
 
 function getSubjectsForSection(sectionName, sections) {
@@ -173,7 +174,9 @@ function getSubjectsForSection(sectionName, sections) {
       cluster = 'Business';
     } else if (name.indexOf('humss') > -1 || name.indexOf('assh') > -1 || name.indexOf('arts') > -1) {
       cluster = 'ASSH';
-    } else if (name.indexOf('stem') > -1 || name.indexOf('ict') > -1 || name.indexOf('tech') > -1) {
+    } else if (name.indexOf('ict') > -1 || name.indexOf('computer') > -1 || name.indexOf('programming') > -1) {
+      cluster = 'ICT';
+    } else if (name.indexOf('stem') > -1 || name.indexOf('tech') > -1) {
       cluster = 'STEM';
     } else if (name.indexOf('sports') > -1 || name.indexOf('pe') > -1) {
       cluster = 'Sports';
