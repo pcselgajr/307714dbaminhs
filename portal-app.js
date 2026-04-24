@@ -1223,6 +1223,11 @@ function loadMyClasses() {
 // SCHOOL CALENDAR
 // ============================================
 
+function goToCalendar() {
+  var el = document.getElementById('schoolCalendar');
+  if (el) el.scrollIntoView({behavior:'smooth'});
+}
+
 var calMonth = new Date().getMonth();
 var calYear = new Date().getFullYear();
 
