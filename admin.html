@@ -276,6 +276,22 @@ tr:hover td{background:var(--cr)}
 <div class="fg"><label>Grade 12</label><input id="setG12" value="232" type="number"></div>
 </div>
 <hr style="border:none;border-top:1px solid var(--g2);margin:18px 0">
+<h4 style="font-size:14px;margin-bottom:12px">&#128218; Class Sections Management</h4>
+<p style="font-size:13px;color:var(--g5);margin-bottom:12px">Add or remove class sections. These will appear in Teacher Dashboard dropdowns (Grades &amp; Attendance).</p>
+<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+<input id="newSection" placeholder="e.g. Grade 7 - Mabini" style="flex:2;min-width:180px;padding:10px 14px;border:1.5px solid var(--g2);border-radius:8px;font-size:14px;font-family:var(--fb)">
+<select id="newCluster" style="flex:1;min-width:140px;padding:10px 14px;border:1.5px solid var(--g2);border-radius:8px;font-size:14px;font-family:var(--fb)">
+<option value="JHS">JHS (Grade 7-10)</option>
+<option value="ASSH">SHS - ASSH</option>
+<option value="Business">SHS - Business</option>
+<option value="STEM">SHS - STEM</option>
+<option value="Sports">SHS - Sports</option>
+<option value="ICT">SHS - ICT</option>
+</select>
+<button class="btn btn-p btn-sm" onclick="addSection()">+ Add</button>
+</div>
+<div id="sectionsList" style="margin-bottom:18px"></div>
+<hr style="border:none;border-top:1px solid var(--g2);margin:18px 0">
 <h4 style="font-size:14px;margin-bottom:12px">&#127912; Portal Appearance</h4>
 <div class="fg-row"><div class="fg"><label>Primary Color</label><input type="color" value="#E85D1A" style="height:40px;padding:4px" onchange="document.documentElement.style.setProperty('--o',this.value)"></div><div class="fg"><label>Secondary Color</label><input type="color" value="#1B2A4A" style="height:40px;padding:4px" onchange="document.documentElement.style.setProperty('--n',this.value)"></div></div>
 <div style="display:flex;gap:10px;margin-top:18px"><button class="btn btn-p" onclick="saveSettings()">&#128190; Save Settings</button><button class="btn btn-s" onclick="resetData()">Reset</button></div>
