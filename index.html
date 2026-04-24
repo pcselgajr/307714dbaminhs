@@ -337,12 +337,7 @@ td{padding:12px 16px;border-bottom:1px solid var(--g1);font-size:13.5px}
 <div class="dash-welcome" style="background:linear-gradient(135deg,var(--n),var(--nl))"><h2>&#128075; Welcome, <span id="tdWelcome">Teacher</span>!</h2><p>Manage your classes and students</p></div>
 <div class="dash-stat-row"><div class="dash-stat"><b>4</b><small>Classes</small></div><div class="dash-stat"><b>168</b><small>Students</small></div><div class="dash-stat"><b>12</b><small>Pending Grades</small></div><div class="dash-stat"><b>97%</b><small>Avg. Attendance</small></div></div>
 <div class="dash-nav"><button class="act" onclick="tdTab(this,'tdClasses')">&#128218; My Classes</button><button onclick="tdTab(this,'tdGrade')">&#128202; Grade Input</button><button onclick="tdTab(this,'tdAttendance')">&#128203; Attendance</button><button onclick="tdTab(this,'tdSchedule')">&#128197; Schedule</button><button onclick="tdTab(this,'tdAnnounce')">&#128227; Announcements</button></div>
-<div id="tdClasses" class="dash-card"><h3>&#128218; My Classes</h3><table><thead><tr><th>Section</th><th>Subject</th><th>Schedule</th><th>Students</th><th>Room</th></tr></thead><tbody>
-<tr><td>Grade 7 &mdash; Bonifacio</td><td>Mathematics</td><td>MWF 7:30-8:30 AM</td><td>42</td><td>Room 101</td></tr>
-<tr><td>Grade 8 &mdash; Luna</td><td>Mathematics</td><td>MWF 8:30-9:30 AM</td><td>45</td><td>Room 102</td></tr>
-<tr><td>Grade 9 &mdash; Mabini</td><td>Mathematics</td><td>TTh 7:30-9:00 AM</td><td>40</td><td>Room 201</td></tr>
-<tr><td>Grade 10 &mdash; Rizal</td><td>Mathematics</td><td>TTh 9:00-10:30 AM</td><td>41</td><td>Room 202</td></tr>
-</tbody></table></div>
+<div id="tdClasses" class="dash-card"><div id="tdClassesContent"><div style="text-align:center;padding:24px;color:var(--g5)">Loading classes...</div></div></div>
 <div id="tdGrade" class="dash-card" style="display:none">
 <h3>&#128202; Grade Upload System</h3>
 <p style="color:var(--g5);font-size:14px;margin-bottom:18px">Upload student grades per quarter using a CSV file</p>

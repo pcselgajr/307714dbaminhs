@@ -129,6 +129,7 @@ document.getElementById('sdName').textContent=user.fname+' '+user.lname;
 document.getElementById('sdWelcome').textContent=user.fname;
 }else if(user.type==='teacher'){
 document.getElementById('teacherDash').classList.add('act');
+setTimeout(function() { loadMyClasses(); }, 200);
 document.getElementById('tdAv').textContent=user.fname[0];
 document.getElementById('tdName').textContent=user.fname+' '+user.lname;
 document.getElementById('tdWelcome').textContent=user.fname;
@@ -1135,6 +1136,82 @@ function loadStudentSchedule() {
     html += '</div></div>';
   });
   
+  el.innerHTML = html;
+}
+
+
+
+// ============================================
+// MY CLASSES - AUTO-GENERATED FROM DATA
+// ============================================
+
+function loadMyClasses() {
+  var el = document.getElementById('tdClassesContent');
+  if (!el) return;
+  
+  var keys = Object.keys(_cache);
+  var classMap = {};
+  
+  // Scan grades data
+  keys.forEach(function(k) {
+    if (k.startsWith('grades_')) {
+      var section = k.replace('grades_', '').replace(/_/g, ' ');
+      if (!classMap[section]) classMap[section] = {students: 0, hasGrades: false, hasAttendance: false, hasSchedule: false};
+      var data = _cache[k];
+      if (data) {
+        classMap[section].students = Object.keys(data).length;
+        classMap[section].hasGrades = true;
+      }
+    }
+  });
+  
+  // Scan attendance data
+  keys.forEach(function(k) {
+    if (k.startsWith('attendance_')) {
+      var section = k.replace('attendance_', '').replace(/_/g, ' ');
+      if (!classMap[section]) classMap[section] = {students: 0, hasGrades: false, hasAttendance: false, hasSchedule: false};
+      classMap[section].hasAttendance = true;
+      if (!classMap[section].students) {
+        classMap[section].students = Object.keys(_cache[k]).length;
+      }
+    }
+  });
+  
+  // Scan schedule data
+  keys.forEach(function(k) {
+    if (k.startsWith('schedule_')) {
+      var section = k.replace('schedule_', '').replace(/_/g, ' ');
+      if (!classMap[section]) classMap[section] = {students: 0, hasGrades: false, hasAttendance: false, hasSchedule: false};
+      classMap[section].hasSchedule = true;
+    }
+  });
+  
+  var sections = Object.keys(classMap);
+  
+  if (sections.length === 0) {
+    el.innerHTML = '<h3>&#128218; My Classes</h3><div style="text-align:center;padding:32px;color:var(--g5)"><div style="font-size:48px;margin-bottom:12px">&#128218;</div><p>No class data yet.</p><p style="font-size:13px;margin-top:8px">Upload grades, attendance, or schedule in the other tabs to see your classes here.</p></div>';
+    return;
+  }
+  
+  var html = '<h3>&#128218; My Classes <span style="font-size:14px;color:var(--g5);font-weight:400">(' + sections.length + ' sections)</span></h3>';
+  html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;margin-top:16px">';
+  
+  sections.forEach(function(sec) {
+    var c = classMap[sec];
+    html += '<div style="background:var(--g1);border-radius:12px;padding:18px;border:1px solid var(--g2)">';
+    html += '<div style="font-weight:700;font-size:15px;margin-bottom:10px">' + sec + '</div>';
+    html += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">';
+    html += '<span style="font-size:12px;padding:3px 10px;border-radius:12px;background:#e8733a20;color:#e8733a;font-weight:600">&#128100; ' + c.students + ' students</span>';
+    html += '</div>';
+    html += '<div style="display:flex;gap:6px;flex-wrap:wrap">';
+    html += '<span style="font-size:11px;padding:2px 8px;border-radius:8px;background:' + (c.hasGrades ? '#05966920' : '#eee') + ';color:' + (c.hasGrades ? '#059669' : '#aaa') + '">' + (c.hasGrades ? '&#10003;' : '&#10007;') + ' Grades</span>';
+    html += '<span style="font-size:11px;padding:2px 8px;border-radius:8px;background:' + (c.hasAttendance ? '#0891b220' : '#eee') + ';color:' + (c.hasAttendance ? '#0891b2' : '#aaa') + '">' + (c.hasAttendance ? '&#10003;' : '&#10007;') + ' Attendance</span>';
+    html += '<span style="font-size:11px;padding:2px 8px;border-radius:8px;background:' + (c.hasSchedule ? '#7c3aed20' : '#eee') + ';color:' + (c.hasSchedule ? '#7c3aed' : '#aaa') + '">' + (c.hasSchedule ? '&#10003;' : '&#10007;') + ' Schedule</span>';
+    html += '</div>';
+    html += '</div>';
+  });
+  
+  html += '</div>';
   el.innerHTML = html;
 }
 
