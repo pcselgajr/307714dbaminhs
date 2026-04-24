@@ -158,6 +158,12 @@ tr:hover td{background:var(--cr)}
 <button class="sl" onclick="go('pending',this)"><span class="i">&#128203;</span> Pending Signups <span class="sb-count" id="pendCount">3</span></button>
 <div class="sb-sec">System</div>
 <button class="sl" onclick="go('resources',this)"><span class="i">&#128194;</span> Teacher Resources</button>
+<div class="sb-sec">Community</div>
+<button class="sl" onclick="go('gallery',this)"><span class="i">&#128248;</span> Photo Gallery</button>
+<button class="sl" onclick="go('achieve',this)"><span class="i">&#127942;</span> Achievements</button>
+<button class="sl" onclick="go('history',this)"><span class="i">&#128220;</span> School History</button>
+<button class="sl" onclick="go('alumni',this)"><span class="i">&#127891;</span> Alumni</button>
+<div class="sb-sec">System</div>
 <button class="sl" onclick="go('settings',this)"><span class="i">&#9881;</span> Portal Settings</button>
 </nav>
 <div class="sb-ft"><div class="sb-user"><div class="sb-av">A</div><div><div class="sb-un">Admin</div><div class="sb-ur">Super Admin</div></div></div></div>
@@ -243,6 +249,22 @@ tr:hover td{background:var(--cr)}
 </div></div>
 <div id="resourcesList"></div>
 </div></div></div>
+
+<!-- PHOTO GALLERY -->
+<div class="pg" id="pg-gallery"><div class="panel"><div class="ph"><h3>&#128248; Photo Gallery</h3><div class="pa"><button class="btn btn-p btn-sm" onclick="openGalleryM()">+ Add Album</button></div></div>
+<div style="padding:22px"><div id="galleryList"></div></div></div></div>
+
+<!-- ACHIEVEMENTS -->
+<div class="pg" id="pg-achieve"><div class="panel"><div class="ph"><h3>&#127942; Achievements Wall</h3><div class="pa"><button class="btn btn-p btn-sm" onclick="openAchieveM()">+ Add Achievement</button></div></div>
+<div style="padding:22px"><div id="achieveList"></div></div></div></div>
+
+<!-- SCHOOL HISTORY -->
+<div class="pg" id="pg-history"><div class="panel"><div class="ph"><h3>&#128220; School History</h3><div class="pa"><button class="btn btn-p btn-sm" onclick="openHistoryM()">+ Add Milestone</button></div></div>
+<div style="padding:22px"><div id="historyList"></div></div></div></div>
+
+<!-- ALUMNI -->
+<div class="pg" id="pg-alumni"><div class="panel"><div class="ph"><h3>&#127891; Alumni Section</h3><div class="pa"><button class="btn btn-p btn-sm" onclick="openAlumniM()">+ Add Batch</button></div></div>
+<div style="padding:22px"><div id="alumniList"></div></div></div></div>
 
 <!-- SETTINGS -->
 <div class="pg" id="pg-settings"><div class="panel" style="max-width:680px"><div class="ph"><h3>&#9881; Portal Settings</h3></div><div style="padding:22px">

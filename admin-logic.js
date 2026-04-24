@@ -58,7 +58,7 @@ function go(p,el){
   document.getElementById('sidebar').classList.remove('open');
 }
 
-function renderAll(){rN();rE();rS();rT();rP();uS();loadSettings();loadResources();setTimeout(updateDashChart,100)}
+function renderAll(){rN();rE();rS();rT();rP();uS();loadSettings();loadResources();loadGallery();loadAchievements();loadHistory();loadAlumni();setTimeout(updateDashChart,100)}
 function uS(){
   document.getElementById('sS').textContent=S.length.toLocaleString();
   document.getElementById('sT').textContent=T.length;
@@ -485,3 +485,211 @@ function deleteResource(idx) {
   renderResources();
   toast('Resource deleted', 'su');
 }
+
+// ============================================
+// PHOTO GALLERY MANAGEMENT
+// ============================================
+function loadGallery() {
+  var data = loadData('gallery', []);
+  var el = document.getElementById('galleryList');
+  if (!el) return;
+  if (data.length === 0) {
+    el.innerHTML = '<div style="text-align:center;padding:32px;color:var(--g5)"><div style="font-size:48px;margin-bottom:12px">&#128248;</div><p>No albums yet. Click "+ Add Album" to add a photo album.</p></div>';
+    return;
+  }
+  var html = '<table><thead><tr><th>Album Title</th><th>Category</th><th>Date</th><th>Actions</th></tr></thead><tbody>';
+  data.forEach(function(a, i) {
+    html += '<tr><td><strong>' + a.title + '</strong>';
+    if (a.desc) html += '<br><span style="font-size:12px;color:var(--g5)">' + a.desc + '</span>';
+    html += '</td><td><span class="badge b-pu">' + (a.cat || 'General') + '</span></td>';
+    html += '<td>' + (a.date || '') + '</td>';
+    html += '<td><div style="display:flex;gap:4px"><button class="abtn edt" onclick="editGallery(' + i + ')">&#9998;</button><button class="abtn del" onclick="deleteGallery(' + i + ')">&#128465;</button></div></td></tr>';
+  });
+  html += '</tbody></table>';
+  el.innerHTML = html;
+}
+
+function openGalleryM(data) {
+  var x = data || {title:'',url:'',cover:'',cat:'Events',desc:'',date:new Date().toISOString().split('T')[0]};
+  var idx = data ? (data._index || 0) : -1;
+  opM(data ? 'Edit Album' : 'Add Photo Album',
+    '<div class="fg"><label>Album Title</label><input id="gTitle" value="' + x.title + '" placeholder="e.g. Graduation 2026"></div>' +
+    '<div class="fg"><label>Album Link (Google Drive / Facebook)</label><input id="gUrl" value="' + x.url + '" placeholder="https://drive.google.com/... or Facebook album link"></div>' +
+    '<div class="fg"><label>Cover Image URL (optional)</label><input id="gCover" value="' + (x.cover||'') + '" placeholder="https://... direct image link"></div>' +
+    '<div class="fg-row"><div class="fg"><label>Category</label><select id="gCat">' +
+    '<option' + (x.cat==='Events'?' selected':'') + '>Events</option>' +
+    '<option' + (x.cat==='Graduation'?' selected':'') + '>Graduation</option>' +
+    '<option' + (x.cat==='Activities'?' selected':'') + '>Activities</option>' +
+    '<option' + (x.cat==='Sports'?' selected':'') + '>Sports</option>' +
+    '<option' + (x.cat==='General'?' selected':'') + '>General</option>' +
+    '</select></div><div class="fg"><label>Date</label><input type="date" id="gDate" value="' + x.date + '"></div></div>' +
+    '<div class="fg"><label>Description (optional)</label><input id="gDesc" value="' + (x.desc||'') + '"></div>' +
+    '<div style="display:flex;gap:10px;margin-top:18px">' +
+    '<button class="btn btn-p" onclick="saveGallery(' + idx + ')">Save &#10148;</button>' +
+    '<button class="btn btn-s" onclick="clM()">Cancel</button></div>'
+  );
+}
+
+function saveGallery(idx) {
+  var o = {title:document.getElementById('gTitle').value,url:document.getElementById('gUrl').value,cover:document.getElementById('gCover').value,cat:document.getElementById('gCat').value,date:document.getElementById('gDate').value,desc:document.getElementById('gDesc').value};
+  if (!o.title || !o.url) { toast('Enter title and link','er'); return; }
+  var data = loadData('gallery', []);
+  if (idx >= 0) data[idx] = o; else data.unshift(o);
+  saveData('gallery', data);
+  clM(); loadGallery();
+  toast(idx >= 0 ? 'Album updated!' : 'Album added!', 'su');
+}
+
+function editGallery(i) { var d = loadData('gallery',[]); d[i]._index = i; openGalleryM(d[i]); }
+function deleteGallery(i) { var d = loadData('gallery',[]); if(!confirm('Delete "'+d[i].title+'"?'))return; d.splice(i,1); saveData('gallery',d); loadGallery(); toast('Deleted','su'); }
+
+// ============================================
+// ACHIEVEMENTS MANAGEMENT
+// ============================================
+function loadAchievements() {
+  var data = loadData('achievements', []);
+  var el = document.getElementById('achieveList');
+  if (!el) return;
+  if (data.length === 0) {
+    el.innerHTML = '<div style="text-align:center;padding:32px;color:var(--g5)"><div style="font-size:48px;margin-bottom:12px">&#127942;</div><p>No achievements yet. Click "+ Add Achievement" to showcase school awards.</p></div>';
+    return;
+  }
+  var html = '<table><thead><tr><th>Achievement</th><th>Category</th><th>Year</th><th>Actions</th></tr></thead><tbody>';
+  data.forEach(function(a, i) {
+    html += '<tr><td><strong>' + a.title + '</strong>';
+    if (a.desc) html += '<br><span style="font-size:12px;color:var(--g5)">' + a.desc + '</span>';
+    html += '</td><td><span class="badge b-fe">' + (a.cat || 'General') + '</span></td>';
+    html += '<td>' + (a.year || '') + '</td>';
+    html += '<td><div style="display:flex;gap:4px"><button class="abtn edt" onclick="editAchieve(' + i + ')">&#9998;</button><button class="abtn del" onclick="deleteAchieve(' + i + ')">&#128465;</button></div></td></tr>';
+  });
+  html += '</tbody></table>';
+  el.innerHTML = html;
+}
+
+function openAchieveM(data) {
+  var x = data || {title:'',desc:'',cat:'Academic',year:new Date().getFullYear(),icon:'🏆'};
+  var idx = data ? (data._index || 0) : -1;
+  opM(data ? 'Edit Achievement' : 'Add Achievement',
+    '<div class="fg"><label>Achievement Title</label><input id="aTitle" value="' + x.title + '" placeholder="e.g. Regional Science Fair Champion"></div>' +
+    '<div class="fg-row"><div class="fg"><label>Category</label><select id="aCat">' +
+    '<option' + (x.cat==='Academic'?' selected':'') + '>Academic</option>' +
+    '<option' + (x.cat==='Sports'?' selected':'') + '>Sports</option>' +
+    '<option' + (x.cat==='Arts'?' selected':'') + '>Arts</option>' +
+    '<option' + (x.cat==='Community'?' selected':'') + '>Community</option>' +
+    '<option' + (x.cat==='School'?' selected':'') + '>School</option>' +
+    '</select></div><div class="fg"><label>Year</label><input id="aYear" value="' + x.year + '" type="number"></div></div>' +
+    '<div class="fg"><label>Description</label><textarea id="aDesc" placeholder="Details about the achievement...">' + (x.desc||'') + '</textarea></div>' +
+    '<div style="display:flex;gap:10px;margin-top:18px">' +
+    '<button class="btn btn-p" onclick="saveAchieve(' + idx + ')">Save &#10148;</button>' +
+    '<button class="btn btn-s" onclick="clM()">Cancel</button></div>'
+  );
+}
+
+function saveAchieve(idx) {
+  var o = {title:document.getElementById('aTitle').value,cat:document.getElementById('aCat').value,year:document.getElementById('aYear').value,desc:document.getElementById('aDesc').value};
+  if (!o.title) { toast('Enter title','er'); return; }
+  var data = loadData('achievements', []);
+  if (idx >= 0) data[idx] = o; else data.unshift(o);
+  saveData('achievements', data);
+  clM(); loadAchievements();
+  toast(idx >= 0 ? 'Updated!' : 'Achievement added!', 'su');
+}
+
+function editAchieve(i) { var d = loadData('achievements',[]); d[i]._index = i; openAchieveM(d[i]); }
+function deleteAchieve(i) { var d = loadData('achievements',[]); if(!confirm('Delete?'))return; d.splice(i,1); saveData('achievements',d); loadAchievements(); toast('Deleted','su'); }
+
+// ============================================
+// SCHOOL HISTORY MANAGEMENT
+// ============================================
+function loadHistory() {
+  var data = loadData('history', []);
+  var el = document.getElementById('historyList');
+  if (!el) return;
+  if (data.length === 0) {
+    el.innerHTML = '<div style="text-align:center;padding:32px;color:var(--g5)"><div style="font-size:48px;margin-bottom:12px">&#128220;</div><p>No milestones yet. Click "+ Add Milestone" to build the school timeline.</p></div>';
+    return;
+  }
+  var html = '<table><thead><tr><th>Year</th><th>Milestone</th><th>Actions</th></tr></thead><tbody>';
+  data.sort(function(a,b){return (a.year||0)-(b.year||0);});
+  data.forEach(function(a, i) {
+    html += '<tr><td><strong>' + (a.year||'') + '</strong></td><td><strong>' + a.title + '</strong>';
+    if (a.desc) html += '<br><span style="font-size:12px;color:var(--g5)">' + a.desc + '</span>';
+    html += '</td><td><div style="display:flex;gap:4px"><button class="abtn edt" onclick="editHistory(' + i + ')">&#9998;</button><button class="abtn del" onclick="deleteHistory(' + i + ')">&#128465;</button></div></td></tr>';
+  });
+  html += '</tbody></table>';
+  el.innerHTML = html;
+}
+
+function openHistoryM(data) {
+  var x = data || {year:'',title:'',desc:''};
+  var idx = data ? (data._index || 0) : -1;
+  opM(data ? 'Edit Milestone' : 'Add Milestone',
+    '<div class="fg-row"><div class="fg"><label>Year</label><input id="hYear" value="' + (x.year||'') + '" type="number" placeholder="e.g. 2008"></div><div class="fg"><label>Title</label><input id="hTitle" value="' + x.title + '" placeholder="e.g. School Founded"></div></div>' +
+    '<div class="fg"><label>Description</label><textarea id="hDesc" placeholder="Details about this milestone...">' + (x.desc||'') + '</textarea></div>' +
+    '<div style="display:flex;gap:10px;margin-top:18px">' +
+    '<button class="btn btn-p" onclick="saveHistory(' + idx + ')">Save &#10148;</button>' +
+    '<button class="btn btn-s" onclick="clM()">Cancel</button></div>'
+  );
+}
+
+function saveHistory(idx) {
+  var o = {year:document.getElementById('hYear').value,title:document.getElementById('hTitle').value,desc:document.getElementById('hDesc').value};
+  if (!o.title) { toast('Enter title','er'); return; }
+  var data = loadData('history', []);
+  if (idx >= 0) data[idx] = o; else data.push(o);
+  saveData('history', data);
+  clM(); loadHistory();
+  toast(idx >= 0 ? 'Updated!' : 'Milestone added!', 'su');
+}
+
+function editHistory(i) { var d = loadData('history',[]); d[i]._index = i; openHistoryM(d[i]); }
+function deleteHistory(i) { var d = loadData('history',[]); if(!confirm('Delete?'))return; d.splice(i,1); saveData('history',d); loadHistory(); toast('Deleted','su'); }
+
+// ============================================
+// ALUMNI MANAGEMENT
+// ============================================
+function loadAlumni() {
+  var data = loadData('alumni', []);
+  var el = document.getElementById('alumniList');
+  if (!el) return;
+  if (data.length === 0) {
+    el.innerHTML = '<div style="text-align:center;padding:32px;color:var(--g5)"><div style="font-size:48px;margin-bottom:12px">&#127891;</div><p>No alumni batches yet. Click "+ Add Batch" to add alumni information.</p></div>';
+    return;
+  }
+  var html = '<table><thead><tr><th>Batch</th><th>Title</th><th>Link</th><th>Actions</th></tr></thead><tbody>';
+  data.sort(function(a,b){return (b.year||0)-(a.year||0);});
+  data.forEach(function(a, i) {
+    html += '<tr><td><strong>Batch ' + (a.year||'') + '</strong></td><td>' + (a.title||'') + '';
+    if (a.desc) html += '<br><span style="font-size:12px;color:var(--g5)">' + a.desc + '</span>';
+    html += '</td><td>' + (a.url ? '<a href="'+a.url+'" target="_blank" style="color:var(--p)">Open &#8599;</a>' : '-') + '</td>';
+    html += '<td><div style="display:flex;gap:4px"><button class="abtn edt" onclick="editAlumni(' + i + ')">&#9998;</button><button class="abtn del" onclick="deleteAlumni(' + i + ')">&#128465;</button></div></td></tr>';
+  });
+  html += '</tbody></table>';
+  el.innerHTML = html;
+}
+
+function openAlumniM(data) {
+  var x = data || {year:'',title:'',url:'',desc:''};
+  var idx = data ? (data._index || 0) : -1;
+  opM(data ? 'Edit Batch' : 'Add Alumni Batch',
+    '<div class="fg-row"><div class="fg"><label>Batch Year</label><input id="alYear" value="' + (x.year||'') + '" type="number" placeholder="e.g. 2024"></div><div class="fg"><label>Batch Name / Title</label><input id="alTitle" value="' + (x.title||'') + '" placeholder="e.g. Batch 2024 - Resilient"></div></div>' +
+    '<div class="fg"><label>Link (Facebook Group / Google Form)</label><input id="alUrl" value="' + (x.url||'') + '" placeholder="https://facebook.com/groups/..."></div>' +
+    '<div class="fg"><label>Description / Notable Alumni</label><textarea id="alDesc" placeholder="e.g. 120 graduates, top performer: Juan Dela Cruz">' + (x.desc||'') + '</textarea></div>' +
+    '<div style="display:flex;gap:10px;margin-top:18px">' +
+    '<button class="btn btn-p" onclick="saveAlumni(' + idx + ')">Save &#10148;</button>' +
+    '<button class="btn btn-s" onclick="clM()">Cancel</button></div>'
+  );
+}
+
+function saveAlumni(idx) {
+  var o = {year:document.getElementById('alYear').value,title:document.getElementById('alTitle').value,url:document.getElementById('alUrl').value,desc:document.getElementById('alDesc').value};
+  if (!o.year) { toast('Enter batch year','er'); return; }
+  var data = loadData('alumni', []);
+  if (idx >= 0) data[idx] = o; else data.unshift(o);
+  saveData('alumni', data);
+  clM(); loadAlumni();
+  toast(idx >= 0 ? 'Updated!' : 'Batch added!', 'su');
+}
+
+function editAlumni(i) { var d = loadData('alumni',[]); d[i]._index = i; openAlumniM(d[i]); }
+function deleteAlumni(i) { var d = loadData('alumni',[]); if(!confirm('Delete?'))return; d.splice(i,1); saveData('alumni',d); loadAlumni(); toast('Deleted','su'); }

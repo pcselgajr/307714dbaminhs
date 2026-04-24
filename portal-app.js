@@ -94,6 +94,7 @@ loadAllFromFirebase(function() {
     renderPortalContent();
     populateSectionDropdowns();
     renderCalendar();
+    renderCommunity();
     console.log('Portal content rendered from Firebase!');
   } catch(e) {
     console.error('renderPortalContent ERROR:', e);
@@ -104,6 +105,7 @@ listenForChanges(function() {
   renderPortalContent();
     populateSectionDropdowns();
     renderCalendar();
+    renderCommunity();
   console.log('Real-time update received!');
 });
 
@@ -1435,6 +1437,118 @@ function showResources(links) {
     html += '</div>';
   });
   
+  el.innerHTML = html;
+}
+
+
+
+// ============================================
+// COMMUNITY SECTIONS RENDERING
+// ============================================
+
+function renderCommunity() {
+  renderAchieveWall();
+  renderGalleryWall();
+  renderHistoryTimeline();
+  renderAlumniWall();
+}
+
+function renderAchieveWall() {
+  var data = loadData('achievements', []);
+  var el = document.getElementById('achieveWall');
+  if (!el) return;
+  if (data.length === 0) {
+    el.innerHTML = '<div style="text-align:center;padding:24px;color:#999;grid-column:1/-1">No achievements posted yet.</div>';
+    return;
+  }
+  var catColors = {Academic:'#e8733a',Sports:'#1a365d',Arts:'#7c3aed',Community:'#059669',School:'#dc2626'};
+  var catIcons = {Academic:'&#127942;',Sports:'&#9917;',Arts:'&#127912;',Community:'&#129309;',School:'&#127979;'};
+  var html = '';
+  data.forEach(function(a) {
+    var color = catColors[a.cat] || '#666';
+    var icon = catIcons[a.cat] || '&#127942;';
+    html += '<div style="background:#fff;border-radius:14px;padding:20px;box-shadow:0 2px 12px rgba(0,0,0,0.06);border-left:4px solid ' + color + '">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px">';
+    html += '<span style="font-size:28px">' + icon + '</span>';
+    html += '<span style="font-size:12px;padding:3px 10px;border-radius:12px;background:' + color + '15;color:' + color + ';font-weight:600">' + (a.cat||'') + ' ' + (a.year||'') + '</span>';
+    html += '</div>';
+    html += '<h4 style="font-size:15px;margin-bottom:6px;color:#1a202c">' + a.title + '</h4>';
+    if (a.desc) html += '<p style="font-size:13px;color:#666;line-height:1.5">' + a.desc + '</p>';
+    html += '</div>';
+  });
+  el.innerHTML = html;
+}
+
+function renderGalleryWall() {
+  var data = loadData('gallery', []);
+  var el = document.getElementById('galleryWall');
+  if (!el) return;
+  if (data.length === 0) {
+    el.innerHTML = '<div style="text-align:center;padding:24px;color:#999;grid-column:1/-1">No photo albums yet.</div>';
+    return;
+  }
+  var html = '';
+  data.forEach(function(a) {
+    var coverBg = a.cover ? 'url(' + a.cover + ')' : 'linear-gradient(135deg,#e8733a,#f09a5e)';
+    html += '<a href="' + a.url + '" target="_blank" style="text-decoration:none;color:inherit">';
+    html += '<div style="background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.06);transition:transform .2s;cursor:pointer" onmouseover="this.style.transform=\'translateY(-3px)\'" onmouseout="this.style.transform=\'none\'">';
+    html += '<div style="height:140px;background:' + coverBg + ';background-size:cover;background-position:center;display:flex;align-items:center;justify-content:center">';
+    if (!a.cover) html += '<span style="font-size:40px;opacity:.8">&#128248;</span>';
+    html += '</div>';
+    html += '<div style="padding:14px">';
+    html += '<h4 style="font-size:14px;margin-bottom:4px">' + a.title + '</h4>';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center">';
+    html += '<span style="font-size:12px;color:#999">' + (a.cat||'') + '</span>';
+    html += '<span style="font-size:11px;color:#e8733a;font-weight:600">View Album &#8599;</span>';
+    html += '</div></div></div></a>';
+  });
+  el.innerHTML = html;
+}
+
+function renderHistoryTimeline() {
+  var data = loadData('history', []);
+  var el = document.getElementById('historyTimeline');
+  if (!el) return;
+  if (data.length === 0) {
+    el.innerHTML = '<div style="text-align:center;padding:24px;color:#999">No milestones yet.</div>';
+    return;
+  }
+  data.sort(function(a,b){return (a.year||0)-(b.year||0);});
+  var html = '<div style="position:relative;padding-left:30px">';
+  html += '<div style="position:absolute;left:10px;top:0;bottom:0;width:3px;background:linear-gradient(180deg,#e8733a,#1a365d);border-radius:3px"></div>';
+  data.forEach(function(a, i) {
+    var isLast = i === data.length - 1;
+    html += '<div style="position:relative;margin-bottom:24px;padding-left:20px">';
+    html += '<div style="position:absolute;left:-24px;top:4px;width:14px;height:14px;border-radius:50%;background:' + (isLast ? '#e8733a' : '#fff') + ';border:3px solid #e8733a;z-index:1"></div>';
+    html += '<div style="background:#fff;border-radius:12px;padding:16px 18px;box-shadow:0 2px 8px rgba(0,0,0,0.05)">';
+    html += '<span style="font-size:12px;padding:2px 10px;border-radius:12px;background:#e8733a15;color:#e8733a;font-weight:700">' + (a.year||'') + '</span>';
+    html += '<h4 style="font-size:15px;margin:8px 0 4px;color:#1a202c">' + a.title + '</h4>';
+    if (a.desc) html += '<p style="font-size:13px;color:#666;line-height:1.5">' + a.desc + '</p>';
+    html += '</div></div>';
+  });
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+function renderAlumniWall() {
+  var data = loadData('alumni', []);
+  var el = document.getElementById('alumniWall');
+  if (!el) return;
+  if (data.length === 0) {
+    el.innerHTML = '<div style="text-align:center;padding:24px;color:#999;grid-column:1/-1">No alumni information yet.</div>';
+    return;
+  }
+  data.sort(function(a,b){return (b.year||0)-(a.year||0);});
+  var html = '';
+  data.forEach(function(a) {
+    html += '<div style="background:#fff;border-radius:14px;padding:20px;box-shadow:0 2px 12px rgba(0,0,0,0.06);text-align:center">';
+    html += '<div style="font-size:36px;margin-bottom:8px">&#127891;</div>';
+    html += '<h4 style="font-size:16px;color:#1a365d;margin-bottom:4px">Batch ' + (a.year||'') + '</h4>';
+    if (a.title) html += '<p style="font-size:13px;color:#e8733a;font-weight:600;margin-bottom:6px">' + a.title + '</p>';
+    if (a.desc) html += '<p style="font-size:12px;color:#666;margin-bottom:10px">' + a.desc + '</p>';
+    if (a.url) html += '<a href="' + a.url + '" target="_blank" style="font-size:12px;color:#e8733a;text-decoration:none;font-weight:600">Connect with Batch &#8599;</a>';
+    html += '</div>';
+  });
   el.innerHTML = html;
 }
 
