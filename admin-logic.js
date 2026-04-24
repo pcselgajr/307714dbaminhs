@@ -143,7 +143,9 @@ function apv(id){
     opM('Approve Student: '+p.name,
       '<p style="margin-bottom:16px;color:var(--g5)">Assign details for <strong>'+p.name+'</strong> before approving:</p>'+
       '<div class="fg"><label>LRN</label><input id="apvLrn" value="'+p.idnum+'"></div>'+
-      '<div class="fg-row"><div class="fg"><label>Grade Level &amp; Section</label><input id="apvGrade" placeholder="e.g. Grade 7 - Rizal"></div>'+
+      '<div class="fg-row"><div class="fg"><label>Grade Level &amp; Section</label><select id="apvGrade">' +
+      (function(){ var secs=getSections(); var opts=''; secs.forEach(function(s){ var name=typeof s==='object'?s.name:s; opts+='<option value="'+name+'">'+name+'</option>'; }); return opts; })() +
+      '</select></div>'+
       '<div class="fg"><label>Status</label><select id="apvStatus"><option>Active</option><option>Inactive</option></select></div></div>'+
       '<div style="display:flex;gap:10px;margin-top:18px">'+
       '<button class="btn btn-p" onclick="confirmApvStudent('+id+')">&#10003; Approve &amp; Add to Students</button>'+
