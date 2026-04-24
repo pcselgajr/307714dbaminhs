@@ -154,25 +154,40 @@ var CLUSTER_SUBJECTS = {
 
 function getSubjectsForSection(sectionName, sections) {
   var sec = null;
+  var name = sectionName.toLowerCase();
   if (sections) {
     for (var i = 0; i < sections.length; i++) {
       if (typeof sections[i] === 'object' && sections[i].name === sectionName) {
         sec = sections[i]; break;
-      } else if (typeof sections[i] === 'string' && sections[i] === sectionName) {
-        break;
       }
     }
   }
-  if (!sec || !sec.cluster) {
-    if (sectionName.indexOf('Grade 7') > -1 || sectionName.indexOf('Grade 8') > -1 || sectionName.indexOf('Grade 9') > -1 || sectionName.indexOf('Grade 10') > -1) {
-      return CLUSTER_SUBJECTS['JHS'];
+  
+  var cluster = sec ? sec.cluster : null;
+  
+  // Auto-detect cluster from section name if not assigned
+  if (!cluster) {
+    if (name.indexOf('grade 7') > -1 || name.indexOf('grade 8') > -1 || name.indexOf('grade 9') > -1 || name.indexOf('grade 10') > -1) {
+      cluster = 'JHS';
+    } else if (name.indexOf('abm') > -1 || name.indexOf('business') > -1) {
+      cluster = 'Business';
+    } else if (name.indexOf('humss') > -1 || name.indexOf('assh') > -1 || name.indexOf('arts') > -1) {
+      cluster = 'ASSH';
+    } else if (name.indexOf('stem') > -1 || name.indexOf('ict') > -1 || name.indexOf('tech') > -1) {
+      cluster = 'STEM';
+    } else if (name.indexOf('sports') > -1 || name.indexOf('pe') > -1) {
+      cluster = 'Sports';
+    } else if (name.indexOf('grade 11') > -1 || name.indexOf('grade 12') > -1) {
+      cluster = 'ASSH';
+    } else {
+      cluster = 'JHS';
     }
-    return CLUSTER_SUBJECTS['JHS'];
   }
-  if (sec.cluster === 'JHS') return CLUSTER_SUBJECTS['JHS'];
+  
+  if (cluster === 'JHS') return CLUSTER_SUBJECTS['JHS'];
   var subjects = CLUSTER_SUBJECTS['SHS-Core'].slice();
-  if (CLUSTER_SUBJECTS[sec.cluster]) {
-    subjects = subjects.concat(CLUSTER_SUBJECTS[sec.cluster]);
+  if (CLUSTER_SUBJECTS[cluster]) {
+    subjects = subjects.concat(CLUSTER_SUBJECTS[cluster]);
   }
   return subjects;
 }
