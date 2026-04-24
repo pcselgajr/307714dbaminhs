@@ -157,6 +157,7 @@ tr:hover td{background:var(--cr)}
 <button class="sl" onclick="go('teachers',this)"><span class="i">&#128104;&#8205;&#127979;</span> Teachers &amp; Staff</button>
 <button class="sl" onclick="go('pending',this)"><span class="i">&#128203;</span> Pending Signups <span class="sb-count" id="pendCount">3</span></button>
 <div class="sb-sec">System</div>
+<button class="sl" onclick="go('resources',this)"><span class="i">&#128194;</span> Teacher Resources</button>
 <button class="sl" onclick="go('settings',this)"><span class="i">&#9881;</span> Portal Settings</button>
 </nav>
 <div class="sb-ft"><div class="sb-user"><div class="sb-av">A</div><div><div class="sb-un">Admin</div><div class="sb-ur">Super Admin</div></div></div></div>
@@ -230,6 +231,19 @@ tr:hover td{background:var(--cr)}
 <div class="pg" id="pg-pending"><div class="panel"><div class="ph"><h3>&#128203; Pending Signups</h3><div class="pa"><button class="btn btn-su btn-sm" onclick="approveAll()">&#10003; Approve All</button></div></div>
 <table id="pT"><thead><tr><th>Name</th><th>Type</th><th>Email</th><th>LRN / ID</th><th>Date</th><th>Actions</th></tr></thead><tbody id="pB"></tbody></table></div></div>
 
+<!-- TEACHER RESOURCES -->
+<div class="pg" id="pg-resources"><div class="panel"><div class="ph"><h3>&#128194; Teacher Resources</h3><div class="pa"><button class="btn btn-p btn-sm" onclick="openAddResource()">+ Add Link</button></div></div>
+<div style="padding:22px">
+<div style="margin-bottom:18px;padding:16px;background:var(--g1);border-radius:10px;border:1px solid var(--g2)">
+<h4 style="font-size:14px;margin-bottom:8px">&#128274; Access Password</h4>
+<p style="font-size:13px;color:var(--g5);margin-bottom:8px">Teachers need this password to access the resources folder</p>
+<div style="display:flex;gap:8px">
+<input id="resPassword" type="text" placeholder="Set password" style="flex:1;padding:10px 14px;border:1.5px solid var(--g2);border-radius:8px;font-size:14px;font-family:var(--fb)">
+<button class="btn btn-p btn-sm" onclick="saveResPassword()">Save Password</button>
+</div></div>
+<div id="resourcesList"></div>
+</div></div></div>
+
 <!-- SETTINGS -->
 <div class="pg" id="pg-settings"><div class="panel" style="max-width:680px"><div class="ph"><h3>&#9881; Portal Settings</h3></div><div style="padding:22px">
 <div class="fg"><label>School Name</label><input id="setName" value="Dr. Bonifacio A. Masilungan Integrated National High School"></div>
@@ -261,22 +275,6 @@ tr:hover td{background:var(--cr)}
 <div class="fg"><label>Grade 11</label><input id="setG11" value="250" type="number"></div>
 <div class="fg"><label>Grade 12</label><input id="setG12" value="232" type="number"></div>
 </div>
-<hr style="border:none;border-top:1px solid var(--g2);margin:18px 0">
-<h4 style="font-size:14px;margin-bottom:12px">&#128218; Class Sections Management</h4>
-<p style="font-size:13px;color:var(--g5);margin-bottom:12px">Add or remove class sections. These will appear in Teacher Dashboard dropdowns (Grades &amp; Attendance).</p>
-<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
-<input id="newSection" placeholder="e.g. Grade 7 - Mabini" style="flex:2;min-width:180px;padding:10px 14px;border:1.5px solid var(--g2);border-radius:8px;font-size:14px;font-family:var(--fb)">
-<select id="newCluster" style="flex:1;min-width:140px;padding:10px 14px;border:1.5px solid var(--g2);border-radius:8px;font-size:14px;font-family:var(--fb)">
-<option value="JHS">JHS (Grade 7-10)</option>
-<option value="ASSH">SHS - ASSH</option>
-<option value="Business">SHS - Business</option>
-<option value="STEM">SHS - STEM</option>
-<option value="Sports">SHS - Sports</option>
-<option value="ICT">SHS - ICT</option>
-</select>
-<button class="btn btn-p btn-sm" onclick="addSection()">+ Add</button>
-</div>
-<div id="sectionsList" style="margin-bottom:18px"></div>
 <hr style="border:none;border-top:1px solid var(--g2);margin:18px 0">
 <h4 style="font-size:14px;margin-bottom:12px">&#127912; Portal Appearance</h4>
 <div class="fg-row"><div class="fg"><label>Primary Color</label><input type="color" value="#E85D1A" style="height:40px;padding:4px" onchange="document.documentElement.style.setProperty('--o',this.value)"></div><div class="fg"><label>Secondary Color</label><input type="color" value="#1B2A4A" style="height:40px;padding:4px" onchange="document.documentElement.style.setProperty('--n',this.value)"></div></div>

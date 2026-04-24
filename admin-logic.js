@@ -53,7 +53,7 @@ function go(p,el){
   document.getElementById('pg-'+p).classList.add('act');
   document.querySelectorAll('.sl').forEach(function(x){x.classList.remove('act')});
   el.classList.add('act');
-  var t={dash:'Dashboard',news:'News & Announcements',events:'Events & Calendar',students:'Student Management',teachers:'Teachers & Staff',pending:'Pending Signups',settings:'Portal Settings'};
+  var t={dash:'Dashboard',news:'News & Announcements',events:'Events & Calendar',students:'Student Management',teachers:'Teachers & Staff',pending:'Pending Signups',resources:'Teacher Resources',settings:'Portal Settings'};
   document.getElementById('pt').textContent=t[p]||p;
   document.getElementById('sidebar').classList.remove('open');
 }
