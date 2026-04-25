@@ -261,12 +261,13 @@ tr:hover td{background:var(--cr)}
 </div></div></div>
 
 <!-- DTR SYSTEM -->
-<div class="pg" id="pg-dtr"><div class="panel"><div class="ph"><h3>&#128336; DTR System</h3><div class="pa"><button class="btn btn-p btn-sm" onclick="generateDailyCode()">&#128260; Generate Today's Code</button><button class="btn btn-s btn-sm" onclick="window.open('./dtr.html','_blank')">Open DTR Page &#8599;</button></div></div>
+<div class="pg" id="pg-dtr"><div class="panel"><div class="ph"><h3>&#128336; DTR System</h3><div class="pa"><button class="btn btn-p btn-sm" onclick="generateDailyCode()">&#128260; Generate Today's Code</button><button class="btn btn-s btn-sm" onclick="window.open('./dtr.html','_blank')">Open DTR Page &#8599;</button><button class="btn btn-s btn-sm" onclick="printQR()">&#128424; Print QR</button></div></div>
 <div style="padding:22px">
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
 <div style="background:var(--g1);border-radius:12px;padding:20px;text-align:center;border:1px solid var(--g2)">
 <h4 style="font-size:13px;color:var(--g5);margin-bottom:8px">Today's QR Code</h4>
-<div id="todayQRCode" style="font-size:36px;font-weight:800;color:var(--o);font-family:var(--fd);letter-spacing:4px">------</div>
+<div id="todayQRImage" style="display:flex;justify-content:center;margin-bottom:8px"></div>
+<div id="todayQRCode" style="font-size:20px;font-weight:800;color:var(--o);font-family:var(--fd);letter-spacing:4px">------</div>
 <div id="todayQRDate" style="font-size:12px;color:var(--g5);margin-top:4px"></div>
 </div>
 <div style="background:var(--g1);border-radius:12px;padding:20px;text-align:center;border:1px solid var(--g2)">
@@ -357,6 +358,7 @@ tr:hover td{background:var(--cr)}
 <div class="mo" id="modal" onclick="if(event.target===this)clM()"><div class="modal"><button class="mx" onclick="clM()">&times;</button><h3 id="mT"></h3><div id="mB"></div></div></div>
 <div class="toast" id="toast"></div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="firebase-data.js"></script>

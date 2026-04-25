@@ -85,7 +85,7 @@ body{font-family:var(--fb);background:var(--g1);min-height:100vh;color:var(--g9)
 
 <div id="scanSection">
 <div class="scan-area">
-<p style="font-size:14px;color:var(--g5);margin-bottom:12px">Scan the QR code displayed at the school entrance</p>
+<p style="font-size:14px;color:var(--g5);margin-bottom:12px">&#128247; Scan the QR code displayed at the school entrance</p><div id="scanFeedback" style="font-size:13px;color:var(--o);margin-bottom:8px"></div>
 <video id="qrVideo" playsinline></video>
 <canvas id="qrCanvas" class="hidden"></canvas>
 <div id="scanResult"></div>
@@ -121,6 +121,7 @@ body{font-family:var(--fb);background:var(--g1);min-height:100vh;color:var(--g9)
 </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="firebase-data.js"></script>
@@ -383,9 +384,27 @@ function scanQR() {
   if (video.readyState === video.HAVE_ENOUGH_DATA) {
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
-    ctx.drawImage(video, 0, 0);
-    // Note: For full QR scanning, would need a library like jsQR
-    // For now, rely on manual entry
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    var qrCode = jsQR(imageData.data, imageData.width, imageData.height, {inversionAttempts: 'dontInvert'});
+    
+    if (qrCode) {
+      var data = qrCode.data;
+      document.getElementById('scanFeedback').textContent = 'QR detected!';
+      // Extract code from QR data (format: DBAMINHS-DTR:XXXXXX)
+      if (data.startsWith('DBAMINHS-DTR:')) {
+        var code = data.replace('DBAMINHS-DTR:', '');
+        stopScan();
+        document.getElementById('manualCode').value = code;
+        showStatus('QR code scanned: ' + code + '. Verifying...', 'info');
+        verifyCode(code);
+        return;
+      } else {
+        document.getElementById('scanFeedback').textContent = 'Invalid QR code. Scan the DTR code.';
+      }
+    } else {
+      document.getElementById('scanFeedback').textContent = 'Scanning... point camera at QR code';
+    }
   }
   requestAnimationFrame(scanQR);
 }

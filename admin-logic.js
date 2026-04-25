@@ -806,6 +806,7 @@ function generateDailyCode() {
   
   document.getElementById('todayQRCode').textContent = code;
   document.getElementById('todayQRDate').textContent = 'Generated: ' + key;
+  renderQRImage(code);
   toast('Daily code generated: ' + code, 'su');
 }
 
@@ -820,6 +821,7 @@ function loadDTRDashboard() {
     if (todayCode.code && todayCode.date === key) {
       codeEl.textContent = todayCode.code;
       dateEl.textContent = 'Date: ' + key;
+      renderQRImage(todayCode.code);
     } else {
       codeEl.textContent = '------';
       dateEl.textContent = 'No code generated today. Click Generate.';
@@ -895,4 +897,38 @@ function loadDTRRecords() {
   
   html += '</tbody></table>';
   el.innerHTML = html;
+}
+
+
+function renderQRImage(code) {
+  var el = document.getElementById('todayQRImage');
+  if (!el) return;
+  el.innerHTML = '';
+  new QRCode(el, {
+    text: 'DBAMINHS-DTR:' + code,
+    width: 180,
+    height: 180,
+    colorDark: '#1B2A4A',
+    colorLight: '#ffffff',
+    correctLevel: QRCode.CorrectLevel.H
+  });
+}
+
+function printQR() {
+  var code = document.getElementById('todayQRCode').textContent;
+  if (code === '------') { toast('Generate a code first!','er'); return; }
+  var qrImg = document.querySelector('#todayQRImage img');
+  var imgSrc = qrImg ? qrImg.src : '';
+  var date = document.getElementById('todayQRDate').textContent;
+  var w = window.open('','_blank');
+  w.document.write('<html><head><title>DTR QR Code</title><style>body{font-family:Arial,sans-serif;text-align:center;padding:40px}h1{font-size:24px;color:#1B2A4A}h2{font-size:48px;color:#E85D1A;letter-spacing:6px;margin:16px 0}.info{color:#888;font-size:14px}img{margin:20px}</style></head><body>');
+  w.document.write('<h1>DBAMINHS Daily Time Record</h1>');
+  w.document.write('<p class="info">' + date + '</p>');
+  if (imgSrc) w.document.write('<img src="' + imgSrc + '" width="250" height="250">');
+  w.document.write('<h2>' + code + '</h2>');
+  w.document.write('<p class="info">Scan this QR code or enter the code above to Time In/Out</p>');
+  w.document.write('<p class="info" style="margin-top:40px">Dr. Bonifacio A. Masilungan Integrated National High School</p>');
+  w.document.write('</body></html>');
+  w.document.close();
+  setTimeout(function() { w.print(); }, 500);
 }
