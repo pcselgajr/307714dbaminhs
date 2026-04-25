@@ -263,6 +263,16 @@ tr:hover td{background:var(--cr)}
 <!-- DTR SYSTEM -->
 <div class="pg" id="pg-dtr"><div class="panel"><div class="ph"><h3>&#128336; DTR System</h3><div class="pa"><button class="btn btn-p btn-sm" onclick="generateDailyCode()">&#128260; Generate Today's Code</button><button class="btn btn-s btn-sm" onclick="window.open('./dtr.html','_blank')">Open DTR Page &#8599;</button><button class="btn btn-s btn-sm" onclick="printQR()">&#128424; Print QR</button></div></div>
 <div style="padding:22px">
+<div style="margin-bottom:20px;padding:16px;background:var(--g1);border-radius:10px;border:1px solid var(--g2)">
+<h4 style="font-size:14px;margin-bottom:8px">&#9881; DTR Verification Mode</h4>
+<p style="font-size:13px;color:var(--g5);margin-bottom:10px">Choose how employees verify their Time In/Out</p>
+<select id="dtrMode" onchange="saveDTRMode()" style="width:100%;padding:10px 14px;border:1.5px solid var(--g2);border-radius:8px;font-size:14px;font-family:var(--fb)">
+<option value="qr+gps">QR Code + GPS (pinaka-secure)</option>
+<option value="qr">QR Code only (walang GPS check)</option>
+<option value="gps">GPS only (sign-in, walang QR)</option>
+<option value="none">Simple Sign-in (walang verification)</option>
+</select>
+</div>
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
 <div style="background:var(--g1);border-radius:12px;padding:20px;text-align:center;border:1px solid var(--g2)">
 <h4 style="font-size:13px;color:var(--g5);margin-bottom:8px">Today's QR Code</h4>

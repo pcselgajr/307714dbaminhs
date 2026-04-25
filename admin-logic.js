@@ -838,6 +838,7 @@ function loadDTRDashboard() {
   if (countEl) countEl.textContent = Object.keys(records).length;
   
   loadDTRRecords();
+  loadDTRMode();
 }
 
 function loadDTRRecords() {
@@ -931,4 +932,19 @@ function printQR() {
   w.document.write('</body></html>');
   w.document.close();
   setTimeout(function() { w.print(); }, 500);
+}
+
+
+function saveDTRMode() {
+  var mode = document.getElementById('dtrMode').value;
+  var dtrSettings = loadData('dtr_settings', {mode:'qr+gps', radius:200});
+  dtrSettings.mode = mode;
+  saveData('dtr_settings', dtrSettings);
+  toast('DTR mode updated: ' + mode, 'su');
+}
+
+function loadDTRMode() {
+  var dtrSettings = loadData('dtr_settings', {mode:'qr+gps', radius:200});
+  var el = document.getElementById('dtrMode');
+  if (el) el.value = dtrSettings.mode || 'qr+gps';
 }
