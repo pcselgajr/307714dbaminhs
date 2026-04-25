@@ -839,6 +839,7 @@ function loadDTRDashboard() {
   
   loadDTRRecords();
   loadDTRMode();
+  loadDTRSchedule();
 }
 
 function loadDTRRecords() {
@@ -877,12 +878,25 @@ function loadDTRRecords() {
       status = 'b-pu';
     }
     
-    // Check if late (after 8:00 AM)
+    // Check if late based on settings
+    var dtrSched = loadData('dtr_settings', {startTime:'07:00', endTime:'16:00'});
+    var schedStart = (dtrSched.startTime || '07:00').split(':');
+    var schedEnd = (dtrSched.endTime || '16:00').split(':');
+    var startH = parseInt(schedStart[0]), startM = parseInt(schedStart[1]);
+    var endH = parseInt(schedEnd[0]), endM = parseInt(schedEnd[1]);
+    
     if (r.timeIn) {
       var tParts = r.timeIn.match(/(\d+):(\d+)/);
-      if (tParts && (parseInt(tParts[1]) > 8 || (parseInt(tParts[1]) === 8 && parseInt(tParts[2]) > 0))) {
+      if (tParts && (parseInt(tParts[1]) > startH || (parseInt(tParts[1]) === startH && parseInt(tParts[2]) > startM))) {
         statusText += ' (Late)';
         status = 'b-fe';
+      }
+    }
+    if (r.timeOut) {
+      var oParts = r.timeOut.match(/(\d+):(\d+)/);
+      if (oParts && (parseInt(oParts[1]) < endH || (parseInt(oParts[1]) === endH && parseInt(oParts[2]) < endM))) {
+        statusText += ' (Undertime)';
+        if (status !== 'b-fe') status = 'b-pe';
       }
     }
     
@@ -1006,8 +1020,11 @@ function loadMonthlyDTR() {
       allEmployees[eid].days[d] = records[eid];
       if (records[eid].timeIn) {
         allEmployees[eid].daysPresent++;
+        var schedS = loadData('dtr_settings', {startTime:'07:00'});
+        var sH = parseInt((schedS.startTime||'07:00').split(':')[0]);
+        var sM = parseInt((schedS.startTime||'07:00').split(':')[1]);
         var tParts = records[eid].timeIn.match(/(\d+):(\d+)/);
-        if (tParts && (parseInt(tParts[1]) > 8 || (parseInt(tParts[1]) === 8 && parseInt(tParts[2]) > 0))) {
+        if (tParts && (parseInt(tParts[1]) > sH || (parseInt(tParts[1]) === sH && parseInt(tParts[2]) > sM))) {
           allEmployees[eid].daysLate++;
         }
       }
@@ -1075,9 +1092,12 @@ function loadMonthlyDTR() {
         }
       }
       var late = false;
+      var schedChk = loadData('dtr_settings', {startTime:'07:00'});
+      var chkH = parseInt((schedChk.startTime||'07:00').split(':')[0]);
+      var chkM = parseInt((schedChk.startTime||'07:00').split(':')[1]);
       if (rec.timeIn) {
         var tP = rec.timeIn.match(/(\d+):(\d+)/);
-        if (tP && (parseInt(tP[1]) > 8 || (parseInt(tP[1]) === 8 && parseInt(tP[2]) > 0))) late = true;
+        if (tP && (parseInt(tP[1]) > chkH || (parseInt(tP[1]) === chkH && parseInt(tP[2]) > chkM))) late = true;
       }
       html += '<tr><td>' + dateStr + '</td>';
       html += '<td style="color:var(--su)">' + (rec.timeIn || '--') + '</td>';
@@ -1182,4 +1202,21 @@ function exportDTR() {
   a.click();
   URL.revokeObjectURL(url);
   toast('CSV exported!', 'su');
+}
+
+
+function saveDTRSchedule() {
+  var dtrSettings = loadData('dtr_settings', {mode:'qr+gps', radius:200, startTime:'07:00', endTime:'16:00'});
+  dtrSettings.startTime = document.getElementById('dtrStartTime').value;
+  dtrSettings.endTime = document.getElementById('dtrEndTime').value;
+  saveData('dtr_settings', dtrSettings);
+  toast('Work schedule saved: ' + dtrSettings.startTime + ' - ' + dtrSettings.endTime, 'su');
+}
+
+function loadDTRSchedule() {
+  var dtrSettings = loadData('dtr_settings', {mode:'qr+gps', radius:200, startTime:'07:00', endTime:'16:00'});
+  var startEl = document.getElementById('dtrStartTime');
+  var endEl = document.getElementById('dtrEndTime');
+  if (startEl) startEl.value = dtrSettings.startTime || '07:00';
+  if (endEl) endEl.value = dtrSettings.endTime || '16:00';
 }

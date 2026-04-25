@@ -273,6 +273,17 @@ tr:hover td{background:var(--cr)}
 <option value="none">Simple Sign-in (walang verification)</option>
 </select>
 </div>
+<div style="margin-bottom:20px;padding:16px;background:var(--g1);border-radius:10px;border:1px solid var(--g2)">
+<h4 style="font-size:14px;margin-bottom:8px">&#128336; Work Schedule</h4>
+<p style="font-size:13px;color:var(--g5);margin-bottom:10px">Set the official work hours. Late and undertime are auto-computed based on this.</p>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+<div class="fg" style="margin-bottom:0"><label>Time In (Start)</label><input type="time" id="dtrStartTime" value="07:00" onchange="saveDTRSchedule()"></div>
+<div class="fg" style="margin-bottom:0"><label>Time Out (End)</label><input type="time" id="dtrEndTime" value="16:00" onchange="saveDTRSchedule()"></div>
+</div>
+<div style="margin-top:8px;font-size:12px;color:var(--g5)">
+<span>&#9432; Employee is <strong>LATE</strong> if Time In is after the Start time. <strong>UNDERTIME</strong> if Time Out is before End time.</span>
+</div>
+</div>
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
 <div style="background:var(--g1);border-radius:12px;padding:20px;text-align:center;border:1px solid var(--g2)">
 <h4 style="font-size:13px;color:var(--g5);margin-bottom:8px">Today's QR Code</h4>
