@@ -349,15 +349,20 @@ function verifyCode(code) {
   
   if (!code) { showStatus('Enter or scan the QR code.', 'error'); return; }
   
-  var todayCode = loadData('dtr_daily_code', {});
   var today = getTodayKey();
+  var todayCode = loadData('dtr_daily_code', {});
+  var weeklyCode = loadData('dtr_code_' + today, {});
   
-  if (!todayCode.code || todayCode.date !== today) {
+  var validCode = '';
+  if (todayCode.code && todayCode.date === today) validCode = todayCode.code;
+  if (weeklyCode.code && weeklyCode.date === today) validCode = weeklyCode.code;
+  
+  if (!validCode) {
     showStatus('No QR code generated for today. Contact admin.', 'error');
     return;
   }
   
-  if (code.trim() !== todayCode.code) {
+  if (code.trim() !== validCode) {
     showStatus('Invalid QR code. Please scan the correct code.', 'error');
     return;
   }

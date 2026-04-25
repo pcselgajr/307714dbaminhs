@@ -1220,3 +1220,81 @@ function loadDTRSchedule() {
   if (startEl) startEl.value = dtrSettings.startTime || '07:00';
   if (endEl) endEl.value = dtrSettings.endTime || '16:00';
 }
+
+
+function generateWeeklyCodes() {
+  var today = new Date();
+  var day = today.getDay();
+  // Find Monday of this week
+  var monday = new Date(today);
+  monday.setDate(today.getDate() - (day === 0 ? 6 : day - 1));
+  
+  var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  var days = ['Monday','Tuesday','Wednesday','Thursday','Friday'];
+  var codes = [];
+  
+  for (var i = 0; i < 5; i++) {
+    var d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    var dateKey = d.getFullYear() + '-' + (d.getMonth()+1<10?'0':'') + (d.getMonth()+1) + '-' + (d.getDate()<10?'0':'') + d.getDate();
+    
+    var code = '';
+    for (var j = 0; j < 6; j++) code += chars.charAt(Math.floor(Math.random() * chars.length));
+    
+    // Save each day's code
+    saveData('dtr_code_' + dateKey, {code: code, date: dateKey});
+    
+    // Also set today's code if this is today
+    var todayKey = today.getFullYear() + '-' + (today.getMonth()+1<10?'0':'') + (today.getMonth()+1) + '-' + (today.getDate()<10?'0':'') + today.getDate();
+    if (dateKey === todayKey) {
+      saveData('dtr_daily_code', {code: code, date: dateKey});
+      document.getElementById('todayQRCode').textContent = code;
+      document.getElementById('todayQRDate').textContent = 'Date: ' + dateKey;
+      renderQRImage(code);
+    }
+    
+    codes.push({day: days[i], date: dateKey, code: code});
+  }
+  
+  // Show print preview with all codes
+  var w = window.open('','_blank');
+  w.document.write('<html><head><title>Weekly QR Codes</title>');
+  w.document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"><\/script>');
+  w.document.write('<style>');
+  w.document.write('body{font-family:Arial,sans-serif;text-align:center;padding:20px}');
+  w.document.write('.card{display:inline-block;border:2px solid #ddd;border-radius:16px;padding:24px;margin:10px;width:280px;vertical-align:top;page-break-inside:avoid}');
+  w.document.write('.day{font-size:18px;font-weight:700;color:#1B2A4A;margin-bottom:4px}');
+  w.document.write('.date{font-size:13px;color:#888;margin-bottom:16px}');
+  w.document.write('.code{font-size:32px;font-weight:800;color:#E85D1A;letter-spacing:4px;margin-top:12px}');
+  w.document.write('.qr{margin:10px auto}');
+  w.document.write('h1{color:#1B2A4A;margin-bottom:4px}');
+  w.document.write('.sub{color:#888;font-size:14px;margin-bottom:20px}');
+  w.document.write('@media print{body{padding:10px}.card{margin:8px;padding:16px}}');
+  w.document.write('</style></head><body>');
+  w.document.write('<h1>DBAMINHS Weekly DTR Codes</h1>');
+  w.document.write('<p class="sub">Week of ' + codes[0].date + ' to ' + codes[4].date + '</p>');
+  
+  codes.forEach(function(c, i) {
+    w.document.write('<div class="card">');
+    w.document.write('<div class="day">' + c.day + '</div>');
+    w.document.write('<div class="date">' + c.date + '</div>');
+    w.document.write('<div class="qr" id="qr' + i + '"></div>');
+    w.document.write('<div class="code">' + c.code + '</div>');
+    w.document.write('</div>');
+  });
+  
+  w.document.write('<p style="margin-top:20px;color:#888;font-size:12px">Dr. Bonifacio A. Masilungan Integrated National High School<br>Cut along the borders. Post one QR code per day at the school entrance.</p>');
+  
+  w.document.write('<script>');
+  w.document.write('window.onload=function(){');
+  codes.forEach(function(c, i) {
+    w.document.write('new QRCode(document.getElementById("qr' + i + '"),{text:"DBAMINHS-DTR:' + c.code + '",width:150,height:150,colorDark:"#1B2A4A",colorLight:"#ffffff",correctLevel:QRCode.CorrectLevel.H});');
+  });
+  w.document.write('setTimeout(function(){window.print();},1000);');
+  w.document.write('};');
+  w.document.write('<\/script>');
+  w.document.write('</body></html>');
+  w.document.close();
+  
+  toast('Weekly codes generated! Print window opening...', 'su');
+}
