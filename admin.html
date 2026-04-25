@@ -158,6 +158,7 @@ tr:hover td{background:var(--cr)}
 <button class="sl" onclick="go('pending',this)"><span class="i">&#128203;</span> Pending Signups <span class="sb-count" id="pendCount">3</span></button>
 <div class="sb-sec">System</div>
 <button class="sl" onclick="go('resources',this)"><span class="i">&#128194;</span> Teacher Resources</button>
+<button class="sl" onclick="go('dtr',this)"><span class="i">&#128336;</span> DTR System</button>
 <div class="sb-sec">Community</div>
 <button class="sl" onclick="go('gallery',this)"><span class="i">&#128248;</span> Photo Gallery</button>
 <button class="sl" onclick="go('achieve',this)"><span class="i">&#127942;</span> Achievements</button>
@@ -257,6 +258,27 @@ tr:hover td{background:var(--cr)}
 <button class="btn btn-p btn-sm" onclick="saveResPassword()">Save Password</button>
 </div></div>
 <div id="resourcesList"></div>
+</div></div></div>
+
+<!-- DTR SYSTEM -->
+<div class="pg" id="pg-dtr"><div class="panel"><div class="ph"><h3>&#128336; DTR System</h3><div class="pa"><button class="btn btn-p btn-sm" onclick="generateDailyCode()">&#128260; Generate Today's Code</button><button class="btn btn-s btn-sm" onclick="window.open('./dtr.html','_blank')">Open DTR Page &#8599;</button></div></div>
+<div style="padding:22px">
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+<div style="background:var(--g1);border-radius:12px;padding:20px;text-align:center;border:1px solid var(--g2)">
+<h4 style="font-size:13px;color:var(--g5);margin-bottom:8px">Today's QR Code</h4>
+<div id="todayQRCode" style="font-size:36px;font-weight:800;color:var(--o);font-family:var(--fd);letter-spacing:4px">------</div>
+<div id="todayQRDate" style="font-size:12px;color:var(--g5);margin-top:4px"></div>
+</div>
+<div style="background:var(--g1);border-radius:12px;padding:20px;text-align:center;border:1px solid var(--g2)">
+<h4 style="font-size:13px;color:var(--g5);margin-bottom:8px">Today's Records</h4>
+<div id="todayDTRCount" style="font-size:36px;font-weight:800;color:var(--su);font-family:var(--fd)">0</div>
+<div style="font-size:12px;color:var(--g5);margin-top:4px">employees timed in</div>
+</div>
+</div>
+<div style="margin-bottom:16px">
+<div class="fg"><label>Select Date</label><input type="date" id="dtrViewDate" onchange="loadDTRRecords()" style="max-width:200px"></div>
+</div>
+<div id="dtrRecordsTable"></div>
 </div></div></div>
 
 <!-- PHOTO GALLERY -->

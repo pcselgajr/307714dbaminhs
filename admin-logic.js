@@ -58,7 +58,7 @@ function go(p,el){
   document.getElementById('sidebar').classList.remove('open');
 }
 
-function renderAll(){rN();rE();rS();rT();rP();uS();loadSettings();loadResources();loadGallery();loadAchievements();loadHistory();loadAlumni();setTimeout(updateDashChart,100)}
+function renderAll(){rN();rE();rS();rT();rP();uS();loadSettings();loadResources();loadGallery();loadAchievements();loadHistory();loadAlumni();loadDTRDashboard();setTimeout(updateDashChart,100)}
 function uS(){
   document.getElementById('sS').textContent=S.length.toLocaleString();
   document.getElementById('sT').textContent=T.length;
@@ -788,4 +788,111 @@ function clearAllStudents() {
   saveData('students', S);
   rS(); uS();
   toast('All students cleared!', 'su');
+}
+
+// ============================================
+// DTR SYSTEM MANAGEMENT
+// ============================================
+
+function generateDailyCode() {
+  var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  var code = '';
+  for (var i = 0; i < 6; i++) code += chars.charAt(Math.floor(Math.random() * chars.length));
+  
+  var today = new Date();
+  var key = today.getFullYear() + '-' + (today.getMonth()+1<10?'0':'') + (today.getMonth()+1) + '-' + (today.getDate()<10?'0':'') + today.getDate();
+  
+  saveData('dtr_daily_code', {code: code, date: key});
+  
+  document.getElementById('todayQRCode').textContent = code;
+  document.getElementById('todayQRDate').textContent = 'Generated: ' + key;
+  toast('Daily code generated: ' + code, 'su');
+}
+
+function loadDTRDashboard() {
+  var todayCode = loadData('dtr_daily_code', {});
+  var today = new Date();
+  var key = today.getFullYear() + '-' + (today.getMonth()+1<10?'0':'') + (today.getMonth()+1) + '-' + (today.getDate()<10?'0':'') + today.getDate();
+  
+  var codeEl = document.getElementById('todayQRCode');
+  var dateEl = document.getElementById('todayQRDate');
+  if (codeEl) {
+    if (todayCode.code && todayCode.date === key) {
+      codeEl.textContent = todayCode.code;
+      dateEl.textContent = 'Date: ' + key;
+    } else {
+      codeEl.textContent = '------';
+      dateEl.textContent = 'No code generated today. Click Generate.';
+    }
+  }
+  
+  // Set date picker to today
+  var datePicker = document.getElementById('dtrViewDate');
+  if (datePicker) datePicker.value = key;
+  
+  // Load today's count
+  var records = loadData('dtr_' + key, {});
+  var countEl = document.getElementById('todayDTRCount');
+  if (countEl) countEl.textContent = Object.keys(records).length;
+  
+  loadDTRRecords();
+}
+
+function loadDTRRecords() {
+  var date = document.getElementById('dtrViewDate');
+  if (!date) return;
+  var key = 'dtr_' + date.value;
+  var records = loadData(key, {});
+  var ids = Object.keys(records);
+  var el = document.getElementById('dtrRecordsTable');
+  if (!el) return;
+  
+  if (ids.length === 0) {
+    el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--g5)">No records for this date.</div>';
+    return;
+  }
+  
+  var html = '<table><thead><tr><th>Employee ID</th><th>Name</th><th>Time In</th><th>Time Out</th><th>Hours</th><th>Status</th></tr></thead><tbody>';
+  
+  ids.forEach(function(id) {
+    var r = records[id];
+    var hours = '--';
+    var status = 'b-pe';
+    var statusText = 'Incomplete';
+    
+    if (r.timeIn && r.timeOut) {
+      var inP = r.timeIn.match(/(\d+):(\d+)/);
+      var outP = r.timeOut.match(/(\d+):(\d+)/);
+      if (inP && outP) {
+        var diff = (parseInt(outP[1])*60+parseInt(outP[2])) - (parseInt(inP[1])*60+parseInt(inP[2]));
+        hours = Math.floor(diff/60) + 'h ' + (diff%60) + 'm';
+      }
+      status = 'b-ac';
+      statusText = 'Complete';
+    } else if (r.timeIn) {
+      statusText = 'Timed In';
+      status = 'b-pu';
+    }
+    
+    // Check if late (after 8:00 AM)
+    if (r.timeIn) {
+      var tParts = r.timeIn.match(/(\d+):(\d+)/);
+      if (tParts && (parseInt(tParts[1]) > 8 || (parseInt(tParts[1]) === 8 && parseInt(tParts[2]) > 0))) {
+        statusText += ' (Late)';
+        status = 'b-fe';
+      }
+    }
+    
+    html += '<tr>';
+    html += '<td style="font-family:monospace;font-size:12px">' + id + '</td>';
+    html += '<td><strong>' + (r.name || id) + '</strong></td>';
+    html += '<td style="color:var(--su);font-weight:600">' + (r.timeIn || '--') + '</td>';
+    html += '<td style="color:var(--da);font-weight:600">' + (r.timeOut || '--') + '</td>';
+    html += '<td>' + hours + '</td>';
+    html += '<td><span class="badge ' + status + '">' + statusText + '</span></td>';
+    html += '</tr>';
+  });
+  
+  html += '</tbody></table>';
+  el.innerHTML = html;
 }
