@@ -286,8 +286,22 @@ tr:hover td{background:var(--cr)}
 <div style="font-size:12px;color:var(--g5);margin-top:4px">employees timed in</div>
 </div>
 </div>
-<div style="margin-bottom:16px">
-<div class="fg"><label>Select Date</label><input type="date" id="dtrViewDate" onchange="loadDTRRecords()" style="max-width:200px"></div>
+<div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;align-items:flex-end">
+<div class="fg" style="margin-bottom:0"><label>View Mode</label><select id="dtrViewMode" onchange="toggleDTRView()" style="padding:8px 12px;border:1.5px solid var(--g2);border-radius:6px;font-size:13px;font-family:var(--fb)">
+<option value="daily">Daily</option>
+<option value="monthly">Monthly Summary</option>
+</select></div>
+<div class="fg" style="margin-bottom:0" id="dtrDailyPicker"><label>Select Date</label><input type="date" id="dtrViewDate" onchange="loadDTRRecords()" style="padding:8px 12px;border:1.5px solid var(--g2);border-radius:6px;font-size:13px;font-family:var(--fb)"></div>
+<div class="fg" style="margin-bottom:0;display:none" id="dtrMonthPicker"><label>Select Month</label><input type="month" id="dtrViewMonth" onchange="loadMonthlyDTR()" style="padding:8px 12px;border:1.5px solid var(--g2);border-radius:6px;font-size:13px;font-family:var(--fb)"></div>
+<div class="fg" style="margin-bottom:0" id="dtrEmpFilter"><label>Employee</label><select id="dtrFilterEmp" onchange="filterDTRByEmployee()" style="padding:8px 12px;border:1.5px solid var(--g2);border-radius:6px;font-size:13px;font-family:var(--fb)">
+<option value="">All Employees</option>
+</select></div>
+</div>
+<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+<button class="btn btn-d btn-sm" onclick="clearDayRecords()">&#128465; Clear Day Records</button>
+<button class="btn btn-d btn-sm" onclick="clearAllDTR()">&#128465; Clear All DTR Data</button>
+<button class="btn btn-d btn-sm" onclick="clearDTREmployees()">&#128465; Reset All Employees</button>
+<button class="btn btn-s btn-sm" onclick="exportDTR()">&#128196; Export CSV</button>
 </div>
 <div id="dtrRecordsTable"></div>
 </div></div></div>

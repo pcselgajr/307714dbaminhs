@@ -948,3 +948,238 @@ function loadDTRMode() {
   var el = document.getElementById('dtrMode');
   if (el) el.value = dtrSettings.mode || 'qr+gps';
 }
+
+// ============================================
+// DTR ADVANCED CONTROLS
+// ============================================
+
+function toggleDTRView() {
+  var mode = document.getElementById('dtrViewMode').value;
+  document.getElementById('dtrDailyPicker').style.display = mode === 'daily' ? 'block' : 'none';
+  document.getElementById('dtrMonthPicker').style.display = mode === 'monthly' ? 'block' : 'none';
+  if (mode === 'daily') {
+    loadDTRRecords();
+  } else {
+    var now = new Date();
+    var monthInput = document.getElementById('dtrViewMonth');
+    if (!monthInput.value) monthInput.value = now.getFullYear() + '-' + (now.getMonth()+1<10?'0':'') + (now.getMonth()+1);
+    loadMonthlyDTR();
+  }
+}
+
+function populateDTREmployeeFilter() {
+  var el = document.getElementById('dtrFilterEmp');
+  if (!el) return;
+  var employees = loadData('dtr_employees', {});
+  var current = el.value;
+  el.innerHTML = '<option value="">All Employees</option>';
+  Object.keys(employees).forEach(function(eid) {
+    var name = employees[eid].name || eid;
+    el.innerHTML += '<option value="' + eid + '">' + name + ' (' + eid + ')</option>';
+  });
+  if (current) el.value = current;
+}
+
+function filterDTRByEmployee() {
+  var mode = document.getElementById('dtrViewMode').value;
+  if (mode === 'daily') loadDTRRecords();
+  else loadMonthlyDTR();
+}
+
+function loadMonthlyDTR() {
+  var month = document.getElementById('dtrViewMonth').value;
+  if (!month) return;
+  var filterEmp = document.getElementById('dtrFilterEmp').value;
+  var year = parseInt(month.split('-')[0]);
+  var mon = parseInt(month.split('-')[1]);
+  var daysInMonth = new Date(year, mon, 0).getDate();
+  var months = ['','January','February','March','April','May','June','July','August','September','October','November','December'];
+  
+  // Collect all employees from the month
+  var allEmployees = {};
+  for (var d = 1; d <= daysInMonth; d++) {
+    var dateKey = 'dtr_' + year + '-' + (mon<10?'0':'') + mon + '-' + (d<10?'0':'') + d;
+    var records = loadData(dateKey, {});
+    Object.keys(records).forEach(function(eid) {
+      if (filterEmp && eid !== filterEmp) return;
+      if (!allEmployees[eid]) allEmployees[eid] = {name: records[eid].name || eid, days: {}, totalMinutes: 0, daysPresent: 0, daysLate: 0};
+      allEmployees[eid].days[d] = records[eid];
+      if (records[eid].timeIn) {
+        allEmployees[eid].daysPresent++;
+        var tParts = records[eid].timeIn.match(/(\d+):(\d+)/);
+        if (tParts && (parseInt(tParts[1]) > 8 || (parseInt(tParts[1]) === 8 && parseInt(tParts[2]) > 0))) {
+          allEmployees[eid].daysLate++;
+        }
+      }
+      if (records[eid].timeIn && records[eid].timeOut) {
+        var inP = records[eid].timeIn.match(/(\d+):(\d+)/);
+        var outP = records[eid].timeOut.match(/(\d+):(\d+)/);
+        if (inP && outP) {
+          allEmployees[eid].totalMinutes += (parseInt(outP[1])*60+parseInt(outP[2])) - (parseInt(inP[1])*60+parseInt(inP[2]));
+        }
+      }
+    });
+  }
+  
+  populateDTREmployeeFilter();
+  
+  var eids = Object.keys(allEmployees);
+  var el = document.getElementById('dtrRecordsTable');
+  if (!el) return;
+  
+  if (eids.length === 0) {
+    el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--g5)">No records for ' + months[mon] + ' ' + year + '.</div>';
+    return;
+  }
+  
+  var html = '<h4 style="margin-bottom:12px">&#128203; Monthly Summary &mdash; ' + months[mon] + ' ' + year + '</h4>';
+  html += '<table><thead><tr><th>Employee ID</th><th>Name</th><th>Days Present</th><th>Days Late</th><th>Total Hours</th><th>Avg Hours/Day</th></tr></thead><tbody>';
+  
+  eids.forEach(function(eid) {
+    var e = allEmployees[eid];
+    var totalH = Math.floor(e.totalMinutes/60);
+    var totalM = e.totalMinutes % 60;
+    var avgH = e.daysPresent > 0 ? Math.round(e.totalMinutes / e.daysPresent) : 0;
+    var avgHours = Math.floor(avgH/60);
+    var avgMins = avgH % 60;
+    
+    html += '<tr>';
+    html += '<td style="font-family:monospace;font-size:12px">' + eid + '</td>';
+    html += '<td><strong>' + e.name + '</strong></td>';
+    html += '<td style="text-align:center"><strong style="color:var(--su)">' + e.daysPresent + '</strong> / ' + daysInMonth + '</td>';
+    html += '<td style="text-align:center;color:' + (e.daysLate > 0 ? 'var(--da)' : 'var(--su)') + ';font-weight:600">' + e.daysLate + '</td>';
+    html += '<td style="text-align:center"><strong>' + totalH + 'h ' + totalM + 'm</strong></td>';
+    html += '<td style="text-align:center">' + avgHours + 'h ' + avgMins + 'm</td>';
+    html += '</tr>';
+  });
+  
+  html += '</tbody></table>';
+  
+  // Daily breakdown per employee
+  if (filterEmp && allEmployees[filterEmp]) {
+    var e = allEmployees[filterEmp];
+    html += '<h4 style="margin:20px 0 12px">&#128197; Daily Breakdown &mdash; ' + e.name + '</h4>';
+    html += '<table><thead><tr><th>Date</th><th>Time In</th><th>Time Out</th><th>Hours</th><th>Status</th></tr></thead><tbody>';
+    
+    for (var d = 1; d <= daysInMonth; d++) {
+      var rec = e.days[d];
+      if (!rec) continue;
+      var dateStr = year + '-' + (mon<10?'0':'') + mon + '-' + (d<10?'0':'') + d;
+      var hours = '--';
+      if (rec.timeIn && rec.timeOut) {
+        var inP = rec.timeIn.match(/(\d+):(\d+)/);
+        var outP = rec.timeOut.match(/(\d+):(\d+)/);
+        if (inP && outP) {
+          var diff = (parseInt(outP[1])*60+parseInt(outP[2])) - (parseInt(inP[1])*60+parseInt(inP[2]));
+          hours = Math.floor(diff/60) + 'h ' + (diff%60) + 'm';
+        }
+      }
+      var late = false;
+      if (rec.timeIn) {
+        var tP = rec.timeIn.match(/(\d+):(\d+)/);
+        if (tP && (parseInt(tP[1]) > 8 || (parseInt(tP[1]) === 8 && parseInt(tP[2]) > 0))) late = true;
+      }
+      html += '<tr><td>' + dateStr + '</td>';
+      html += '<td style="color:var(--su)">' + (rec.timeIn || '--') + '</td>';
+      html += '<td style="color:var(--da)">' + (rec.timeOut || '--') + '</td>';
+      html += '<td>' + hours + '</td>';
+      html += '<td><span class="badge ' + (late ? 'b-fe' : 'b-ac') + '">' + (late ? 'Late' : 'On Time') + '</span></td></tr>';
+    }
+    html += '</tbody></table>';
+  }
+  
+  el.innerHTML = html;
+}
+
+function clearDayRecords() {
+  var date = document.getElementById('dtrViewDate').value;
+  if (!date) { toast('Select a date first', 'er'); return; }
+  if (!confirm('Delete all DTR records for ' + date + '?')) return;
+  var key = 'dtr_' + date;
+  saveData(key, {});
+  loadDTRRecords();
+  loadDTRDashboard();
+  toast('Records for ' + date + ' cleared!', 'su');
+}
+
+function clearAllDTR() {
+  if (!confirm('DELETE ALL DTR RECORDS? This cannot be undone!')) return;
+  if (!confirm('Are you REALLY sure?')) return;
+  var keys = Object.keys(_cache).filter(function(k) { return k.startsWith('dtr_2'); });
+  keys.forEach(function(k) {
+    db.collection('portal_data').doc(k).delete();
+    delete _cache[k];
+  });
+  loadDTRRecords();
+  loadDTRDashboard();
+  toast('All DTR records cleared!', 'su');
+}
+
+function clearDTREmployees() {
+  if (!confirm('Reset all employee registrations? They will need to re-login with default PIN 1234.')) return;
+  saveData('dtr_employees', {});
+  toast('All employee registrations cleared!', 'su');
+}
+
+function exportDTR() {
+  var mode = document.getElementById('dtrViewMode').value;
+  var csv = '';
+  
+  if (mode === 'daily') {
+    var date = document.getElementById('dtrViewDate').value;
+    var key = 'dtr_' + date;
+    var records = loadData(key, {});
+    csv = 'Employee ID,Name,Time In,Time Out,Hours\n';
+    Object.keys(records).forEach(function(eid) {
+      var r = records[eid];
+      var hours = '';
+      if (r.timeIn && r.timeOut) {
+        var inP = r.timeIn.match(/(\d+):(\d+)/);
+        var outP = r.timeOut.match(/(\d+):(\d+)/);
+        if (inP && outP) {
+          var diff = (parseInt(outP[1])*60+parseInt(outP[2])) - (parseInt(inP[1])*60+parseInt(inP[2]));
+          hours = Math.floor(diff/60) + 'h ' + (diff%60) + 'm';
+        }
+      }
+      csv += eid + ',' + (r.name||eid) + ',' + (r.timeIn||'') + ',' + (r.timeOut||'') + ',' + hours + '\n';
+    });
+  } else {
+    var month = document.getElementById('dtrViewMonth').value;
+    var year = parseInt(month.split('-')[0]);
+    var mon = parseInt(month.split('-')[1]);
+    var daysInMonth = new Date(year, mon, 0).getDate();
+    csv = 'Employee ID,Name,Days Present,Days Late,Total Hours\n';
+    
+    var allEmp = {};
+    for (var d = 1; d <= daysInMonth; d++) {
+      var dateKey = 'dtr_' + year + '-' + (mon<10?'0':'') + mon + '-' + (d<10?'0':'') + d;
+      var recs = loadData(dateKey, {});
+      Object.keys(recs).forEach(function(eid) {
+        if (!allEmp[eid]) allEmp[eid] = {name:recs[eid].name||eid,present:0,late:0,mins:0};
+        if (recs[eid].timeIn) {
+          allEmp[eid].present++;
+          var tP = recs[eid].timeIn.match(/(\d+):(\d+)/);
+          if (tP && (parseInt(tP[1])>8||(parseInt(tP[1])===8&&parseInt(tP[2])>0))) allEmp[eid].late++;
+        }
+        if (recs[eid].timeIn && recs[eid].timeOut) {
+          var iP = recs[eid].timeIn.match(/(\d+):(\d+)/);
+          var oP = recs[eid].timeOut.match(/(\d+):(\d+)/);
+          if (iP && oP) allEmp[eid].mins += (parseInt(oP[1])*60+parseInt(oP[2]))-(parseInt(iP[1])*60+parseInt(iP[2]));
+        }
+      });
+    }
+    Object.keys(allEmp).forEach(function(eid) {
+      var e = allEmp[eid];
+      csv += eid + ',' + e.name + ',' + e.present + ',' + e.late + ',' + Math.floor(e.mins/60) + 'h ' + (e.mins%60) + 'm\n';
+    });
+  }
+  
+  var blob = new Blob([csv], {type:'text/csv'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'DTR_' + (mode === 'daily' ? document.getElementById('dtrViewDate').value : document.getElementById('dtrViewMonth').value) + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('CSV exported!', 'su');
+}
