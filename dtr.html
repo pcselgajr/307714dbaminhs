@@ -137,6 +137,14 @@ var SCHOOL_LNG = 121.1068;
 var SCHOOL_RADIUS = 200; // meters
 
 var currentEmployee = null;
+
+function findTeacherName(eid) {
+  var teachers = loadData('teachers', []);
+  for (var i = 0; i < teachers.length; i++) {
+    if (String(teachers[i].eid) === String(eid)) return teachers[i].name;
+  }
+  return null;
+}
 var videoStream = null;
 
 // Live clock
@@ -175,9 +183,10 @@ function dtrLogin() {
     if (!emp) {
       // First time - register with default PIN
       if (pin === '1234' || pin === '') {
-        employees[eid] = {name: eid, pin: '1234', registered: new Date().toISOString()};
+        var tName = findTeacherName(eid) || eid;
+        employees[eid] = {name: tName, pin: '1234', registered: new Date().toISOString()};
         saveData('dtr_employees', employees);
-        currentEmployee = {id: eid, name: eid};
+        currentEmployee = {id: eid, name: tName};
         showDTR();
         setupDTRMode();
         showStatus('Welcome! Please change your default PIN in Settings.', 'info');
@@ -192,7 +201,9 @@ function dtrLogin() {
       return;
     }
     
-    currentEmployee = {id: eid, name: emp.name || eid};
+    var tName2 = findTeacherName(eid) || emp.name || eid;
+    if (tName2 !== eid && tName2 !== emp.name) { emp.name = tName2; employees[eid] = emp; saveData('dtr_employees', employees); }
+    currentEmployee = {id: eid, name: tName2};
     showDTR();
     setupDTRMode();
   });
