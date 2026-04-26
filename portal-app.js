@@ -133,7 +133,7 @@ document.getElementById('sdName').textContent=user.fname+' '+user.lname;
 document.getElementById('sdWelcome').textContent=user.fname;
 }else if(user.type==='teacher'){
 document.getElementById('teacherDash').classList.add('act');
-setTimeout(function() { loadMyClasses(); }, 200);
+setTimeout(function() { loadMyClasses(); loadTeacherQuizzes(); }, 200);
 document.getElementById('tdAv').textContent=user.fname[0];
 document.getElementById('tdName').textContent=user.fname+' '+user.lname;
 document.getElementById('tdWelcome').textContent=user.fname;
@@ -218,7 +218,7 @@ document.getElementById('liPw').value='';
 }
 
 function sdTab(el,id){el.parentElement.querySelectorAll('button').forEach(function(b){b.className=''});el.className='act';['sdGrades','sdSched','sdTasks','sdAtt'].forEach(function(x){document.getElementById(x).style.display=x===id?'block':'none'})}
-function tdTab(el,id){el.parentElement.querySelectorAll('button').forEach(function(b){b.className=''});el.className='act';['tdClasses','tdGrade','tdAttendance','tdSchedule','tdAnnounce'].forEach(function(x){var e=document.getElementById(x);if(e)e.style.display=x===id?'block':'none'})}
+function tdTab(el,id){el.parentElement.querySelectorAll('button').forEach(function(b){b.className=''});el.className='act';['tdClasses','tdGrade','tdAttendance','tdQuiz','tdSchedule','tdAnnounce'].forEach(function(x){var e=document.getElementById(x);if(e)e.style.display=x===id?'block':'none'})}
 function pdTab(el,id){el.parentElement.querySelectorAll('button').forEach(function(b){b.className=''});el.className='act';['pdGrades','pdAtt','pdMsg'].forEach(function(x){document.getElementById(x).style.display=x===id?'block':'none'})}
 
 var tt;
@@ -1552,11 +1552,493 @@ function renderAlumniWall() {
   el.innerHTML = html;
 }
 
+
+
+// ============================================
+// QUIZ & EXAM SYSTEM
+// ============================================
+
+var quizQuestions = [];
+var currentQuiz = null;
+var quizTimer = null;
+var quizTimeLeft = 0;
+
+// ---- TEACHER FUNCTIONS ----
+
+function openCreateQuiz() {
+  quizQuestions = [];
+  var settings = loadData('settings', DEFAULT_SETTINGS);
+  var secs = (settings.sections && settings.sections.length > 0) ? settings.sections : [];
+  var secOpts = '';
+  secs.forEach(function(s) {
+    var name = typeof s === 'object' ? s.name : s;
+    secOpts += '<option value="' + name + '">' + name + '</option>';
+  });
+  
+  var html = '<div style="background:#fff;border-radius:12px;padding:20px;border:1px solid var(--g2)">';
+  html += '<h4 style="margin-bottom:16px">&#128221; Create New Quiz</h4>';
+  html += '<div class="fg"><label>Quiz Title</label><input id="qzTitle" placeholder="e.g. Math Quiz Chapter 5"></div>';
+  html += '<div class="fg-row"><div class="fg"><label>Subject</label><input id="qzSubject" placeholder="e.g. Mathematics"></div>';
+  html += '<div class="fg"><label>Time Limit (minutes)</label><input id="qzTime" type="number" value="30" min="1"></div></div>';
+  html += '<div class="fg"><label>Section</label><select id="qzSection">' + secOpts + '</select></div>';
+  html += '<hr style="border:none;border-top:1px solid var(--g2);margin:16px 0">';
+  html += '<h4 style="margin-bottom:12px">Questions</h4>';
+  html += '<div id="qzQuestionsList"></div>';
+  html += '<div style="display:flex;gap:8px;margin:16px 0;flex-wrap:wrap">';
+  html += '<button class="btn btn-s btn-sm" onclick="addQuizQuestion(\'mc\')">+ Multiple Choice</button>';
+  html += '<button class="btn btn-s btn-sm" onclick="addQuizQuestion(\'tf\')">+ True or False</button>';
+  html += '<button class="btn btn-s btn-sm" onclick="addQuizQuestion(\'id\')">+ Identification</button>';
+  html += '</div>';
+  html += '<hr style="border:none;border-top:1px solid var(--g2);margin:16px 0">';
+  html += '<div style="display:flex;gap:10px">';
+  html += '<button class="btn btn-p" onclick="saveQuiz()">&#128190; Save & Publish Quiz</button>';
+  html += '<button class="btn btn-s" onclick="cancelCreateQuiz()">Cancel</button>';
+  html += '</div></div>';
+  
+  document.getElementById('teacherQuizList').innerHTML = html;
+}
+
+function addQuizQuestion(type) {
+  var num = quizQuestions.length + 1;
+  quizQuestions.push({type: type, question: '', choices: ['','','',''], answer: ''});
+  renderQuizQuestions();
+}
+
+function renderQuizQuestions() {
+  var el = document.getElementById('qzQuestionsList');
+  if (!el) return;
+  if (quizQuestions.length === 0) {
+    el.innerHTML = '<div style="text-align:center;padding:16px;color:var(--g5);font-size:13px">No questions yet. Add questions using the buttons below.</div>';
+    return;
+  }
+  
+  var html = '';
+  quizQuestions.forEach(function(q, i) {
+    var typeLabel = q.type === 'mc' ? 'Multiple Choice' : (q.type === 'tf' ? 'True or False' : 'Identification');
+    var typeColor = q.type === 'mc' ? '#e8733a' : (q.type === 'tf' ? '#1a365d' : '#059669');
+    
+    html += '<div style="background:var(--g1);border-radius:10px;padding:14px;margin-bottom:10px;border-left:3px solid ' + typeColor + '">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
+    html += '<span style="font-weight:700;font-size:13px">Q' + (i+1) + ' <span style="font-size:11px;padding:2px 8px;border-radius:8px;background:' + typeColor + '20;color:' + typeColor + '">' + typeLabel + '</span></span>';
+    html += '<button class="abtn del" onclick="removeQuizQuestion(' + i + ')" style="width:24px;height:24px;font-size:11px">&#10005;</button>';
+    html += '</div>';
+    html += '<div class="fg" style="margin-bottom:8px"><input id="qq_' + i + '" value="' + (q.question||'') + '" placeholder="Enter question..." onchange="quizQuestions[' + i + '].question=this.value"></div>';
+    
+    if (q.type === 'mc') {
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">';
+      for (var c = 0; c < 4; c++) {
+        var letter = ['A','B','C','D'][c];
+        html += '<div style="display:flex;gap:4px;align-items:center">';
+        html += '<input type="radio" name="qa_' + i + '" value="' + letter + '" ' + (q.answer===letter?'checked':'') + ' onchange="quizQuestions[' + i + '].answer=\'' + letter + '\'">';
+        html += '<input id="qc_' + i + '_' + c + '" value="' + (q.choices[c]||'') + '" placeholder="' + letter + '..." style="flex:1;padding:6px 10px;border:1px solid var(--g2);border-radius:6px;font-size:13px" onchange="quizQuestions[' + i + '].choices[' + c + ']=this.value">';
+        html += '</div>';
+      }
+      html += '</div>';
+      html += '<p style="font-size:11px;color:var(--g5)">&#9432; Select the radio button next to the correct answer</p>';
+    } else if (q.type === 'tf') {
+      html += '<div style="display:flex;gap:12px;margin-bottom:8px">';
+      html += '<label style="display:flex;align-items:center;gap:4px;font-size:13px"><input type="radio" name="qa_' + i + '" value="True" ' + (q.answer==='True'?'checked':'') + ' onchange="quizQuestions[' + i + '].answer=\'True\'"> True</label>';
+      html += '<label style="display:flex;align-items:center;gap:4px;font-size:13px"><input type="radio" name="qa_' + i + '" value="False" ' + (q.answer==='False'?'checked':'') + ' onchange="quizQuestions[' + i + '].answer=\'False\'"> False</label>';
+      html += '</div>';
+    } else {
+      html += '<div class="fg" style="margin-bottom:0"><input id="qans_' + i + '" value="' + (q.answer||'') + '" placeholder="Correct answer..." onchange="quizQuestions[' + i + '].answer=this.value"></div>';
+    }
+    html += '</div>';
+  });
+  el.innerHTML = html;
+}
+
+function removeQuizQuestion(i) {
+  quizQuestions.splice(i, 1);
+  renderQuizQuestions();
+}
+
+function saveQuiz() {
+  var title = document.getElementById('qzTitle').value;
+  var subject = document.getElementById('qzSubject').value;
+  var section = document.getElementById('qzSection').value;
+  var timeLimit = parseInt(document.getElementById('qzTime').value) || 30;
+  
+  if (!title) { toast('Enter quiz title', 'er'); return; }
+  if (quizQuestions.length === 0) { toast('Add at least one question', 'er'); return; }
+  
+  var valid = true;
+  quizQuestions.forEach(function(q, i) {
+    if (!q.question) { toast('Question ' + (i+1) + ' is empty', 'er'); valid = false; }
+    if (!q.answer) { toast('Question ' + (i+1) + ' has no answer', 'er'); valid = false; }
+    if (q.type === 'mc') {
+      q.choices.forEach(function(c, j) {
+        if (!c) { toast('Q' + (i+1) + ' Choice ' + ['A','B','C','D'][j] + ' is empty', 'er'); valid = false; }
+      });
+    }
+  });
+  if (!valid) return;
+  
+  // Shuffle questions for randomization seed
+  var quiz = {
+    id: Date.now(),
+    title: title,
+    subject: subject,
+    section: section,
+    timeLimit: timeLimit,
+    questions: quizQuestions,
+    totalItems: quizQuestions.length,
+    createdBy: curUser ? curUser.name : 'Teacher',
+    createdAt: new Date().toISOString(),
+    status: 'Active'
+  };
+  
+  var quizzes = loadData('quizzes', []);
+  quizzes.unshift(quiz);
+  saveData('quizzes', quizzes);
+  
+  quizQuestions = [];
+  toast('Quiz published! ' + quiz.totalItems + ' questions.', 'su');
+  loadTeacherQuizzes();
+}
+
+function cancelCreateQuiz() {
+  quizQuestions = [];
+  loadTeacherQuizzes();
+}
+
+function loadTeacherQuizzes() {
+  var quizzes = loadData('quizzes', []);
+  var el = document.getElementById('teacherQuizList');
+  if (!el) return;
+  
+  if (quizzes.length === 0) {
+    el.innerHTML = '<div style="text-align:center;padding:32px;color:var(--g5)"><div style="font-size:48px;margin-bottom:12px">&#128221;</div><p>No quizzes yet. Click "+ Create Quiz" to get started.</p></div>';
+    return;
+  }
+  
+  var html = '<div style="display:grid;gap:12px">';
+  quizzes.forEach(function(q, i) {
+    var results = loadData('quiz_results_' + q.id, {});
+    var taken = Object.keys(results).length;
+    
+    html += '<div style="background:#fff;border-radius:12px;padding:18px;border:1px solid var(--g2)">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:start;flex-wrap:wrap;gap:8px">';
+    html += '<div><h4 style="font-size:15px;margin-bottom:4px">' + q.title + '</h4>';
+    html += '<div style="display:flex;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--g5)">';
+    html += '<span>&#128218; ' + (q.subject||'') + '</span>';
+    html += '<span>&#128100; ' + (q.section||'') + '</span>';
+    html += '<span>&#9200; ' + q.timeLimit + ' min</span>';
+    html += '<span>&#128221; ' + q.totalItems + ' items</span>';
+    html += '<span>&#128100; ' + taken + ' taken</span>';
+    html += '</div></div>';
+    html += '<div style="display:flex;gap:4px">';
+    html += '<button class="btn btn-s btn-sm" onclick="viewQuizResults(' + q.id + ')">&#128202; Results</button>';
+    html += '<button class="abtn del" onclick="deleteQuiz(' + i + ')">&#128465;</button>';
+    html += '</div></div></div>';
+  });
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+function deleteQuiz(i) {
+  var quizzes = loadData('quizzes', []);
+  if (!confirm('Delete "' + quizzes[i].title + '"?')) return;
+  var qid = quizzes[i].id;
+  quizzes.splice(i, 1);
+  saveData('quizzes', quizzes);
+  db.collection('portal_data').doc('quiz_results_' + qid).delete();
+  loadTeacherQuizzes();
+  toast('Quiz deleted', 'su');
+}
+
+function viewQuizResults(qid) {
+  var quizzes = loadData('quizzes', []);
+  var quiz = quizzes.find(function(q) { return q.id === qid; });
+  if (!quiz) return;
+  
+  var results = loadData('quiz_results_' + qid, {});
+  var students = Object.keys(results);
+  
+  var el = document.getElementById('teacherQuizList');
+  var html = '<div style="background:#fff;border-radius:12px;padding:20px;border:1px solid var(--g2)">';
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">';
+  html += '<h4>&#128202; Results: ' + quiz.title + '</h4>';
+  html += '<button class="btn btn-s btn-sm" onclick="loadTeacherQuizzes()">&#8592; Back</button>';
+  html += '</div>';
+  
+  if (students.length === 0) {
+    html += '<div style="text-align:center;padding:24px;color:var(--g5)">No students have taken this quiz yet.</div>';
+  } else {
+    var totalScore = 0;
+    html += '<table><thead><tr><th>Student</th><th>LRN</th><th>Score</th><th>Percentage</th><th>Time</th><th>Status</th></tr></thead><tbody>';
+    students.forEach(function(lrn) {
+      var r = results[lrn];
+      var pct = Math.round((r.score / r.total) * 100);
+      totalScore += pct;
+      var badge = pct >= 75 ? 'b-ac' : 'b-fe';
+      html += '<tr><td><strong>' + (r.name||lrn) + '</strong></td>';
+      html += '<td style="font-family:monospace;font-size:12px">' + lrn + '</td>';
+      html += '<td style="text-align:center"><strong>' + r.score + ' / ' + r.total + '</strong></td>';
+      html += '<td style="text-align:center;font-weight:700;color:' + (pct>=75?'var(--su)':'var(--da)') + '">' + pct + '%</td>';
+      html += '<td style="font-size:12px">' + (r.submittedAt ? new Date(r.submittedAt).toLocaleString() : '') + '</td>';
+      html += '<td><span class="badge ' + badge + '">' + (pct>=75?'Passed':'Failed') + '</span></td></tr>';
+    });
+    html += '</tbody></table>';
+    
+    var avg = Math.round(totalScore / students.length);
+    html += '<div style="margin-top:12px;padding:12px;background:var(--g1);border-radius:8px;display:flex;gap:24px;font-size:14px">';
+    html += '<span><strong>' + students.length + '</strong> students took the quiz</span>';
+    html += '<span>Class Average: <strong style="color:' + (avg>=75?'var(--su)':'var(--da)') + '">' + avg + '%</strong></span>';
+    html += '</div>';
+  }
+  
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+// ---- STUDENT FUNCTIONS ----
+
+function loadStudentQuizzes() {
+  if (!curUser || curUser.type !== 'student') return;
+  var quizzes = loadData('quizzes', []);
+  var el = document.getElementById('studentQuizList');
+  if (!el) return;
+  
+  var mySection = curUser.grade || '';
+  var myQuizzes = quizzes.filter(function(q) {
+    return q.status === 'Active' && (q.section === mySection || q.section === 'All');
+  });
+  
+  if (myQuizzes.length === 0) {
+    el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--g5)">No quizzes available for your section.</div>';
+    return;
+  }
+  
+  var html = '<div style="display:grid;gap:12px">';
+  myQuizzes.forEach(function(q) {
+    var results = loadData('quiz_results_' + q.id, {});
+    var myResult = results[curUser.lrn];
+    
+    html += '<div style="background:var(--g1);border-radius:12px;padding:16px;border:1px solid var(--g2)">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">';
+    html += '<div><h4 style="font-size:15px;margin-bottom:4px">' + q.title + '</h4>';
+    html += '<div style="font-size:12px;color:var(--g5)">&#128218; ' + (q.subject||'') + ' &bull; &#9200; ' + q.timeLimit + ' min &bull; &#128221; ' + q.totalItems + ' items</div>';
+    html += '</div>';
+    
+    if (myResult) {
+      var pct = Math.round((myResult.score / myResult.total) * 100);
+      html += '<div style="text-align:center"><div style="font-size:24px;font-weight:800;color:' + (pct>=75?'var(--su)':'var(--da)') + '">' + pct + '%</div>';
+      html += '<div style="font-size:11px;color:var(--g5)">' + myResult.score + '/' + myResult.total + '</div></div>';
+    } else {
+      html += '<button class="btn btn-p btn-sm" onclick="startQuiz(' + q.id + ')">Take Quiz &#10148;</button>';
+    }
+    
+    html += '</div></div>';
+  });
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+function startQuiz(qid) {
+  var quizzes = loadData('quizzes', []);
+  currentQuiz = quizzes.find(function(q) { return q.id === qid; });
+  if (!currentQuiz) return;
+  
+  // Randomize questions
+  var shuffled = currentQuiz.questions.slice();
+  for (var i = shuffled.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var temp = shuffled[i]; shuffled[i] = shuffled[j]; shuffled[j] = temp;
+  }
+  currentQuiz._shuffled = shuffled;
+  
+  // Randomize MC choices
+  shuffled.forEach(function(q) {
+    if (q.type === 'mc') {
+      var origAnswer = q.choices[['A','B','C','D'].indexOf(q.answer)];
+      var newChoices = q.choices.slice();
+      for (var i = newChoices.length - 1; i > 0; i--) {
+        var j = Math.floor(Math.random() * (i + 1));
+        var tmp = newChoices[i]; newChoices[i] = newChoices[j]; newChoices[j] = tmp;
+      }
+      q._shuffledChoices = newChoices;
+      q._correctIndex = newChoices.indexOf(origAnswer);
+    }
+  });
+  
+  quizTimeLeft = currentQuiz.timeLimit * 60;
+  
+  var el = document.getElementById('studentQuizList');
+  el.style.display = 'none';
+  
+  var area = document.getElementById('quizTakeArea');
+  area.style.display = 'block';
+  renderQuizUI();
+  
+  quizTimer = setInterval(function() {
+    quizTimeLeft--;
+    updateQuizTimer();
+    if (quizTimeLeft <= 0) {
+      clearInterval(quizTimer);
+      submitQuiz();
+    }
+  }, 1000);
+}
+
+function renderQuizUI() {
+  var area = document.getElementById('quizTakeArea');
+  var q = currentQuiz;
+  var questions = q._shuffled;
+  
+  var html = '<div style="background:#fff;border-radius:12px;padding:20px;border:1px solid var(--g2)">';
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">';
+  html += '<h4>' + q.title + '</h4>';
+  html += '<div id="quizTimerDisplay" style="font-size:18px;font-weight:700;color:var(--da);font-family:monospace;background:var(--dab);padding:6px 14px;border-radius:8px"></div>';
+  html += '</div>';
+  html += '<p style="font-size:13px;color:var(--g5);margin-bottom:16px">&#128218; ' + (q.subject||'') + ' &bull; ' + questions.length + ' items &bull; ' + q.timeLimit + ' minutes</p>';
+  
+  questions.forEach(function(item, i) {
+    var typeColor = item.type === 'mc' ? '#e8733a' : (item.type === 'tf' ? '#1a365d' : '#059669');
+    html += '<div style="background:var(--g1);border-radius:10px;padding:14px;margin-bottom:10px;border-left:3px solid ' + typeColor + '">';
+    html += '<div style="font-weight:700;font-size:14px;margin-bottom:8px">' + (i+1) + '. ' + item.question + '</div>';
+    
+    if (item.type === 'mc') {
+      var choices = item._shuffledChoices || item.choices;
+      choices.forEach(function(c, j) {
+        var letter = ['A','B','C','D'][j];
+        html += '<label style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#fff;border-radius:8px;margin-bottom:4px;cursor:pointer;border:1px solid var(--g2)">';
+        html += '<input type="radio" name="sq_' + i + '" value="' + j + '"> <span style="font-weight:600;color:' + typeColor + '">' + letter + '.</span> ' + c;
+        html += '</label>';
+      });
+    } else if (item.type === 'tf') {
+      html += '<label style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#fff;border-radius:8px;margin-bottom:4px;cursor:pointer;border:1px solid var(--g2)">';
+      html += '<input type="radio" name="sq_' + i + '" value="True"> True</label>';
+      html += '<label style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#fff;border-radius:8px;margin-bottom:4px;cursor:pointer;border:1px solid var(--g2)">';
+      html += '<input type="radio" name="sq_' + i + '" value="False"> False</label>';
+    } else {
+      html += '<input id="sq_' + i + '" placeholder="Type your answer..." style="width:100%;padding:10px 14px;border:1.5px solid var(--g2);border-radius:8px;font-size:14px;font-family:var(--fb)">';
+    }
+    html += '</div>';
+  });
+  
+  html += '<div style="display:flex;gap:10px;margin-top:16px">';
+  html += '<button class="btn btn-p" onclick="submitQuiz()">&#128190; Submit Quiz</button>';
+  html += '</div></div>';
+  
+  area.innerHTML = html;
+  updateQuizTimer();
+}
+
+function updateQuizTimer() {
+  var el = document.getElementById('quizTimerDisplay');
+  if (!el) return;
+  var m = Math.floor(quizTimeLeft / 60);
+  var s = quizTimeLeft % 60;
+  el.textContent = (m<10?'0':'') + m + ':' + (s<10?'0':'') + s;
+  if (quizTimeLeft <= 60) el.style.color = 'var(--da)';
+}
+
+function submitQuiz() {
+  if (quizTimer) clearInterval(quizTimer);
+  
+  var questions = currentQuiz._shuffled;
+  var score = 0;
+  var total = questions.length;
+  var answers = [];
+  
+  questions.forEach(function(item, i) {
+    var studentAnswer = '';
+    if (item.type === 'mc') {
+      var selected = document.querySelector('input[name="sq_' + i + '"]:checked');
+      if (selected) {
+        var idx = parseInt(selected.value);
+        studentAnswer = (item._shuffledChoices || item.choices)[idx];
+        var correctChoice = item.choices[['A','B','C','D'].indexOf(item.answer)];
+        if (studentAnswer === correctChoice) score++;
+      }
+    } else if (item.type === 'tf') {
+      var selected = document.querySelector('input[name="sq_' + i + '"]:checked');
+      if (selected) {
+        studentAnswer = selected.value;
+        if (studentAnswer === item.answer) score++;
+      }
+    } else {
+      var input = document.getElementById('sq_' + i);
+      if (input) {
+        studentAnswer = input.value.trim();
+        if (studentAnswer.toLowerCase() === item.answer.toLowerCase()) score++;
+      }
+    }
+    answers.push({question: item.question, studentAnswer: studentAnswer, correct: item.answer});
+  });
+  
+  // Save result
+  var results = loadData('quiz_results_' + currentQuiz.id, {});
+  results[curUser.lrn] = {
+    name: curUser.name,
+    score: score,
+    total: total,
+    answers: answers,
+    submittedAt: new Date().toISOString()
+  };
+  saveData('quiz_results_' + currentQuiz.id, results);
+  
+  var pct = Math.round((score / total) * 100);
+  
+  // Show results
+  var area = document.getElementById('quizTakeArea');
+  var html = '<div style="background:#fff;border-radius:12px;padding:24px;text-align:center;border:1px solid var(--g2)">';
+  html += '<div style="font-size:48px;margin-bottom:12px">' + (pct >= 75 ? '&#127942;' : '&#128221;') + '</div>';
+  html += '<h3 style="margin-bottom:8px">' + currentQuiz.title + '</h3>';
+  html += '<div style="font-size:48px;font-weight:800;color:' + (pct>=75?'var(--su)':'var(--da)') + ';margin:16px 0">' + pct + '%</div>';
+  html += '<p style="font-size:16px;margin-bottom:4px">Score: <strong>' + score + ' / ' + total + '</strong></p>';
+  html += '<p style="font-size:14px;color:var(--g5);margin-bottom:20px">' + (pct>=75?'Congratulations! You passed!':'Keep studying. You can do better next time.') + '</p>';
+  
+  html += '<div style="text-align:left;margin-top:16px">';
+  html += '<h4 style="margin-bottom:12px">Review Answers:</h4>';
+  answers.forEach(function(a, i) {
+    var isCorrect = false;
+    if (questions[i].type === 'mc') {
+      var correctChoice = questions[i].choices[['A','B','C','D'].indexOf(questions[i].answer)];
+      isCorrect = a.studentAnswer === correctChoice;
+    } else if (questions[i].type === 'tf') {
+      isCorrect = a.studentAnswer === a.correct;
+    } else {
+      isCorrect = a.studentAnswer.toLowerCase() === a.correct.toLowerCase();
+    }
+    
+    var bg = isCorrect ? '#f0fdf4' : '#fef2f2';
+    var icon = isCorrect ? '&#10003;' : '&#10007;';
+    var color = isCorrect ? '#22c55e' : '#ef4444';
+    
+    html += '<div style="background:' + bg + ';border-radius:8px;padding:12px;margin-bottom:6px;border-left:3px solid ' + color + '">';
+    html += '<div style="font-weight:600;font-size:13px"><span style="color:' + color + '">' + icon + '</span> Q' + (i+1) + '. ' + a.question + '</div>';
+    html += '<div style="font-size:12px;margin-top:4px;color:#666">Your answer: <strong>' + (a.studentAnswer || 'No answer') + '</strong>';
+    if (!isCorrect) {
+      var correctDisplay = a.correct;
+      if (questions[i].type === 'mc') {
+        correctDisplay = questions[i].choices[['A','B','C','D'].indexOf(questions[i].answer)];
+      }
+      html += ' | Correct: <strong style="color:var(--su)">' + correctDisplay + '</strong>';
+    }
+    html += '</div></div>';
+  });
+  html += '</div>';
+  
+  html += '<button class="btn btn-s" onclick="closeQuizResult()" style="margin-top:16px">&#8592; Back to Quizzes</button>';
+  html += '</div>';
+  
+  area.innerHTML = html;
+  currentQuiz = null;
+}
+
+function closeQuizResult() {
+  document.getElementById('quizTakeArea').style.display = 'none';
+  document.getElementById('studentQuizList').style.display = 'block';
+  loadStudentQuizzes();
+}
+
 // Hook into login to load grades
 var _origLogin = doLogin;
 doLogin = function() {
   _origLogin();
   if (curUser) {
-    setTimeout(function() { loadStudentGrades(); loadStudentAttendance(); loadStudentSchedule(); }, 100);
+    setTimeout(function() { loadStudentGrades(); loadStudentAttendance(); loadStudentSchedule(); loadStudentQuizzes(); }, 100);
   }
 };

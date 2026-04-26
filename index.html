@@ -375,7 +375,7 @@ td{padding:12px 16px;border-bottom:1px solid var(--g1);font-size:13.5px}
 <div class="dash-body">
 <div class="dash-welcome"><h2>&#128075; Welcome back, <span id="sdWelcome">Student</span>!</h2><p>Here's your academic overview for SY 2025-2026</p></div>
 <div class="dash-stat-row"><div class="dash-stat"><b>88.5</b><small>Gen. Average</small></div><div class="dash-stat"><b>95%</b><small>Attendance</small></div><div class="dash-stat"><b>6</b><small>Subjects</small></div><div class="dash-stat"><b>3</b><small>Pending Tasks</small></div></div>
-<div class="dash-nav"><button class="act" onclick="sdTab(this,'sdGrades')">&#128202; Grades</button><button onclick="sdTab(this,'sdSched')">&#128197; Schedule</button><button onclick="sdTab(this,'sdTasks')">&#128221; Assignments</button><button onclick="sdTab(this,'sdAtt')">&#128203; Attendance</button></div>
+<div class="dash-nav"><button class="act" onclick="sdTab(this,'sdGrades')">&#128202; Grades</button><button onclick="sdTab(this,'sdSched')">&#128197; Schedule</button><button onclick="sdTab(this,'sdTasks')">&#128221; Assignments</button><button onclick="sdTab(this,'sdAtt')">&#128203; Attendance</button><button onclick="sdTab(this,'sdQuiz')">&#128221; Quiz/Exam</button></div>
 <div id="sdGrades" class="dash-card"><h3>&#128202; My Grades &mdash; 2nd Semester</h3><table><thead><tr><th>Subject</th><th>1st Qtr</th><th>2nd Qtr</th><th>3rd Qtr</th><th>4th Qtr</th><th>Final</th><th>Remarks</th></tr></thead><tbody>
 <tr><td>Mathematics</td><td>87</td><td>89</td><td>90</td><td>88</td><td>88.5</td><td><span class="badge b-g">Passed</span></td></tr>
 <tr><td>Science</td><td>91</td><td>88</td><td>92</td><td>90</td><td>90.3</td><td><span class="badge b-g">Passed</span></td></tr>
@@ -392,6 +392,11 @@ td{padding:12px 16px;border-bottom:1px solid var(--g1);font-size:13.5px}
 <tr><td>Filipino</td><td>Sanaysay &mdash; Kahalagahan ng Edukasyon</td><td>Apr 5, 2026</td><td><span class="badge b-g">Submitted</span></td></tr>
 <tr><td>AP</td><td>Timeline &mdash; Philippine Revolution</td><td>Apr 3, 2026</td><td><span class="badge b-g">Submitted</span></td></tr>
 </tbody></table></div>
+<div id="sdQuiz" class="dash-card" style="display:none"><div id="sdQuizContent">
+<h3>&#128221; My Quizzes &amp; Exams</h3>
+<div id="studentQuizList"><div style="text-align:center;padding:24px;color:var(--g5)">Loading quizzes...</div></div>
+<div id="quizTakeArea" style="display:none"></div>
+</div></div>
 <div id="sdAtt" class="dash-card" style="display:none"><div id="sdAttContent"><div style="text-align:center;padding:24px;color:var(--g5)">No attendance records yet.</div></div></div>
 </div></div>
 
@@ -400,7 +405,7 @@ td{padding:12px 16px;border-bottom:1px solid var(--g1);font-size:13.5px}
 <div class="dash-body">
 <div class="dash-welcome" style="background:linear-gradient(135deg,var(--n),var(--nl))"><h2>&#128075; Welcome, <span id="tdWelcome">Teacher</span>!</h2><p>Manage your classes and students</p></div>
 <div class="dash-stat-row"><div class="dash-stat"><b>4</b><small>Classes</small></div><div class="dash-stat"><b>168</b><small>Students</small></div><div class="dash-stat"><b>12</b><small>Pending Grades</small></div><div class="dash-stat"><b>97%</b><small>Avg. Attendance</small></div></div>
-<div class="dash-nav"><button class="act" onclick="tdTab(this,'tdClasses')">&#128218; My Classes</button><button onclick="tdTab(this,'tdGrade')">&#128202; Grade Input</button><button onclick="tdTab(this,'tdAttendance')">&#128203; Attendance</button><button onclick="tdTab(this,'tdSchedule')">&#128197; Schedule</button><button onclick="tdTab(this,'tdAnnounce')">&#128227; Announcements</button></div>
+<div class="dash-nav"><button class="act" onclick="tdTab(this,'tdClasses')">&#128218; My Classes</button><button onclick="tdTab(this,'tdGrade')">&#128202; Grade Input</button><button onclick="tdTab(this,'tdAttendance')">&#128203; Attendance</button><button onclick="tdTab(this,'tdSchedule')">&#128197; Schedule</button><button onclick="tdTab(this,'tdQuiz')">&#128221; Quiz</button><button onclick="tdTab(this,'tdAnnounce')">&#128227; Announcements</button></div>
 <div id="tdClasses" class="dash-card"><div id="tdClassesContent"><div style="text-align:center;padding:24px;color:var(--g5)">Loading classes...</div></div></div>
 <div id="tdGrade" class="dash-card" style="display:none">
 <h3>&#128202; Grade Upload System</h3>
@@ -465,6 +470,17 @@ Attendance Rate is auto-computed: (Days Present &divide; Total School Days) &tim
 
 <div id="attPreview"></div>
 <div id="savedAttendance"></div>
+</div>
+
+<div id="tdQuiz" class="dash-card" style="display:none">
+<h3>&#128221; Quiz &amp; Exam System</h3>
+<p style="color:var(--g5);font-size:14px;margin-bottom:18px">Create quizzes for your students</p>
+
+<div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">
+<button class="btn btn-p btn-sm" onclick="openCreateQuiz()">+ Create Quiz</button>
+</div>
+
+<div id="teacherQuizList"><div style="text-align:center;padding:24px;color:var(--g5)">No quizzes created yet.</div></div>
 </div>
 
 <div id="tdSchedule" class="dash-card" style="display:none">
