@@ -1317,24 +1317,29 @@ function printEmployeeDTR() {
   var schedEnd = dtrSched.endTime || '16:00';
   var startH = parseInt(schedStart.split(':')[0]);
   var startM = parseInt(schedStart.split(':')[1]);
+  var endH = parseInt(schedEnd.split(':')[0]);
+  var endM = parseInt(schedEnd.split(':')[1]);
   
   var empName = '';
   var empDept = '';
-  var employees = loadData('dtr_employees', {});
+  var empPos = '';
   var teachers = loadData('teachers', []);
   teachers.forEach(function(t) {
     if (String(t.eid) === String(filterEmp)) {
       empName = t.name;
       empDept = t.dept || '';
+      empPos = t.pos || '';
     }
   });
+  var employees = loadData('dtr_employees', {});
   if (!empName && employees[filterEmp]) empName = employees[filterEmp].name;
   if (!empName) empName = filterEmp;
   
   var settings = loadData('settings', {});
   var schoolName = settings.schoolName || 'Dr. Bonifacio A. Masilungan Integrated National High School';
   
-  var totalMins = 0, daysPresent = 0, daysLate = 0, daysAbsent = 0;
+  var totalUndertimeMin = 0;
+  var totalLate = 0;
   var rows = '';
   
   for (var d = 1; d <= daysInMonth; d++) {
@@ -1342,108 +1347,141 @@ function printEmployeeDTR() {
     var records = loadData(dateKey, {});
     var rec = records[filterEmp];
     var dayOfWeek = new Date(year, mon-1, d).getDay();
-    var dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
     var isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+    var dayLabel = dayOfWeek === 0 ? 'SUNDAY' : (dayOfWeek === 6 ? 'SATURDAY' : '');
     
-    var timeIn = '', timeOut = '', hours = '', remarks = '';
+    var amIn = '', amOut = '', pmIn = '', pmOut = '', utH = '', utM = '';
     
-    if (rec) {
-      timeIn = rec.timeIn || '';
-      timeOut = rec.timeOut || '';
+    if (rec && rec.timeIn) {
+      var tIn = rec.timeIn;
+      var tOut = rec.timeOut || '';
       
-      if (timeIn && timeOut) {
-        var inP = timeIn.match(/(\d+):(\d+)/);
-        var outP = timeOut.match(/(\d+):(\d+)/);
-        if (inP && outP) {
-          var diff = (parseInt(outP[1])*60+parseInt(outP[2])) - (parseInt(inP[1])*60+parseInt(inP[2]));
-          totalMins += diff;
-          hours = Math.floor(diff/60) + ':' + (diff%60<10?'0':'') + (diff%60);
+      // Parse time in
+      var inParts = tIn.match(/(\d+):(\d+):(\d+)/);
+      if (inParts) {
+        var inH = parseInt(inParts[1]);
+        var inMn = parseInt(inParts[2]);
+        // AM Arrival
+        amIn = (inH > 12 ? inH-12 : inH) + ':' + (inMn<10?'0':'') + inMn;
+        // AM Departure = 12:00 (lunch)
+        amOut = '12:00';
+        // PM Arrival = 1:00 (after lunch)
+        pmIn = '1:00';
+      }
+      
+      if (tOut) {
+        var outParts = tOut.match(/(\d+):(\d+):(\d+)/);
+        if (outParts) {
+          var outH = parseInt(outParts[1]);
+          var outMn = parseInt(outParts[2]);
+          pmOut = (outH > 12 ? outH-12 : outH) + ':' + (outMn<10?'0':'') + outMn;
+          
+          // Calculate undertime
+          var schedEndMin = endH * 60 + endM;
+          var actualEndMin = outH * 60 + outMn;
+          if (actualEndMin < schedEndMin) {
+            var ut = schedEndMin - actualEndMin;
+            totalUndertimeMin += ut;
+            utH = Math.floor(ut / 60) || '';
+            utM = ut % 60 || '';
+          }
         }
       }
       
-      if (timeIn) {
-        daysPresent++;
-        var tP = timeIn.match(/(\d+):(\d+)/);
-        if (tP && (parseInt(tP[1]) > startH || (parseInt(tP[1]) === startH && parseInt(tP[2]) > startM))) {
-          daysLate++;
-          remarks = 'Late';
+      // Check late
+      if (inParts) {
+        var inH2 = parseInt(inParts[1]);
+        var inMn2 = parseInt(inParts[2]);
+        if (inH2 > startH || (inH2 === startH && inMn2 > startM)) {
+          totalLate++;
         }
       }
-    } else if (!isWeekend) {
-      daysAbsent++;
-      remarks = isWeekend ? '' : '';
     }
     
     var bg = isWeekend ? '#f5f5f5' : '#fff';
     rows += '<tr style="background:' + bg + '">';
-    rows += '<td style="text-align:center">' + d + '</td>';
-    rows += '<td style="text-align:center;font-size:11px;color:#888">' + dayNames[dayOfWeek] + '</td>';
-    rows += '<td style="text-align:center">' + (isWeekend ? '-' : (timeIn || '')) + '</td>';
-    rows += '<td style="text-align:center">' + (isWeekend ? '-' : (timeOut || '')) + '</td>';
-    rows += '<td style="text-align:center">' + (isWeekend ? '-' : (hours || '')) + '</td>';
-    rows += '<td style="text-align:center;font-size:11px;color:' + (remarks==='Late'?'#D32F2F':'#666') + '">' + (isWeekend ? 'Weekend' : remarks) + '</td>';
+    rows += '<td>' + d + '</td>';
+    
+    if (isWeekend || dayLabel) {
+      rows += '<td colspan="4" style="text-align:center;font-style:italic;color:#999;font-size:10px">' + dayLabel + '</td>';
+      rows += '<td></td><td></td>';
+    } else if (!rec || !rec.timeIn) {
+      rows += '<td></td><td></td><td></td><td></td><td></td><td></td>';
+    } else {
+      rows += '<td>' + amIn + '</td>';
+      rows += '<td>' + amOut + '</td>';
+      rows += '<td>' + pmIn + '</td>';
+      rows += '<td>' + pmOut + '</td>';
+      rows += '<td style="text-align:center">' + utH + '</td>';
+      rows += '<td style="text-align:center">' + utM + '</td>';
+    }
     rows += '</tr>';
   }
   
-  var totalH = Math.floor(totalMins/60);
-  var totalM = totalMins % 60;
+  var totalUtH = Math.floor(totalUndertimeMin / 60);
+  var totalUtM = totalUndertimeMin % 60;
   
   var w = window.open('','_blank');
   w.document.write('<html><head><title>DTR - ' + empName + '</title>');
   w.document.write('<style>');
   w.document.write('*{margin:0;padding:0;box-sizing:border-box}');
-  w.document.write('body{font-family:Arial,sans-serif;padding:30px;font-size:12px;color:#333}');
-  w.document.write('.header{text-align:center;margin-bottom:20px;border-bottom:2px solid #1B2A4A;padding-bottom:16px}');
-  w.document.write('.header h1{font-size:14px;color:#1B2A4A;margin-bottom:2px}');
-  w.document.write('.header h2{font-size:18px;color:#1B2A4A;margin-bottom:2px}');
-  w.document.write('.header p{font-size:11px;color:#888}');
-  w.document.write('.info{display:flex;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap}');
-  w.document.write('.info div{margin-bottom:6px}');
-  w.document.write('.info label{font-weight:700;color:#555;font-size:11px}');
-  w.document.write('.info span{font-size:13px;border-bottom:1px solid #333;padding:0 20px}');
-  w.document.write('table{width:100%;border-collapse:collapse;margin-bottom:16px}');
-  w.document.write('th{background:#1B2A4A;color:#fff;padding:8px 6px;font-size:11px;text-transform:uppercase}');
-  w.document.write('td{padding:6px;border:1px solid #ddd;font-size:12px}');
-  w.document.write('.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}');
-  w.document.write('.summary div{background:#f8f8f8;border-radius:8px;padding:12px;text-align:center;border:1px solid #eee}');
-  w.document.write('.summary .num{font-size:24px;font-weight:800;color:#1B2A4A}');
-  w.document.write('.summary .lbl{font-size:10px;color:#888;margin-top:2px}');
-  w.document.write('.sig{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:40px}');
-  w.document.write('.sig div{text-align:center}');
-  w.document.write('.sig .line{border-top:1px solid #333;margin-top:40px;padding-top:4px;font-size:11px}');
-  w.document.write('@media print{body{padding:15px}}');
+  w.document.write('body{font-family:"Times New Roman",serif;padding:20px 30px;font-size:11px;color:#000}');
+  w.document.write('.header{text-align:center;margin-bottom:12px}');
+  w.document.write('.header h3{font-size:12px;margin-bottom:2px;font-weight:400}');
+  w.document.write('.header h2{font-size:14px;font-weight:700;margin-bottom:2px}');
+  w.document.write('.header h1{font-size:16px;font-weight:700;letter-spacing:2px}');
+  w.document.write('.info-row{display:flex;justify-content:space-between;margin-bottom:4px;font-size:11px}');
+  w.document.write('.info-row .label{font-weight:400}');
+  w.document.write('.info-row .value{border-bottom:1px solid #000;min-width:200px;text-align:center;font-weight:700}');
+  w.document.write('table{width:100%;border-collapse:collapse;margin:8px 0}');
+  w.document.write('th,td{border:1px solid #000;padding:2px 4px;text-align:center;font-size:10px}');
+  w.document.write('th{background:#f0f0f0;font-weight:700;font-size:9px}');
+  w.document.write('.total-row td{font-weight:700;border-top:2px solid #000}');
+  w.document.write('.cert{font-size:11px;margin:12px 0 8px;text-indent:30px;line-height:1.6}');
+  w.document.write('.sig{display:grid;grid-template-columns:1fr 1fr;gap:30px;margin-top:20px}');
+  w.document.write('.sig-box{text-align:center}');
+  w.document.write('.sig-line{border-bottom:1px solid #000;margin-top:30px;padding-bottom:2px;font-weight:700}');
+  w.document.write('.sig-label{font-size:10px;margin-top:2px}');
+  w.document.write('@media print{body{padding:10px 20px}}');
   w.document.write('</style></head><body>');
   
+  // Header
   w.document.write('<div class="header">');
-  w.document.write('<p>Republic of the Philippines &bull; Department of Education</p>');
-  w.document.write('<h1>' + schoolName + '</h1>');
-  w.document.write('<h2>DAILY TIME RECORD</h2>');
-  w.document.write('<p>' + months[mon] + ' ' + year + '</p>');
+  w.document.write('<h3>Civil Service Form No. 48</h3>');
+  w.document.write('<h1>DAILY TIME RECORD</h1>');
   w.document.write('</div>');
   
-  w.document.write('<div class="info">');
-  w.document.write('<div><label>Name: </label><span>' + empName + '</span></div>');
-  w.document.write('<div><label>Employee ID: </label><span>' + filterEmp + '</span></div>');
-  w.document.write('<div><label>Department: </label><span>' + empDept + '</span></div>');
-  w.document.write('<div><label>Schedule: </label><span>' + schedStart + ' - ' + schedEnd + '</span></div>');
-  w.document.write('</div>');
+  // Employee Info
+  w.document.write('<div class="info-row"><span class="label">Name:</span><span class="value">' + empName + '</span></div>');
+  w.document.write('<div class="info-row"><span class="label">Department:</span><span class="value">' + empDept + '</span><span class="label" style="margin-left:20px">Position:</span><span class="value">' + empPos + '</span></div>');
+  w.document.write('<div class="info-row"><span class="label">For the month of:</span><span class="value">' + months[mon] + ' ' + year + '</span><span class="label" style="margin-left:20px">Employee No.:</span><span class="value">' + filterEmp + '</span></div>');
+  w.document.write('<div class="info-row"><span class="label">Official hours of arrival and departure:</span><span class="value">' + schedStart + ' - ' + schedEnd + '</span></div>');
   
-  w.document.write('<div class="summary">');
-  w.document.write('<div><div class="num" style="color:#2D8B46">' + daysPresent + '</div><div class="lbl">Days Present</div></div>');
-  w.document.write('<div><div class="num" style="color:#D32F2F">' + daysAbsent + '</div><div class="lbl">Days Absent</div></div>');
-  w.document.write('<div><div class="num" style="color:#E6A817">' + daysLate + '</div><div class="lbl">Days Late</div></div>');
-  w.document.write('<div><div class="num">' + totalH + 'h ' + totalM + 'm</div><div class="lbl">Total Hours</div></div>');
-  w.document.write('</div>');
-  
-  w.document.write('<table><thead><tr><th>Day</th><th>Day</th><th>Time In</th><th>Time Out</th><th>Hours</th><th>Remarks</th></tr></thead><tbody>');
+  // Table
+  w.document.write('<table>');
+  w.document.write('<thead>');
+  w.document.write('<tr><th rowspan="2" style="width:30px">Day</th><th colspan="2">A.M.</th><th colspan="2">P.M.</th><th colspan="2">UNDERTIME</th></tr>');
+  w.document.write('<tr><th>Arrival</th><th>Departure</th><th>Arrival</th><th>Departure</th><th>Hours</th><th>Minutes</th></tr>');
+  w.document.write('</thead><tbody>');
   w.document.write(rows);
+  
+  // Total row
+  w.document.write('<tr class="total-row"><td colspan="5" style="text-align:right;letter-spacing:8px;padding-right:10px">T O T A L</td>');
+  w.document.write('<td>' + (totalUtH || '') + '</td><td>' + (totalUtM || '') + '</td></tr>');
   w.document.write('</tbody></table>');
   
-  w.document.write('<p style="font-size:11px;color:#888;margin-bottom:8px">I certify on my honor that the above is a true and correct report of the hours of work performed.</p>');
+  // Certification
+  w.document.write('<div class="cert">I certify on my honor that the above is a true and correct report of the hours of work performed, record of which was made daily at the time of arrival and departure from office.</div>');
   
+  // Signatures
   w.document.write('<div class="sig">');
-  w.document.write('<div><div class="line">' + empName + '<br><span style="font-size:10px;color:#888">Employee Signature</span></div></div>');
-  w.document.write('<div><div class="line">___________________<br><span style="font-size:10px;color:#888">Verified by / School Head</span></div></div>');
+  w.document.write('<div class="sig-box"><div class="sig-line">&nbsp;</div><div class="sig-label">Verified as to the prescribed office hours</div></div>');
+  w.document.write('<div class="sig-box"><div class="sig-line">' + empName + '</div><div class="sig-label">Employee\'s Signature</div></div>');
+  w.document.write('</div>');
+  
+  w.document.write('<div class="sig" style="margin-top:16px">');
+  w.document.write('<div class="sig-box"><div class="sig-line">&nbsp;</div><div class="sig-label">In charge</div></div>');
+  w.document.write('<div class="sig-box"><div class="sig-line">' + (settings.principal || '') + '</div><div class="sig-label">School Head / Principal</div></div>');
   w.document.write('</div>');
   
   w.document.write('</body></html>');
