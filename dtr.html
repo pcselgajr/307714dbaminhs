@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DTR - DBAMINHS</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Source+Sans+3:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{--o:#E85D1A;--od:#C44A10;--n:#1B2A4A;--w:#FFF;--g1:#F7F5F2;--g2:#EDE9E3;--g5:#8A8477;--g9:#1A1815;--su:#2D8B46;--da:#D32F2F;--fb:'Source Sans 3','Segoe UI',sans-serif;--fd:'Playfair Display',Georgia,serif}
@@ -50,7 +50,6 @@ body{font-family:var(--fb);background:var(--g1);min-height:100vh;color:var(--g9)
 
 <div class="container">
 
-<!-- LOGIN -->
 <div id="dtrLogin" class="card">
 <h2>&#128100; Employee Login</h2>
 <div class="fg"><label>Employee ID</label><input id="dtrEid" placeholder="e.g. T-2024-001"></div>
@@ -59,46 +58,36 @@ body{font-family:var(--fb);background:var(--g1);min-height:100vh;color:var(--g9)
 <p style="text-align:center;margin-top:12px;font-size:12px;color:var(--g5)">First time? Use your Employee ID and default PIN: 1234</p>
 </div>
 
-<!-- MAIN DTR -->
 <div id="dtrMain" class="hidden">
-
 <div class="time-display">
 <div class="time" id="liveTime">00:00:00</div>
 <div class="date" id="liveDate"></div>
 </div>
-
 <div id="dtrStatus"></div>
-
 <div class="card">
 <h2 id="dtrGreeting">Good morning!</h2>
 <p style="color:var(--g5);margin-bottom:16px" id="dtrEmployeeName"></p>
-
 <div class="tab-nav">
 <button class="tab-btn act" onclick="dtrTab(this,'tabTimein')">&#128336; Time In/Out</button>
 <button class="tab-btn" onclick="dtrTab(this,'tabHistory')">&#128203; History</button>
 <button class="tab-btn" onclick="dtrTab(this,'tabSettings')">&#9881; Settings</button>
 </div>
-
-<!-- TIME IN/OUT TAB -->
 <div id="tabTimein">
 <div id="todayRecord" style="margin-bottom:16px"></div>
-
 <div id="scanSection">
 <div class="scan-area">
-<p style="font-size:14px;color:var(--g5);margin-bottom:12px">&#128247; Scan the QR code displayed at the school entrance</p><div id="scanFeedback" style="font-size:13px;color:var(--o);margin-bottom:8px"></div>
+<p style="font-size:14px;color:var(--g5);margin-bottom:12px">&#128247; Scan the QR code displayed at the school entrance</p>
+<div id="scanFeedback" style="font-size:13px;color:var(--o);margin-bottom:8px"></div>
 <video id="qrVideo" playsinline></video>
 <canvas id="qrCanvas" class="hidden"></canvas>
-<div id="scanResult"></div>
 </div>
 <button class="btn btn-p" id="scanBtn" onclick="startScan()">&#128247; Scan QR Code</button>
 <button class="btn btn-s hidden" id="stopBtn" onclick="stopScan()" style="margin-top:8px">Stop Camera</button>
 </div>
-
 <div id="simpleTimeinSection" style="display:none;margin-bottom:16px">
 <button class="btn btn-g" onclick="simpleTimeIn()" style="font-size:18px;padding:20px">&#128336; TIME IN / TIME OUT</button>
 <p style="text-align:center;font-size:12px;color:var(--g5);margin-top:8px">Click to record your time</p>
 </div>
-
 <div id="manualSection" style="margin-top:12px">
 <p style="text-align:center;font-size:12px;color:var(--g5);margin-bottom:8px">Or enter QR code manually:</p>
 <div style="display:flex;gap:8px">
@@ -107,36 +96,26 @@ body{font-family:var(--fb);background:var(--g1);min-height:100vh;color:var(--g9)
 </div>
 </div>
 </div>
-
-<!-- HISTORY TAB -->
-<div id="tabHistory" class="hidden">
-<div id="dtrHistoryList"></div>
-</div>
-
-<!-- SETTINGS TAB -->
+<div id="tabHistory" class="hidden"><div id="dtrHistoryList"></div></div>
 <div id="tabSettings" class="hidden">
 <div class="fg"><label>Change PIN</label><input id="newPin" type="password" placeholder="New 4-digit PIN" maxlength="6"></div>
 <div class="fg"><label>Confirm PIN</label><input id="confirmPin" type="password" placeholder="Confirm PIN" maxlength="6"></div>
 <button class="btn btn-p" onclick="changePin()">Update PIN</button>
 <button class="btn btn-s" style="margin-top:8px" onclick="dtrLogout()">&#9211; Logout</button>
 </div>
-
-</div>
-
 </div>
 </div>
+</div>
 
-<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="firebase-data.js"></script>
 <script>
-// School coordinates (DBAMINHS - Brgy. Lalayat, San Jose, Batangas)
 var SCHOOL_LAT = 13.86327;
 var SCHOOL_LNG = 121.07819;
-var SCHOOL_RADIUS = 200; // meters
-
+var SCHOOL_RADIUS = 200;
 var currentEmployee = null;
+var videoStream = null;
 
 function findTeacherName(eid) {
   var teachers = loadData('teachers', []);
@@ -145,16 +124,13 @@ function findTeacherName(eid) {
   }
   return null;
 }
-var videoStream = null;
 
-// Live clock
 function updateClock() {
   var now = new Date();
   var h = now.getHours(), m = now.getMinutes(), s = now.getSeconds();
   var ampm = h >= 12 ? 'PM' : 'AM';
   var h12 = h % 12 || 12;
-  document.getElementById('liveTime').textContent = 
-    (h12<10?'0':'')+h12 + ':' + (m<10?'0':'')+m + ':' + (s<10?'0':'')+s + ' ' + ampm;
+  document.getElementById('liveTime').textContent = (h12<10?'0':'')+h12 + ':' + (m<10?'0':'')+m + ':' + (s<10?'0':'')+s + ' ' + ampm;
   var days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   var months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   document.getElementById('liveDate').textContent = days[now.getDay()] + ', ' + months[now.getMonth()] + ' ' + now.getDate() + ', ' + now.getFullYear();
@@ -162,7 +138,6 @@ function updateClock() {
 setInterval(updateClock, 1000);
 updateClock();
 
-// Greeting based on time
 function getGreeting() {
   var h = new Date().getHours();
   if (h < 12) return 'Good morning';
@@ -170,40 +145,56 @@ function getGreeting() {
   return 'Good evening';
 }
 
-// DTR Login
+function getTodayKey() {
+  var d = new Date();
+  return d.getFullYear() + '-' + (d.getMonth()+1<10?'0':'') + (d.getMonth()+1) + '-' + (d.getDate()<10?'0':'') + d.getDate();
+}
+
+function getDTRMode() {
+  var settings = loadData('dtr_settings', {mode:'qr+gps'});
+  return settings.mode || 'qr+gps';
+}
+
+function setupDTRMode() {
+  var mode = getDTRMode();
+  var scanSection = document.getElementById('scanSection');
+  var manualSection = document.getElementById('manualSection');
+  var simpleBtn = document.getElementById('simpleTimeinSection');
+  if (mode === 'none' || mode === 'gps') {
+    if (scanSection) scanSection.style.display = 'none';
+    if (manualSection) manualSection.style.display = 'none';
+    if (simpleBtn) simpleBtn.style.display = 'block';
+  } else {
+    if (scanSection) scanSection.style.display = 'block';
+    if (manualSection) manualSection.style.display = 'block';
+    if (simpleBtn) simpleBtn.style.display = 'none';
+  }
+}
+
 function dtrLogin() {
   var eid = document.getElementById('dtrEid').value.trim();
   var pin = document.getElementById('dtrPin').value.trim();
   if (!eid) { alert('Enter Employee ID'); return; }
-  
   loadAllFromFirebase(function() {
     var employees = loadData('dtr_employees', {});
     var emp = employees[eid];
-    
+    var teacherName = findTeacherName(eid) || eid;
     if (!emp) {
-      // First time - register with default PIN
       if (pin === '1234' || pin === '') {
-        var tName = findTeacherName(eid) || eid;
-        employees[eid] = {name: tName, pin: '1234', registered: new Date().toISOString()};
+        employees[eid] = {name: teacherName, pin: '1234', registered: new Date().toISOString()};
         saveData('dtr_employees', employees);
-        currentEmployee = {id: eid, name: tName};
+        currentEmployee = {id: eid, name: teacherName};
         showDTR();
         setupDTRMode();
-        showStatus('Welcome! Please change your default PIN in Settings.', 'info');
+        showStatus('Welcome, ' + teacherName + '! Please change your default PIN in Settings.', 'info');
         return;
       }
       alert('Employee not found. Use default PIN 1234 for first login.');
       return;
     }
-    
-    if (emp.pin && emp.pin !== pin) {
-      alert('Incorrect PIN');
-      return;
-    }
-    
-    var tName2 = findTeacherName(eid) || emp.name || eid;
-    if (tName2 !== eid && tName2 !== emp.name) { emp.name = tName2; employees[eid] = emp; saveData('dtr_employees', employees); }
-    currentEmployee = {id: eid, name: tName2};
+    if (teacherName !== eid) { emp.name = teacherName; employees[eid] = emp; saveData('dtr_employees', employees); }
+    if (emp.pin && emp.pin !== pin) { alert('Incorrect PIN'); return; }
+    currentEmployee = {id: eid, name: emp.name || teacherName};
     showDTR();
     setupDTRMode();
   });
@@ -227,67 +218,39 @@ function dtrLogout() {
   stopScan();
 }
 
-// Get today's key
-function getTodayKey() {
-  var d = new Date();
-  return d.getFullYear() + '-' + (d.getMonth()+1<10?'0':'') + (d.getMonth()+1) + '-' + (d.getDate()<10?'0':'') + d.getDate();
-}
-
-// Load today's record
 function loadTodayRecord() {
   var key = 'dtr_' + getTodayKey();
   var records = loadData(key, {});
   var rec = records[currentEmployee.id];
   var el = document.getElementById('todayRecord');
-  
   if (!rec) {
     el.innerHTML = '<div class="record"><span class="label">Status</span><span class="value" style="color:var(--da)">Not yet timed in</span></div>';
     return;
   }
-  
   var html = '';
-  if (rec.timeIn) {
-    html += '<div class="record"><span class="label">&#128994; Time In</span><span class="value" style="color:var(--su)">' + rec.timeIn + '</span></div>';
-  }
+  if (rec.timeIn) html += '<div class="record"><span class="label">&#128994; Time In</span><span class="value" style="color:var(--su)">' + rec.timeIn + '</span></div>';
   if (rec.timeOut) {
     html += '<div class="record"><span class="label">&#128308; Time Out</span><span class="value" style="color:var(--da)">' + rec.timeOut + '</span></div>';
-    // Calculate hours
-    var inParts = rec.timeIn.match(/(\d+):(\d+):(\d+)/);
-    var outParts = rec.timeOut.match(/(\d+):(\d+):(\d+)/);
-    if (inParts && outParts) {
-      var inMin = parseInt(inParts[1])*60 + parseInt(inParts[2]);
-      var outMin = parseInt(outParts[1])*60 + parseInt(outParts[2]);
-      var diff = outMin - inMin;
-      var hours = Math.floor(diff/60);
-      var mins = diff % 60;
-      html += '<div class="record"><span class="label">&#9200; Total Hours</span><span class="value">' + hours + 'h ' + mins + 'm</span></div>';
+    var inP = rec.timeIn.match(/(\d+):(\d+)/);
+    var outP = rec.timeOut.match(/(\d+):(\d+)/);
+    if (inP && outP) {
+      var diff = (parseInt(outP[1])*60+parseInt(outP[2])) - (parseInt(inP[1])*60+parseInt(inP[2]));
+      html += '<div class="record"><span class="label">&#9200; Total</span><span class="value">' + Math.floor(diff/60) + 'h ' + (diff%60) + 'm</span></div>';
     }
   }
-  
   el.innerHTML = html;
 }
 
-// GPS Check
 function checkGPS() {
   return new Promise(function(resolve, reject) {
-    if (!navigator.geolocation) {
-      reject('GPS not supported');
-      return;
-    }
+    if (!navigator.geolocation) { reject('GPS not supported'); return; }
     navigator.geolocation.getCurrentPosition(
       function(pos) {
-        var lat = pos.coords.latitude;
-        var lng = pos.coords.longitude;
-        var distance = getDistance(lat, lng, SCHOOL_LAT, SCHOOL_LNG);
-        if (distance <= SCHOOL_RADIUS) {
-          resolve({lat: lat, lng: lng, distance: Math.round(distance)});
-        } else {
-          reject('You are ' + Math.round(distance) + 'm away from school. Must be within ' + SCHOOL_RADIUS + 'm.');
-        }
+        var dist = getDistance(pos.coords.latitude, pos.coords.longitude, SCHOOL_LAT, SCHOOL_LNG);
+        if (dist <= SCHOOL_RADIUS) resolve({lat: pos.coords.latitude, lng: pos.coords.longitude, distance: Math.round(dist)});
+        else reject('You are ' + Math.round(dist) + 'm away. Must be within ' + SCHOOL_RADIUS + 'm.');
       },
-      function(err) {
-        reject('GPS error: Please enable location services.');
-      },
+      function() { reject('GPS error: Enable location services.'); },
       {enableHighAccuracy: true, timeout: 10000}
     );
   });
@@ -295,145 +258,92 @@ function checkGPS() {
 
 function getDistance(lat1, lon1, lat2, lon2) {
   var R = 6371000;
-  var dLat = (lat2-lat1) * Math.PI/180;
-  var dLon = (lon2-lon1) * Math.PI/180;
-  var a = Math.sin(dLat/2)*Math.sin(dLat/2) + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180) * Math.sin(dLon/2)*Math.sin(dLon/2);
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  var dLat = (lat2-lat1)*Math.PI/180;
+  var dLon = (lon2-lon1)*Math.PI/180;
+  var a = Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)*Math.sin(dLon/2);
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
 }
 
-// Get current DTR mode
-function getDTRMode() {
-  var settings = loadData('dtr_settings', {mode:'qr+gps', radius:200});
-  return settings.mode || 'qr+gps';
-}
-
-// Setup UI based on mode
-function setupDTRMode() {
-  var mode = getDTRMode();
-  var scanSection = document.getElementById('scanSection');
-  var manualSection = document.getElementById('manualSection');
-  var simpleBtn = document.getElementById('simpleTimeinSection');
-  
-  if (mode === 'none' || mode === 'gps') {
-    // Hide QR sections, show simple button
-    if (scanSection) scanSection.style.display = 'none';
-    if (manualSection) manualSection.style.display = 'none';
-    if (simpleBtn) simpleBtn.style.display = 'block';
-  } else {
-    if (scanSection) scanSection.style.display = 'block';
-    if (manualSection) manualSection.style.display = 'block';
-    if (simpleBtn) simpleBtn.style.display = 'none';
-  }
-}
-
-// Simple Time In (no QR needed)
-function simpleTimeIn() {
-  var mode = getDTRMode();
-  
-  if (mode === 'gps') {
-    showStatus('Checking GPS location...', 'info');
-    checkGPS().then(function(loc) {
-      recordTime(loc);
-    }).catch(function(err) {
-      showStatus(err, 'error');
-    });
-  } else {
-    // mode === 'none' - no verification
-    recordTime({lat:0, lng:0, distance:0});
-  }
-}
-
-// Verify QR code and record time
 function verifyCode(code) {
   var mode = getDTRMode();
-  
   if (!code) { showStatus('Enter or scan the QR code.', 'error'); return; }
-  
-  var today = getTodayKey();
-  var todayCode = loadData('dtr_daily_code', {});
-  var weeklyCode = loadData('dtr_code_' + today, {});
-  
-  var validCode = '';
-  if (todayCode.code && todayCode.date === today) validCode = todayCode.code;
-  if (weeklyCode.code && weeklyCode.date === today) validCode = weeklyCode.code;
-  
-  if (!validCode) {
-    showStatus('No QR code generated for today. Contact admin.', 'error');
-    return;
-  }
-  
-  if (code.trim() !== validCode) {
-    showStatus('Invalid QR code. Please scan the correct code.', 'error');
-    return;
-  }
-  
-  if (mode === 'qr+gps') {
-    showStatus('QR verified! Checking GPS location...', 'info');
-    checkGPS().then(function(loc) {
-      recordTime(loc);
-    }).catch(function(err) {
-      showStatus(err, 'error');
+  showStatus('Verifying code... Please wait.', 'info');
+
+  db.collection('portal_data').doc('dtr_daily_code').get().then(function(doc) {
+    var dailyCode = '', dailyDate = '';
+    if (doc.exists) { try { var d = JSON.parse(doc.data().data); dailyCode = d.code||''; dailyDate = d.date||''; } catch(e) {} }
+    var today = getTodayKey();
+
+    return db.collection('portal_data').doc('dtr_code_' + today).get().then(function(doc2) {
+      var weeklyCode = '';
+      if (doc2.exists) { try { var d2 = JSON.parse(doc2.data().data); weeklyCode = d2.code||''; } catch(e) {} }
+
+      var validCode = '';
+      if (dailyCode && dailyDate === today) validCode = dailyCode;
+      if (weeklyCode) validCode = weeklyCode;
+
+      console.log('Today:', today, 'Valid:', validCode, 'User:', code.trim());
+
+      if (!validCode) { showStatus('No QR code for today (' + today + '). Contact admin.', 'error'); return; }
+      if (code.trim() !== validCode) { showStatus('Invalid QR code. You entered: ' + code.trim(), 'error'); return; }
+
+      if (mode === 'qr+gps') {
+        showStatus('QR verified! Checking GPS...', 'info');
+        checkGPS().then(function(loc) { recordTime(loc); }).catch(function(err) { showStatus(err, 'error'); });
+      } else {
+        showStatus('QR verified!', 'info');
+        recordTime({lat:0, lng:0, distance:0});
+      }
     });
+  }).catch(function(err) { showStatus('Server error. Check internet.', 'error'); console.error(err); });
+}
+
+function simpleTimeIn() {
+  var mode = getDTRMode();
+  showStatus('Processing...', 'info');
+  if (mode === 'gps') {
+    checkGPS().then(function(loc) { recordTime(loc); }).catch(function(err) { showStatus(err, 'error'); });
   } else {
-    // QR only mode - no GPS check
-    showStatus('QR verified!', 'info');
     recordTime({lat:0, lng:0, distance:0});
   }
 }
 
 function recordTime(location) {
   var key = 'dtr_' + getTodayKey();
-  var records = loadData(key, {});
-  var rec = records[currentEmployee.id] || {};
-  var now = new Date();
-  var timeStr = (now.getHours()<10?'0':'') + now.getHours() + ':' + (now.getMinutes()<10?'0':'') + now.getMinutes() + ':' + (now.getSeconds()<10?'0':'') + now.getSeconds();
-  
-  if (!rec.timeIn) {
-    rec.timeIn = timeStr;
-    rec.locationIn = location;
-    showStatus('&#10003; TIME IN recorded at ' + timeStr + '!', 'success');
-  } else if (!rec.timeOut) {
-    rec.timeOut = timeStr;
-    rec.locationOut = location;
-    showStatus('&#10003; TIME OUT recorded at ' + timeStr + '!', 'success');
-  } else {
-    showStatus('Already timed in and out today.', 'info');
-    return;
-  }
-  
-  rec.name = currentEmployee.name;
-  records[currentEmployee.id] = rec;
-  saveData(key, records);
-  loadTodayRecord();
-  stopScan();
+  loadAllFromFirebase(function() {
+    var records = loadData(key, {});
+    var rec = records[currentEmployee.id] || {};
+    var now = new Date();
+    var timeStr = (now.getHours()<10?'0':'')+now.getHours()+':'+(now.getMinutes()<10?'0':'')+now.getMinutes()+':'+(now.getSeconds()<10?'0':'')+now.getSeconds();
+    if (!rec.timeIn) {
+      rec.timeIn = timeStr; rec.locationIn = location;
+      showStatus('&#10003; TIME IN recorded at ' + timeStr + '!', 'success');
+    } else if (!rec.timeOut) {
+      rec.timeOut = timeStr; rec.locationOut = location;
+      showStatus('&#10003; TIME OUT recorded at ' + timeStr + '!', 'success');
+    } else { showStatus('Already timed in and out today.', 'info'); return; }
+    rec.name = currentEmployee.name;
+    records[currentEmployee.id] = rec;
+    saveData(key, records);
+    loadTodayRecord();
+    stopScan();
+  });
 }
 
 function showStatus(msg, type) {
   var el = document.getElementById('dtrStatus');
   el.innerHTML = '<div class="status ' + type + '">' + msg + '</div>';
-  if (type === 'success' || type === 'info') {
-    setTimeout(function() { el.innerHTML = ''; }, 5000);
-  }
+  if (type === 'success' || type === 'info') setTimeout(function() { el.innerHTML = ''; }, 5000);
 }
 
-// QR Scanner using camera
 function startScan() {
   var video = document.getElementById('qrVideo');
   video.style.display = 'block';
   document.getElementById('scanBtn').classList.add('hidden');
   document.getElementById('stopBtn').classList.remove('hidden');
-  
-  navigator.mediaDevices.getUserMedia({video: {facingMode: 'environment'}})
-    .then(function(stream) {
-      videoStream = stream;
-      video.srcObject = stream;
-      video.play();
-      scanQR();
-    })
-    .catch(function(err) {
-      showStatus('Camera error: ' + err.message + '. Use manual code entry.', 'error');
-      stopScan();
-    });
+  navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}}).then(function(stream) {
+    videoStream = stream; video.srcObject = stream; video.play(); scanQR();
+  }).catch(function(err) { showStatus('Camera error. Use manual code.', 'error'); stopScan(); });
 }
 
 function stopScan() {
@@ -441,10 +351,7 @@ function stopScan() {
   video.style.display = 'none';
   document.getElementById('scanBtn').classList.remove('hidden');
   document.getElementById('stopBtn').classList.add('hidden');
-  if (videoStream) {
-    videoStream.getTracks().forEach(function(t) { t.stop(); });
-    videoStream = null;
-  }
+  if (videoStream) { videoStream.getTracks().forEach(function(t){t.stop();}); videoStream = null; }
 }
 
 function scanQR() {
@@ -452,90 +359,65 @@ function scanQR() {
   var video = document.getElementById('qrVideo');
   var canvas = document.getElementById('qrCanvas');
   var ctx = canvas.getContext('2d');
-  
   if (video.readyState === video.HAVE_ENOUGH_DATA) {
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
+    canvas.width = video.videoWidth; canvas.height = video.videoHeight;
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    var qrCode = jsQR(imageData.data, imageData.width, imageData.height, {inversionAttempts: 'dontInvert'});
-    
+    var qrCode = jsQR(imageData.data, imageData.width, imageData.height, {inversionAttempts:'dontInvert'});
     if (qrCode) {
       var data = qrCode.data;
-      document.getElementById('scanFeedback').textContent = 'QR detected!';
-      // Extract code from QR data (format: DBAMINHS-DTR:XXXXXX)
       if (data.startsWith('DBAMINHS-DTR:')) {
         var code = data.replace('DBAMINHS-DTR:', '');
         stopScan();
         document.getElementById('manualCode').value = code;
-        showStatus('QR code scanned: ' + code + '. Verifying...', 'info');
         verifyCode(code);
         return;
-      } else {
-        document.getElementById('scanFeedback').textContent = 'Invalid QR code. Scan the DTR code.';
       }
-    } else {
-      document.getElementById('scanFeedback').textContent = 'Scanning... point camera at QR code';
     }
   }
   requestAnimationFrame(scanQR);
 }
 
-// History
 function loadHistory() {
   var el = document.getElementById('dtrHistoryList');
   if (!el) return;
-  
   var html = '<h3 style="font-size:15px;margin-bottom:12px">Recent Records</h3>';
   var found = false;
-  var keys = Object.keys(_cache).filter(function(k) { return k.startsWith('dtr_2'); }).sort().reverse();
-  
-  keys.slice(0, 30).forEach(function(key) {
+  var keys = Object.keys(_cache).filter(function(k){return k.startsWith('dtr_2');}).sort().reverse();
+  keys.slice(0,30).forEach(function(key) {
     var records = _cache[key];
     if (!records || !records[currentEmployee.id]) return;
     found = true;
     var rec = records[currentEmployee.id];
-    var date = key.replace('dtr_', '');
-    html += '<div class="history-item">';
-    html += '<div style="font-weight:600;font-size:14px;margin-bottom:4px">' + date + '</div>';
-    html += '<div style="display:flex;gap:16px;font-size:13px">';
-    html += '<span style="color:var(--su)">In: ' + (rec.timeIn || '--') + '</span>';
-    html += '<span style="color:var(--da)">Out: ' + (rec.timeOut || '--') + '</span>';
-    html += '</div></div>';
+    html += '<div class="history-item"><div style="font-weight:600;font-size:14px;margin-bottom:4px">' + key.replace('dtr_','') + '</div>';
+    html += '<div style="display:flex;gap:16px;font-size:13px"><span style="color:var(--su)">In: ' + (rec.timeIn||'--') + '</span><span style="color:var(--da)">Out: ' + (rec.timeOut||'--') + '</span></div></div>';
   });
-  
   if (!found) html += '<div style="text-align:center;padding:20px;color:var(--g5)">No records yet.</div>';
   el.innerHTML = html;
 }
 
-// Change PIN
 function changePin() {
-  var newPin = document.getElementById('newPin').value;
-  var confirm = document.getElementById('confirmPin').value;
-  if (!newPin || newPin.length < 4) { alert('PIN must be at least 4 digits'); return; }
-  if (newPin !== confirm) { alert('PINs do not match'); return; }
-  
+  var np = document.getElementById('newPin').value;
+  var cp = document.getElementById('confirmPin').value;
+  if (!np || np.length < 4) { alert('PIN must be at least 4 digits'); return; }
+  if (np !== cp) { alert('PINs do not match'); return; }
   var employees = loadData('dtr_employees', {});
   if (employees[currentEmployee.id]) {
-    employees[currentEmployee.id].pin = newPin;
+    employees[currentEmployee.id].pin = np;
     saveData('dtr_employees', employees);
     document.getElementById('newPin').value = '';
     document.getElementById('confirmPin').value = '';
-    showStatus('PIN updated successfully!', 'success');
+    showStatus('PIN updated!', 'success');
   }
 }
 
-// Tab switching
 function dtrTab(el, id) {
   el.parentElement.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('act')});
   el.classList.add('act');
-  ['tabTimein','tabHistory','tabSettings'].forEach(function(t) {
-    document.getElementById(t).classList.toggle('hidden', t !== id);
-  });
+  ['tabTimein','tabHistory','tabSettings'].forEach(function(t){document.getElementById(t).classList.toggle('hidden',t!==id);});
   if (id === 'tabHistory') loadHistory();
 }
 
-// Init
 loadAllFromFirebase(function() { console.log('DTR Firebase loaded!'); });
 </script>
 </body>
