@@ -19,37 +19,22 @@ h1{font-size:28px;margin-bottom:2px;font-weight:700;letter-spacing:1px}
 .date-label{font-size:15px;color:#888;margin-top:8px;font-weight:600}
 .instruction{font-size:18px;opacity:.7;margin-top:20px;line-height:1.8}
 .instruction strong{color:#E85D1A;opacity:1}
-.no-code{padding:40px}
 .no-code h2{font-size:24px;color:#E85D1A;margin-bottom:12px}
 .no-code p{font-size:16px;opacity:.6}
 .status-bar{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);padding:10px 24px;border-radius:20px;font-size:13px;background:rgba(45,139,70,.2);color:#4ADE80}
-.refresh-note{position:fixed;top:16px;right:20px;font-size:11px;opacity:.3}
 @keyframes fadeIn{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:scale(1)}}
 .qr-box{animation:fadeIn .5s ease}
 </style>
 </head>
 <body>
-
 <div class="school">Dr. Bonifacio A. Masilungan Integrated National High School</div>
 <h1>&#128336; Daily Time Record</h1>
 <div class="sub">Scan the QR code below to Time In / Time Out</div>
-
 <div class="clock" id="clock">00:00:00</div>
 <div class="clock-date" id="clockDate"></div>
-
-<div id="qrContainer">
-<div class="no-code">
-<h2>Loading...</h2>
-<p>Connecting to Firebase...</p>
-</div>
-</div>
-
-<div class="instruction">
-&#128241; Open <strong>DTR page</strong> on your phone &rarr; Login &rarr; <strong>Scan this QR code</strong>
-</div>
-
-<div class="status-bar" id="statusBar">&#128994; Connected to Firebase</div>
-<div class="refresh-note">Auto-refreshes daily at midnight</div>
+<div id="qrContainer"><div class="no-code"><h2>Loading...</h2><p>Connecting to Firebase...</p></div></div>
+<div class="instruction">&#128241; Open <strong>DTR page</strong> on your phone &rarr; Login &rarr; <strong>Scan this QR code</strong></div>
+<div class="status-bar" id="statusBar">&#128994; Connecting...</div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
@@ -63,18 +48,15 @@ function updateClock() {
   var h = now.getHours(), m = now.getMinutes(), s = now.getSeconds();
   var ampm = h >= 12 ? 'PM' : 'AM';
   var h12 = h % 12 || 12;
-  document.getElementById('clock').textContent = 
-    (h12<10?'0':'') + h12 + ':' + (m<10?'0':'') + m + ':' + (s<10?'0':'') + s + ' ' + ampm;
-  
+  document.getElementById('clock').textContent = (h12<10?'0':'')+h12+':'+(m<10?'0':'')+m+':'+(s<10?'0':'')+s+' '+ampm;
   var days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   var months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-  document.getElementById('clockDate').textContent = days[now.getDay()] + ', ' + months[now.getMonth()] + ' ' + now.getDate() + ', ' + now.getFullYear();
-  
-  // Check if date changed (midnight)
+  document.getElementById('clockDate').textContent = days[now.getDay()]+', '+months[now.getMonth()]+' '+now.getDate()+', '+now.getFullYear();
   var today = getTodayKey();
   if (currentDate && today !== currentDate) {
     currentDate = today;
-    loadQRCode();
+    currentCode = '';
+    autoGenerateAndDisplay();
   }
 }
 setInterval(updateClock, 1000);
@@ -82,69 +64,70 @@ updateClock();
 
 function getTodayKey() {
   var d = new Date();
-  return d.getFullYear() + '-' + (d.getMonth()+1<10?'0':'') + (d.getMonth()+1) + '-' + (d.getDate()<10?'0':'') + d.getDate();
+  return d.getFullYear()+'-'+(d.getMonth()+1<10?'0':'')+(d.getMonth()+1)+'-'+(d.getDate()<10?'0':'')+d.getDate();
 }
 
-function loadQRCode() {
+function autoGenerateAndDisplay() {
   var today = getTodayKey();
   currentDate = today;
   
-  // Check daily code first, then weekly code
-  var dailyCode = loadData('dtr_daily_code', {});
-  var weeklyCode = loadData('dtr_code_' + today, {});
-  
-  var code = '';
-  if (dailyCode.code && dailyCode.date === today) {
-    code = dailyCode.code;
-  } else if (weeklyCode.code && weeklyCode.date === today) {
-    code = weeklyCode.code;
-  }
-  
-  var container = document.getElementById('qrContainer');
-  
-  if (!code) {
-    container.innerHTML = '<div class="no-code"><h2>&#9888; No QR Code for Today</h2><p>Admin needs to generate today\'s code.<br>Go to Admin Dashboard &rarr; DTR System &rarr; Generate Today\'s Code or Generate Weekly Codes</p></div>';
-    document.getElementById('statusBar').textContent = '&#128308; No code generated for ' + today;
+  db.collection("portal_data").doc("dtr_daily_code").get().then(function(doc) {
+    var code = '';
+    if (doc.exists) {
+      try {
+        var data = JSON.parse(doc.data().data);
+        if (data.date === today && data.code) code = data.code;
+      } catch(e) {}
+    }
+    
+    if (!code) {
+      // Auto-generate new code for today
+      var chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+      code = "";
+      for (var i = 0; i < 6; i++) code += chars.charAt(Math.floor(Math.random() * chars.length));
+      saveData("dtr_daily_code", {code: code, date: today});
+      console.log("Auto-generated code for " + today + ": " + code);
+    }
+    
+    displayQR(code, today);
+  }).catch(function(err) {
+    document.getElementById('statusBar').textContent = '&#128308; Connection error';
     document.getElementById('statusBar').style.background = 'rgba(211,47,47,.2)';
     document.getElementById('statusBar').style.color = '#FCA5A5';
-    return;
-  }
-  
+  });
+}
+
+function displayQR(code, today) {
   if (code === currentCode) return;
   currentCode = code;
   
+  var container = document.getElementById('qrContainer');
   container.innerHTML = '<div class="qr-box"><div id="qrImage"></div><div class="code">' + code + '</div><div class="date-label">' + today + '</div></div>';
   
   new QRCode(document.getElementById('qrImage'), {
     text: 'DBAMINHS-DTR:' + code,
-    width: 220,
-    height: 220,
-    colorDark: '#1B2A4A',
-    colorLight: '#ffffff',
+    width: 220, height: 220,
+    colorDark: '#1B2A4A', colorLight: '#ffffff',
     correctLevel: QRCode.CorrectLevel.H
   });
   
-  document.getElementById('statusBar').textContent = '&#128994; Connected | Code active for ' + today;
+  document.getElementById('statusBar').textContent = '&#128994; Active | Code for ' + today;
   document.getElementById('statusBar').style.background = 'rgba(45,139,70,.2)';
   document.getElementById('statusBar').style.color = '#4ADE80';
 }
 
 // Initial load
 loadAllFromFirebase(function() {
-  loadQRCode();
+  autoGenerateAndDisplay();
 });
 
 // Listen for real-time changes
 listenForChanges(function() {
-  loadQRCode();
+  autoGenerateAndDisplay();
 });
 
-// Refresh every 5 minutes as backup
-setInterval(function() {
-  loadAllFromFirebase(function() {
-    loadQRCode();
-  });
-}, 300000);
+// Check every 5 minutes
+setInterval(autoGenerateAndDisplay, 300000);
 </script>
 </body>
 </html>
