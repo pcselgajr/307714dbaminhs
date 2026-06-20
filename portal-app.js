@@ -133,7 +133,7 @@ document.getElementById('sdName').textContent=user.fname+' '+user.lname;
 document.getElementById('sdWelcome').textContent=user.fname;
 }else if(user.type==='teacher'){
 document.getElementById('teacherDash').classList.add('act');
-setTimeout(function() { loadMyClasses(); loadTeacherQuizzes(); }, 200);
+setTimeout(function() { loadMyClasses(); loadTeacherQuizzes(); updateTeacherStats(); }, 200);
 document.getElementById('tdAv').textContent=user.fname[0];
 document.getElementById('tdName').textContent=user.fname+' '+user.lname;
 document.getElementById('tdWelcome').textContent=user.fname;
@@ -2032,6 +2032,85 @@ function closeQuizResult() {
   document.getElementById('quizTakeArea').style.display = 'none';
   document.getElementById('studentQuizList').style.display = 'block';
   loadStudentQuizzes();
+}
+
+
+
+// ============================================
+// TEACHER DASHBOARD DYNAMIC STATS
+// ============================================
+
+function updateTeacherStats() {
+  var keys = Object.keys(_cache);
+  var classCount = 0;
+  var totalStudents = 0;
+  var sectionsWithGrades = {};
+  var sectionsWithAttendance = {};
+  var allSections = {};
+  
+  // Count classes and students from grades data
+  keys.forEach(function(k) {
+    if (k.startsWith('grades_')) {
+      var section = k.replace('grades_', '').replace(/_/g, ' ');
+      var data = _cache[k];
+      if (data) {
+        var count = Object.keys(data).length;
+        if (count > 0) {
+          sectionsWithGrades[section] = true;
+          allSections[section] = true;
+          totalStudents += count;
+        }
+      }
+    }
+    if (k.startsWith('attendance_')) {
+      var section = k.replace('attendance_', '').replace(/_/g, ' ');
+      sectionsWithAttendance[section] = true;
+      allSections[section] = true;
+    }
+    if (k.startsWith('schedule_')) {
+      var section = k.replace('schedule_', '').replace(/_/g, ' ');
+      allSections[section] = true;
+    }
+  });
+  
+  classCount = Object.keys(allSections).length;
+  
+  // Count sections without grades (pending)
+  var settings = loadData('settings', {});
+  var sections = (settings.sections && settings.sections.length > 0) ? settings.sections : [];
+  var pendingCount = 0;
+  sections.forEach(function(s) {
+    var name = typeof s === 'object' ? s.name : s;
+    if (!sectionsWithGrades[name]) pendingCount++;
+  });
+  
+  // Calculate average attendance
+  var totalRate = 0;
+  var attCount = 0;
+  keys.forEach(function(k) {
+    if (k.startsWith('attendance_')) {
+      var data = _cache[k];
+      if (data) {
+        Object.keys(data).forEach(function(lrn) {
+          if (data[lrn].rate) {
+            totalRate += parseFloat(data[lrn].rate);
+            attCount++;
+          }
+        });
+      }
+    }
+  });
+  var avgAtt = attCount > 0 ? Math.round(totalRate / attCount) + '%' : '--';
+  
+  // Update UI
+  var el1 = document.getElementById('tStatClasses');
+  var el2 = document.getElementById('tStatStudents');
+  var el3 = document.getElementById('tStatPending');
+  var el4 = document.getElementById('tStatAttendance');
+  if (el1) el1.textContent = classCount;
+  if (el2) el2.textContent = totalStudents;
+  if (el3) el3.textContent = pendingCount;
+  if (el4) el4.textContent = avgAtt;
 }
 
 // Hook into login to load grades
