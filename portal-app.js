@@ -1223,7 +1223,7 @@ function loadMyClasses() {
 }
 
 function deleteClassData(sec) {
-  if (!confirm('Delete ALL data (grades, attendance, schedule) for "' + sec + '"?\n\nThis cannot be undone.')) return;
+  if (!confirm('Delete ALL data (grades, attendance, schedule) for "' + sec + '"?\n\nWarning: if other advisers also upload grades for this same section, their grades will be deleted too \u2014 this clears the WHOLE class record, not just your subject.\n\nThis cannot be undone.')) return;
   var key = sec.replace(/\s/g, '_');
   ['grades_', 'attendance_', 'schedule_'].forEach(function(prefix) {
     var docKey = prefix + key;
