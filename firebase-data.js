@@ -166,6 +166,14 @@ function getSubjectsForSection(sectionName, sections) {
   
   var cluster = sec ? sec.cluster : null;
   
+  // CUSTOM SUBJECTS: if this section has its own manually-edited subject list, use it directly.
+  // This takes priority over the fixed cluster lists below, so editing subjects in
+  // Admin > Class Sections Management always reflects immediately in the Teacher Dashboard.
+  if (sec && sec.subjects && sec.subjects.length > 0) {
+    if (cluster === 'JHS') return sec.subjects;
+    return CLUSTER_SUBJECTS['SHS-Core'].concat(sec.subjects);
+  }
+  
   // Auto-detect cluster from section name if not assigned
   if (!cluster) {
     if (name.indexOf('grade 7') > -1 || name.indexOf('grade 8') > -1 || name.indexOf('grade 9') > -1 || name.indexOf('grade 10') > -1) {

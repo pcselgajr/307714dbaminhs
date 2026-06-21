@@ -338,14 +338,21 @@ function renderSections() {
   var el = document.getElementById('sectionsList');
   if (!el) return;
   var secs = getSections();
-  var clusterColors = {JHS:'#e8733a',ASSH:'#7c3aed',Business:'#0891b2',STEM:'#059669',Sports:'#dc2626'};
+  var clusterColors = {JHS:'#e8733a',ASSH:'#7c3aed',Business:'#0891b2',STEM:'#059669',Sports:'#dc2626',ICT:'#2563eb'};
   var html = '';
   secs.forEach(function(s, i) {
     var color = clusterColors[s.cluster] || '#666';
-    html += '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--g1);border-radius:8px;margin-bottom:6px;border:1px solid var(--g2)">';
+    var hasCustom = s.subjects && s.subjects.length > 0;
+    html += '<div style="display:flex;flex-direction:column;gap:4px;padding:8px 12px;background:var(--g1);border-radius:8px;margin-bottom:6px;border:1px solid var(--g2)">';
+    html += '<div style="display:flex;align-items:center;gap:8px">';
     html += '<span style="flex:1;font-size:14px">' + s.name + '</span>';
     html += '<span style="font-size:11px;padding:3px 8px;border-radius:12px;background:' + color + '20;color:' + color + ';font-weight:600">' + s.cluster + '</span>';
+    html += '<button class="abtn" title="Edit Specialized Subjects" onclick="editSectionSubjects(' + i + ')" style="width:28px;height:28px;font-size:12px">&#9998;</button>';
     html += '<button class="abtn del" title="Remove" onclick="removeSection(' + i + ')" style="width:28px;height:28px;font-size:12px">&#10005;</button>';
+    html += '</div>';
+    if (hasCustom) {
+      html += '<div style="font-size:12px;color:var(--g5);padding-left:2px">Specialized Subjects: ' + s.subjects.join(', ') + '</div>';
+    }
     html += '</div>';
   });
   if (secs.length === 0) {
@@ -357,6 +364,7 @@ function renderSections() {
 function addSection() {
   var input = document.getElementById('newSection');
   var cluster = document.getElementById('newCluster').value;
+  var subjInput = document.getElementById('newSectionSubjects');
   var name = input.value.trim();
   if (!name) { toast('Enter section name','er'); return; }
   
@@ -366,11 +374,45 @@ function addSection() {
   var dup = SETTINGS.sections.find(function(s) { return (typeof s === 'object' ? s.name : s) === name; });
   if (dup) { toast('Section already exists!','er'); return; }
   
-  SETTINGS.sections.push({name: name, cluster: cluster});
+  var newSec = {name: name, cluster: cluster};
+  var subjRaw = subjInput ? subjInput.value.trim() : '';
+  if (subjRaw) {
+    newSec.subjects = subjRaw.split(',').map(function(s) { return s.trim(); }).filter(function(s) { return s.length > 0; });
+  }
+  
+  SETTINGS.sections.push(newSec);
   saveData('settings', SETTINGS);
   input.value = '';
+  if (subjInput) subjInput.value = '';
   renderSections();
   toast(name + ' (' + cluster + ') added!', 'su');
+}
+
+function editSectionSubjects(index) {
+  if (!SETTINGS.sections) SETTINGS.sections = getSections().slice();
+  var sec = SETTINGS.sections[index];
+  if (typeof sec !== 'object') return;
+  var current = (sec.subjects && sec.subjects.length > 0) ? sec.subjects.join(', ') : '';
+  var body = '<p style="font-size:13px;color:var(--g5);margin-bottom:12px">Editing specialized subjects for <b>' + sec.name + '</b>. Leave blank to use the default ' + sec.cluster + ' subject list instead.</p>' +
+    '<textarea id="editSubjectsInput" placeholder="e.g. Biology, Chemistry" style="width:100%;min-height:90px;padding:10px 14px;border:1.5px solid var(--g2);border-radius:8px;font-size:14px;font-family:var(--fb);box-sizing:border-box">' + current + '</textarea>' +
+    '<div style="display:flex;gap:10px;margin-top:14px"><button class="btn btn-p" onclick="saveSectionSubjects(' + index + ')">&#128190; Save</button><button class="btn btn-s" onclick="clM()">Cancel</button></div>';
+  opM('Edit Specialized Subjects', body);
+}
+
+function saveSectionSubjects(index) {
+  if (!SETTINGS.sections) SETTINGS.sections = getSections().slice();
+  var sec = SETTINGS.sections[index];
+  var input = document.getElementById('editSubjectsInput');
+  var raw = input ? input.value.trim() : '';
+  if (raw) {
+    sec.subjects = raw.split(',').map(function(s) { return s.trim(); }).filter(function(s) { return s.length > 0; });
+  } else {
+    delete sec.subjects;
+  }
+  saveData('settings', SETTINGS);
+  clM();
+  renderSections();
+  toast('Subjects updated for ' + sec.name, 'su');
 }
 
 function removeSection(index) {
