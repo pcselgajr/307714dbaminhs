@@ -1203,7 +1203,10 @@ function loadMyClasses() {
   sections.forEach(function(sec) {
     var c = classMap[sec];
     html += '<div style="background:var(--g1);border-radius:12px;padding:18px;border:1px solid var(--g2)">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">';
     html += '<div style="font-weight:700;font-size:15px;margin-bottom:10px">' + sec + '</div>';
+    html += '<button class="abtn del" title="Delete Class Data" onclick="deleteClassData(\'' + sec.replace(/'/g, "\\'") + '\')" style="width:24px;height:24px;font-size:11px;flex-shrink:0">&#128465;</button>';
+    html += '</div>';
     html += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">';
     html += '<span style="font-size:12px;padding:3px 10px;border-radius:12px;background:#e8733a20;color:#e8733a;font-weight:600">&#128100; ' + c.students + ' students</span>';
     html += '</div>';
@@ -1217,6 +1220,18 @@ function loadMyClasses() {
   
   html += '</div>';
   el.innerHTML = html;
+}
+
+function deleteClassData(sec) {
+  if (!confirm('Delete ALL data (grades, attendance, schedule) for "' + sec + '"?\n\nThis cannot be undone.')) return;
+  var key = sec.replace(/\s/g, '_');
+  ['grades_', 'attendance_', 'schedule_'].forEach(function(prefix) {
+    var docKey = prefix + key;
+    delete _cache[docKey];
+    db.collection('portal_data').doc(docKey).delete();
+  });
+  loadMyClasses();
+  toast(sec + ' data deleted', 'su');
 }
 
 
