@@ -133,7 +133,11 @@ document.getElementById('sdName').textContent=user.fname+' '+user.lname;
 document.getElementById('sdWelcome').textContent=user.fname;
 }else if(user.type==='teacher'){
 document.getElementById('teacherDash').classList.add('act');
-setTimeout(function() { loadMyClasses(); loadTeacherQuizzes(); updateTeacherStats(); }, 200);
+// Look up advisory sections from the Teachers Directory (matched by Employee ID)
+var teacherRecords = loadData('teachers', DEFAULT_TEACHERS);
+var teacherRecord = teacherRecords.find(function(t){return t.eid===user.eid});
+curUser.sections = (teacherRecord && teacherRecord.sections && teacherRecord.sections.length > 0) ? teacherRecord.sections : null;
+setTimeout(function() { populateSectionDropdowns(); loadMyClasses(); loadTeacherQuizzes(); updateTeacherStats(); }, 200);
 document.getElementById('tdAv').textContent=user.fname[0];
 document.getElementById('tdName').textContent=user.fname+' '+user.lname;
 document.getElementById('tdWelcome').textContent=user.fname;
@@ -780,7 +784,18 @@ var DEFAULT_SECTIONS = [
 
 function populateSectionDropdowns() {
   var settings = loadData('settings', DEFAULT_SETTINGS);
-  var secs = (settings.sections && settings.sections.length > 0) ? settings.sections : DEFAULT_SECTIONS;
+  var allSecs = (settings.sections && settings.sections.length > 0) ? settings.sections : DEFAULT_SECTIONS;
+  
+  // Teacher-only dropdowns get filtered to the logged-in teacher's advisory sections (if assigned).
+  // sGradeSection (used during public student signup) always shows all sections.
+  var teacherDropdowns = ['gradeClass', 'attClass', 'schedClass', 'announceClass'];
+  var restrictedSecs = null;
+  if (curUser && curUser.type === 'teacher' && curUser.sections && curUser.sections.length > 0) {
+    restrictedSecs = allSecs.filter(function(s) {
+      var name = typeof s === 'object' ? s.name : s;
+      return curUser.sections.indexOf(name) > -1;
+    });
+  }
   
   var dropdowns = ['gradeClass', 'attClass', 'schedClass', 'announceClass', 'sGradeSection'];
   dropdowns.forEach(function(id) {
@@ -788,6 +803,7 @@ function populateSectionDropdowns() {
     if (!el) return;
     var current = el.value;
     el.innerHTML = '';
+    var secs = (teacherDropdowns.indexOf(id) > -1 && restrictedSecs) ? restrictedSecs : allSecs;
     if (id === 'announceClass') {
       var opt = document.createElement('option');
       opt.value = 'All My Classes';
@@ -810,7 +826,7 @@ function populateSectionDropdowns() {
     });
     if (current) el.value = current;
   });
-  console.log('Section dropdowns populated:', secs.length, 'sections');
+  console.log('Section dropdowns populated:', allSecs.length, 'total sections' + (restrictedSecs ? ', restricted to ' + restrictedSecs.length + ' for this teacher' : ''));
 }
 
 
@@ -1156,10 +1172,17 @@ function loadMyClasses() {
   var keys = Object.keys(_cache);
   var classMap = {};
   
+  // If this teacher has assigned advisory sections, only show data for those sections
+  var allowedSections = (curUser && curUser.type === 'teacher' && curUser.sections && curUser.sections.length > 0) ? curUser.sections : null;
+  function isAllowed(section) {
+    return !allowedSections || allowedSections.indexOf(section) > -1;
+  }
+  
   // Scan grades data
   keys.forEach(function(k) {
     if (k.startsWith('grades_')) {
       var section = k.replace('grades_', '').replace(/_/g, ' ');
+      if (!isAllowed(section)) return;
       if (!classMap[section]) classMap[section] = {students: 0, hasGrades: false, hasAttendance: false, hasSchedule: false};
       var data = _cache[k];
       if (data) {
@@ -1173,6 +1196,7 @@ function loadMyClasses() {
   keys.forEach(function(k) {
     if (k.startsWith('attendance_')) {
       var section = k.replace('attendance_', '').replace(/_/g, ' ');
+      if (!isAllowed(section)) return;
       if (!classMap[section]) classMap[section] = {students: 0, hasGrades: false, hasAttendance: false, hasSchedule: false};
       classMap[section].hasAttendance = true;
       if (!classMap[section].students) {
@@ -1185,12 +1209,21 @@ function loadMyClasses() {
   keys.forEach(function(k) {
     if (k.startsWith('schedule_')) {
       var section = k.replace('schedule_', '').replace(/_/g, ' ');
+      if (!isAllowed(section)) return;
       if (!classMap[section]) classMap[section] = {students: 0, hasGrades: false, hasAttendance: false, hasSchedule: false};
       classMap[section].hasSchedule = true;
     }
   });
   
   var sections = Object.keys(classMap);
+  
+  // If teacher has assigned sections but none have data yet, still list them (with zero data)
+  if (allowedSections) {
+    allowedSections.forEach(function(s) {
+      if (!classMap[s]) classMap[s] = {students: 0, hasGrades: false, hasAttendance: false, hasSchedule: false};
+    });
+    sections = Object.keys(classMap);
+  }
   
   if (sections.length === 0) {
     el.innerHTML = '<h3>&#128218; My Classes</h3><div style="text-align:center;padding:32px;color:var(--g5)"><div style="font-size:48px;margin-bottom:12px">&#128218;</div><p>No class data yet.</p><p style="font-size:13px;margin-top:8px">Upload grades, attendance, or schedule in the other tabs to see your classes here.</p></div>';
