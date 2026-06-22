@@ -306,7 +306,7 @@ function downloadTemplate() {
     classStudents = students.filter(function(s) { return s.status === 'Active'; });
   }
   
-  var csv = 'LRN,Name (Last Name, First Name),' + subjects.join(',') + '\n';
+  var csv = 'LRN,"Name (Last Name, First Name)",' + subjects.join(',') + '\n';
   classStudents.forEach(function(s) {
     csv += s.lrn + ',"' + toLastFirst(s.name) + '"';
     subjects.forEach(function() { csv += ','; });
@@ -596,7 +596,7 @@ function downloadAttTemplate() {
     classStudents = students.filter(function(s) { return s.status === 'Active'; });
   }
   
-  var csv = 'LRN,Name (Last Name, First Name),Days Present,Days Absent,Days Late,Total School Days\n';
+  var csv = 'LRN,"Name (Last Name, First Name)",Days Present,Days Absent,Days Late,Total School Days\n';
   classStudents.forEach(function(s) {
     csv += s.lrn + ',"' + toLastFirst(s.name) + '",,,,\n';
   });
