@@ -270,6 +270,62 @@ if(lpw)lpw.addEventListener('keydown',function(e){if(e.key==='Enter')doLogin()})
 // ============================================
 
 
+// Splits a full name string into {lastName, firstName} for display purposes.
+// Recognizes common multi-word Filipino surname prefixes (Dela Cruz, Del Rosario, De Leon, etc.)
+// so they aren't broken apart incorrectly. Falls back to "last word = surname" otherwise.
+// Parses a single CSV line into fields, respecting double-quoted fields that may contain commas
+// (needed now that Name is formatted as "Last Name, First Name").
+function parseCSVLine(line) {
+  var fields = [];
+  var cur = '';
+  var inQuotes = false;
+  for (var i = 0; i < line.length; i++) {
+    var ch = line[i];
+    if (ch === '"') {
+      if (inQuotes && line[i+1] === '"') { cur += '"'; i++; }
+      else { inQuotes = !inQuotes; }
+    } else if (ch === ',' && !inQuotes) {
+      fields.push(cur);
+      cur = '';
+    } else {
+      cur += ch;
+    }
+  }
+  fields.push(cur);
+  return fields;
+}
+
+var SURNAME_PREFIXES = ['dela', 'de la', 'del', 'de los', 'de las', 'de', 'san', 'santa', 'sto', 'santo'];
+function splitName(fullName) {
+  var parts = fullName.trim().split(/\s+/);
+  if (parts.length < 2) return {lastName: fullName, firstName: ''};
+  
+  var lastWord = parts[parts.length - 1].toLowerCase();
+  var secondLastWord = parts.length > 2 ? parts[parts.length - 2].toLowerCase() : '';
+  
+  // Check for two-word surname prefix (e.g. "Dela Cruz", "Del Rosario")
+  if (secondLastWord && SURNAME_PREFIXES.indexOf(secondLastWord) > -1) {
+    return {
+      lastName: parts.slice(parts.length - 2).join(' '),
+      firstName: parts.slice(0, parts.length - 2).join(' ')
+    };
+  }
+  
+  return {
+    lastName: parts[parts.length - 1],
+    firstName: parts.slice(0, parts.length - 1).join(' ')
+  };
+}
+function toLastFirst(fullName) {
+  var n = splitName(fullName);
+  return n.firstName ? (n.lastName + ', ' + n.firstName) : n.lastName;
+}
+function fromLastFirst(lastFirstStr) {
+  var parts = lastFirstStr.split(',');
+  if (parts.length < 2) return lastFirstStr.trim();
+  return parts[1].trim() + ' ' + parts[0].trim();
+}
+
 function downloadTemplate() {
   var cls = document.getElementById('gradeClass').value;
   var settings = loadData('settings', DEFAULT_SETTINGS);
@@ -282,9 +338,9 @@ function downloadTemplate() {
     classStudents = students.filter(function(s) { return s.status === 'Active'; });
   }
   
-  var csv = 'LRN,Name,' + subjects.join(',') + '\n';
+  var csv = 'LRN,Name (Last Name, First Name),' + subjects.join(',') + '\n';
   classStudents.forEach(function(s) {
-    csv += s.lrn + ',' + s.name;
+    csv += s.lrn + ',"' + toLastFirst(s.name) + '"';
     subjects.forEach(function() { csv += ','; });
     csv += '\n';
   });
@@ -314,7 +370,7 @@ function handleCSVUpload(event) {
       return;
     }
     
-    var header = lines[0].split(',').map(function(h) { return h.trim(); });
+    var header = parseCSVLine(lines[0]).map(function(h) { return h.trim(); });
     if (header.length < 4) {
       showUploadStatus('Error: CSV must have LRN, Name, and at least one subject column.', 'error');
       return;
@@ -323,11 +379,11 @@ function handleCSVUpload(event) {
     var records = [];
     var errors = [];
     for (var i = 1; i < lines.length; i++) {
-      var row = lines[i].split(',');
+      var row = parseCSVLine(lines[i]);
       if (!row[0] || !row[0].trim()) continue;
       
       var lrn = row[0].trim();
-      var name = row[1] ? row[1].trim() : '';
+      var name = row[1] ? fromLastFirst(row[1].trim()) : '';
       var grades = {};
       var hasError = false;
       
@@ -570,9 +626,9 @@ function downloadAttTemplate() {
     classStudents = students.filter(function(s) { return s.status === 'Active'; });
   }
   
-  var csv = 'LRN,Name,Days Present,Days Absent,Days Late,Total School Days\n';
+  var csv = 'LRN,Name (Last Name, First Name),Days Present,Days Absent,Days Late,Total School Days\n';
   classStudents.forEach(function(s) {
-    csv += s.lrn + ',' + s.name + ',,,,\n';
+    csv += s.lrn + ',"' + toLastFirst(s.name) + '",,,,\n';
   });
   
   var blob = new Blob([csv], {type: 'text/csv'});
@@ -602,11 +658,11 @@ function handleAttUpload(event) {
     
     var records = [];
     for (var i = 1; i < lines.length; i++) {
-      var row = lines[i].split(',');
+      var row = parseCSVLine(lines[i]);
       if (!row[0] || !row[0].trim()) continue;
       
       var lrn = row[0].trim();
-      var name = row[1] ? row[1].trim() : '';
+      var name = row[1] ? fromLastFirst(row[1].trim()) : '';
       var present = parseInt(row[2]) || 0;
       var absent = parseInt(row[3]) || 0;
       var late = parseInt(row[4]) || 0;
