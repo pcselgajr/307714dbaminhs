@@ -166,6 +166,7 @@ toast('Logged out successfully');
 }
 
 function doSignup(){
+loadSavedAccounts();
 var fn=document.getElementById('sf').value.trim();
 var ln=document.getElementById('sl').value.trim();
 var em=document.getElementById('se').value.trim();
@@ -179,20 +180,23 @@ if(p1!==p2){toast('Passwords do not match.','er');return}
 if(!ag){toast('Please agree to Terms & Conditions.','er');return}
 var newAcc={id:em.toLowerCase(),pw:p1,type:signupType==='s'?'student':signupType==='t'?'teacher':'parent',fname:fn,lname:ln,email:em};
 if(signupType==='s'){
-newAcc.lrn=document.getElementById('sLrn').value;
+newAcc.lrn=document.getElementById('sLrn').value.trim();
 newAcc.grade=document.getElementById('sGradeSection').value||'TBA';
 if(!newAcc.lrn){toast('Please enter LRN.','er');return}
+if(accounts.find(function(a){return a.lrn===newAcc.lrn})){toast('This LRN is already registered. Please log in instead, or contact the admin if this is a mistake.','er');return}
 newAcc.id=newAcc.lrn;
 }else if(signupType==='t'){
-newAcc.eid=document.getElementById('sEmp').value;
+newAcc.eid=document.getElementById('sEmp').value.trim();
 newAcc.dept='TBA';
 if(!newAcc.eid){toast('Please enter Employee ID.','er');return}
+if(accounts.find(function(a){return a.eid===newAcc.eid})){toast('This Employee ID is already registered. Please log in instead, or contact the admin if this is a mistake.','er');return}
 newAcc.id=newAcc.eid;
 }else{
-newAcc.childLrn=document.getElementById('sChild').value;
+newAcc.childLrn=document.getElementById('sChild').value.trim();
 newAcc.childName='Your Child';
 if(!newAcc.childLrn){toast('Please enter child LRN.','er');return}
 }
+if(accounts.find(function(a){return a.id===newAcc.id})){toast('An account with this ID already exists. Please log in instead.','er');return}
 accounts.push(newAcc);
 // Save account to Firebase
 var accts = loadData('accounts', []);
