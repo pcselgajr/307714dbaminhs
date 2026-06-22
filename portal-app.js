@@ -137,7 +137,12 @@ document.getElementById('teacherDash').classList.add('act');
 var teacherRecords = loadData('teachers', DEFAULT_TEACHERS);
 var teacherRecord = teacherRecords.find(function(t){return t.eid===user.eid});
 curUser.sections = (teacherRecord && teacherRecord.sections && teacherRecord.sections.length > 0) ? teacherRecord.sections : null;
-setTimeout(function() { populateSectionDropdowns(); loadMyClasses(); loadTeacherQuizzes(); updateTeacherStats(); }, 200);
+setTimeout(function() {
+  try { populateSectionDropdowns(); } catch(e) { console.error('populateSectionDropdowns error:', e); }
+  try { loadMyClasses(); } catch(e) { console.error('loadMyClasses error:', e); }
+  try { loadTeacherQuizzes(); } catch(e) { console.error('loadTeacherQuizzes error:', e); }
+  try { updateTeacherStats(); } catch(e) { console.error('updateTeacherStats error:', e); }
+}, 200);
 document.getElementById('tdAv').textContent=user.fname[0];
 document.getElementById('tdName').textContent=user.fname+' '+user.lname;
 document.getElementById('tdWelcome').textContent=user.fname;
