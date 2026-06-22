@@ -296,23 +296,32 @@ function parseCSVLine(line) {
 }
 
 var SURNAME_PREFIXES = ['dela', 'de la', 'del', 'de los', 'de las', 'de', 'san', 'santa', 'sto', 'santo'];
+var NAME_SUFFIXES = ['jr', 'jr.', 'sr', 'sr.', 'ii', 'iii', 'iv', 'v'];
 function splitName(fullName) {
   var parts = fullName.trim().split(/\s+/);
   if (parts.length < 2) return {lastName: fullName, firstName: ''};
   
-  var lastWord = parts[parts.length - 1].toLowerCase();
+  // Peel off a trailing suffix (Jr, Sr, II, III...) first - it belongs with the surname,
+  // not as its own "last word", e.g. "Noly P. Gonzaga Jr" -> surname is "Gonzaga Jr".
+  var suffix = '';
+  var lastWordRaw = parts[parts.length - 1];
+  if (NAME_SUFFIXES.indexOf(lastWordRaw.toLowerCase().replace(/\.$/, '')) > -1 && parts.length > 2) {
+    suffix = ' ' + lastWordRaw;
+    parts = parts.slice(0, parts.length - 1);
+  }
+  
   var secondLastWord = parts.length > 2 ? parts[parts.length - 2].toLowerCase() : '';
   
   // Check for two-word surname prefix (e.g. "Dela Cruz", "Del Rosario")
   if (secondLastWord && SURNAME_PREFIXES.indexOf(secondLastWord) > -1) {
     return {
-      lastName: parts.slice(parts.length - 2).join(' '),
+      lastName: parts.slice(parts.length - 2).join(' ') + suffix,
       firstName: parts.slice(0, parts.length - 2).join(' ')
     };
   }
   
   return {
-    lastName: parts[parts.length - 1],
+    lastName: parts[parts.length - 1] + suffix,
     firstName: parts.slice(0, parts.length - 1).join(' ')
   };
 }
@@ -345,7 +354,7 @@ function downloadTemplate() {
     csv += '\n';
   });
   
-  var blob = new Blob([csv], {type: 'text/csv'});
+  var blob = new Blob(['\uFEFF' + csv], {type: 'text/csv;charset=utf-8'});
   var url = URL.createObjectURL(blob);
   var a = document.createElement('a');
   a.href = url;
@@ -461,7 +470,7 @@ function handleCSVUpload(event) {
     
     showUploadStatus('CSV parsed! Review grades and click Save.', 'success');
   };
-  reader.readAsText(file);
+  reader.readAsText(file, 'UTF-8');
   event.target.value = '';
 }
 
@@ -631,7 +640,7 @@ function downloadAttTemplate() {
     csv += s.lrn + ',"' + toLastFirst(s.name) + '",,,,\n';
   });
   
-  var blob = new Blob([csv], {type: 'text/csv'});
+  var blob = new Blob(['\uFEFF' + csv], {type: 'text/csv;charset=utf-8'});
   var url = URL.createObjectURL(blob);
   var a = document.createElement('a');
   a.href = url;
@@ -707,7 +716,7 @@ function handleAttUpload(event) {
     
     showAttStatus('CSV parsed! Review and click Save.', 'success');
   };
-  reader.readAsText(file);
+  reader.readAsText(file, 'UTF-8');
   event.target.value = '';
 }
 
@@ -1031,7 +1040,7 @@ function downloadSchedTemplate() {
     csv += d + ',,,,\n';
   });
   
-  var blob = new Blob([csv], {type: 'text/csv'});
+  var blob = new Blob(['\uFEFF' + csv], {type: 'text/csv;charset=utf-8'});
   var url = URL.createObjectURL(blob);
   var a = document.createElement('a');
   a.href = url;
@@ -1104,7 +1113,7 @@ function handleSchedUpload(event) {
     
     showSchedStatus('CSV parsed! Review and click Save.', 'success');
   };
-  reader.readAsText(file);
+  reader.readAsText(file, 'UTF-8');
   event.target.value = '';
 }
 
