@@ -1394,8 +1394,6 @@ function openResourcesModal() {
   var modal = document.getElementById('resourcesModal');
   if (!modal) return;
   modal.style.display = 'flex';
-  document.getElementById('resPassInput').value = '';
-  document.getElementById('resPassError').style.display = 'none';
   
   // Reset to password screen
   document.getElementById('resModalContent').innerHTML = 

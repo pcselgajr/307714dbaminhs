@@ -358,7 +358,7 @@ td{padding:12px 16px;border-bottom:1px solid var(--g1);font-size:13.5px}
 <div class="dash-body">
 <div class="dash-welcome" style="background:linear-gradient(135deg,var(--n),var(--nl))"><h2>&#128075; Welcome, <span id="tdWelcome">Teacher</span>!</h2><p>Manage your classes and students</p></div>
 <div class="dash-stat-row"><div class="dash-stat"><b id="tStatClasses">0</b><small>Classes</small></div><div class="dash-stat"><b id="tStatStudents">0</b><small>Students</small></div><div class="dash-stat"><b id="tStatPending">0</b><small>Pending Grades</small></div><div class="dash-stat"><b id="tStatAttendance">--</b><small>Avg. Attendance</small></div></div>
-<div class="dash-nav"><button class="act" onclick="tdTab(this,'tdClasses')">&#128218; My Classes</button><button onclick="tdTab(this,'tdGrade')">&#128202; Grade Input</button><button onclick="tdTab(this,'tdAttendance')">&#128203; Attendance</button><button onclick="tdTab(this,'tdSchedule')">&#128197; Schedule</button><button onclick="tdTab(this,'tdAnnounce')">&#128227; Announcements</button></div>
+<div class="dash-nav"><button class="act" onclick="tdTab(this,'tdClasses')">&#128218; My Classes</button><button onclick="tdTab(this,'tdGrade')">&#128202; Grade Input</button><button onclick="tdTab(this,'tdAttendance')">&#128203; Attendance</button><button onclick="tdTab(this,'tdSchedule')">&#128197; Schedule</button><button onclick="tdTab(this,'tdAnnounce')">&#128227; Announcements</button><button onclick="openResourcesModal()">&#128194; Resources</button></div>
 <div id="tdClasses" class="dash-card"><div id="tdClassesContent"><div style="text-align:center;padding:24px;color:var(--g5)">Loading classes...</div></div></div>
 <div id="tdGrade" class="dash-card" style="display:none">
 <h3>&#128202; Grade Upload System</h3>
@@ -511,6 +511,15 @@ Example: <code style="background:var(--w);padding:2px 6px;border-radius:4px;font
 </div></div>
 
 <div class="toast" id="toastEl"></div>
+
+<!-- TEACHER RESOURCES MODAL -->
+<div id="resourcesModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center" onclick="if(event.target===this)closeResModal()">
+<div style="background:#fff;border-radius:16px;padding:28px;max-width:480px;width:90%;max-height:80vh;overflow-y:auto;position:relative">
+<button onclick="closeResModal()" style="position:absolute;top:16px;right:16px;background:none;border:none;font-size:24px;cursor:pointer;color:#999;line-height:1">&times;</button>
+<div id="resModalContent"></div>
+</div>
+</div>
+
 <button class="stt" id="stt" onclick="window.scrollTo({top:0,behavior:'smooth'})">&#8593;</button>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
