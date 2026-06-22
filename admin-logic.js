@@ -72,8 +72,9 @@ function rN(){document.getElementById('nB').innerHTML=N.map(function(n){return '
 function rE(){document.getElementById('eB').innerHTML=E.map(function(e){return '<tr><td><strong>'+e.name+'</strong></td><td>'+formatDate(e.date)+'</td><td>'+e.time+'</td><td>'+(e.venue||'')+'</td><td><span class="badge b-ac">'+e.status+'</span></td><td><div class="ab"><button class="abtn" title="Edit" onclick="edE('+e.id+')">&#9998;</button><button class="abtn del" title="Delete" onclick="del(\'e\','+e.id+')">&#128465;</button></div></td></tr>'}).join('')}
 
 function rS(){
-  document.getElementById('sB').innerHTML=S.map(function(s){
-    return '<tr><td><input type="checkbox" class="sCb" value="'+s.id+'" onchange="updateSelectedCount()"></td><td style="font-family:monospace;font-size:12px">'+s.lrn+'</td><td><strong>'+s.name+'</strong></td><td>'+s.grade+'</td><td>'+s.contact+'</td><td><span class="badge '+(s.status==='Active'?'b-ac':'b-in')+'">'+s.status+'</span></td><td><div class="ab"><button class="abtn" title="Edit" onclick="edS('+s.id+')">&#9998;</button><button class="abtn del" title="Delete" onclick="del(\'s\','+s.id+')">&#128465;</button></div></td></tr>';
+  var sorted = sortByLastName(S);
+  document.getElementById('sB').innerHTML=sorted.map(function(s){
+    return '<tr><td><input type="checkbox" class="sCb" value="'+s.id+'" onchange="updateSelectedCount()"></td><td style="font-family:monospace;font-size:12px">'+s.lrn+'</td><td><strong>'+s.name.toUpperCase()+'</strong></td><td>'+s.grade+'</td><td>'+s.contact+'</td><td><span class="badge '+(s.status==='Active'?'b-ac':'b-in')+'">'+s.status+'</span></td><td><div class="ab"><button class="abtn" title="Edit" onclick="edS('+s.id+')">&#9998;</button><button class="abtn del" title="Delete" onclick="del(\'s\','+s.id+')">&#128465;</button></div></td></tr>';
   }).join('');
   populateSectionFilter();
   updateSelectedCount();

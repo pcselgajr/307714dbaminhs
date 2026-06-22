@@ -270,9 +270,6 @@ if(lpw)lpw.addEventListener('keydown',function(e){if(e.key==='Enter')doLogin()})
 // ============================================
 
 
-// Splits a full name string into {lastName, firstName} for display purposes.
-// Recognizes common multi-word Filipino surname prefixes (Dela Cruz, Del Rosario, De Leon, etc.)
-// so they aren't broken apart incorrectly. Falls back to "last word = surname" otherwise.
 // Parses a single CSV line into fields, respecting double-quoted fields that may contain commas
 // (needed now that Name is formatted as "Last Name, First Name").
 function parseCSVLine(line) {
@@ -294,46 +291,8 @@ function parseCSVLine(line) {
   fields.push(cur);
   return fields;
 }
-
-var SURNAME_PREFIXES = ['dela', 'de la', 'del', 'de los', 'de las', 'de', 'san', 'santa', 'sto', 'santo'];
-var NAME_SUFFIXES = ['jr', 'jr.', 'sr', 'sr.', 'ii', 'iii', 'iv', 'v'];
-function splitName(fullName) {
-  var parts = fullName.trim().split(/\s+/);
-  if (parts.length < 2) return {lastName: fullName, firstName: ''};
-  
-  // Peel off a trailing suffix (Jr, Sr, II, III...) first - it belongs with the surname,
-  // not as its own "last word", e.g. "Noly P. Gonzaga Jr" -> surname is "Gonzaga Jr".
-  var suffix = '';
-  var lastWordRaw = parts[parts.length - 1];
-  if (NAME_SUFFIXES.indexOf(lastWordRaw.toLowerCase().replace(/\.$/, '')) > -1 && parts.length > 2) {
-    suffix = ' ' + lastWordRaw;
-    parts = parts.slice(0, parts.length - 1);
-  }
-  
-  var secondLastWord = parts.length > 2 ? parts[parts.length - 2].toLowerCase() : '';
-  
-  // Check for two-word surname prefix (e.g. "Dela Cruz", "Del Rosario")
-  if (secondLastWord && SURNAME_PREFIXES.indexOf(secondLastWord) > -1) {
-    return {
-      lastName: parts.slice(parts.length - 2).join(' ') + suffix,
-      firstName: parts.slice(0, parts.length - 2).join(' ')
-    };
-  }
-  
-  return {
-    lastName: parts[parts.length - 1] + suffix,
-    firstName: parts.slice(0, parts.length - 1).join(' ')
-  };
-}
-function toLastFirst(fullName) {
-  var n = splitName(fullName);
-  return n.firstName ? (n.lastName + ', ' + n.firstName) : n.lastName;
-}
-function fromLastFirst(lastFirstStr) {
-  var parts = lastFirstStr.split(',');
-  if (parts.length < 2) return lastFirstStr.trim();
-  return parts[1].trim() + ' ' + parts[0].trim();
-}
+// splitName, toLastFirst, fromLastFirst, and sortByLastName are defined in firebase-data.js
+// (shared with admin.html), which is loaded before this file.
 
 function downloadTemplate() {
   var cls = document.getElementById('gradeClass').value;
@@ -534,10 +493,12 @@ function updateGradeView() {
   });
   html += '<th>Avg</th><th>Remarks</th></tr></thead><tbody>';
   
-  lrns.forEach(function(lrn) {
+  var sortedLrns = sortByLastName(lrns, function(lrn) { return data[lrn].name; });
+  
+  sortedLrns.forEach(function(lrn) {
     var r = data[lrn];
     var g = r.grades || {};
-    html += '<tr><td style="font-family:monospace;font-size:11px">' + lrn + '</td><td style="font-size:12px">' + r.name + '</td>';
+    html += '<tr><td style="font-family:monospace;font-size:11px">' + lrn + '</td><td style="font-size:12px">' + r.name.toUpperCase() + '</td>';
     var total = 0, count = 0;
     allSubjects.forEach(function(s) {
       var v = g[s];
@@ -770,11 +731,13 @@ function updateAttView() {
   var html = '<h4 style="font-size:15px;margin-bottom:12px">&#128203; Saved Attendance &mdash; ' + cls + '</h4>';
   html += '<div style="overflow-x:auto"><table><thead><tr><th>LRN</th><th>Name</th><th>Present</th><th>Absent</th><th>Late</th><th>Total</th><th>Rate</th></tr></thead><tbody>';
   
-  lrns.forEach(function(lrn) {
+  var sortedLrns = sortByLastName(lrns, function(lrn) { return data[lrn].name; });
+  
+  sortedLrns.forEach(function(lrn) {
     var r = data[lrn];
     var rateColor = r.rate >= 90 ? '#22c55e' : (r.rate >= 80 ? '#f59e0b' : '#ef4444');
     html += '<tr><td style="font-family:monospace;font-size:11px">' + lrn + '</td>';
-    html += '<td style="font-size:12px">' + r.name + '</td>';
+    html += '<td style="font-size:12px">' + r.name.toUpperCase() + '</td>';
     html += '<td style="text-align:center">' + r.present + '</td>';
     html += '<td style="text-align:center">' + r.absent + '</td>';
     html += '<td style="text-align:center">' + r.late + '</td>';

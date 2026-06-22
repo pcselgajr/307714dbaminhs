@@ -202,3 +202,61 @@ function getSubjectsForSection(sectionName, sections) {
   }
   return subjects;
 }
+
+// ============================================
+// SHARED NAME HELPERS (used by both admin.html and index.html / portal-app.js)
+// ============================================
+
+// Splits a full name string into {lastName, firstName} for display purposes.
+// Recognizes common multi-word Filipino surname prefixes (Dela Cruz, Del Rosario, De Leon, etc.)
+// and trailing suffixes (Jr, Sr, II, III...) so they attach to the surname instead of being
+// misread as the surname itself. Falls back to "last word = surname" otherwise.
+var SURNAME_PREFIXES = ['dela', 'de la', 'del', 'de los', 'de las', 'de', 'san', 'santa', 'sto', 'santo'];
+var NAME_SUFFIXES = ['jr', 'jr.', 'sr', 'sr.', 'ii', 'iii', 'iv', 'v'];
+function splitName(fullName) {
+  var parts = fullName.trim().split(/\s+/);
+  if (parts.length < 2) return {lastName: fullName, firstName: ''};
+  
+  var suffix = '';
+  var lastWordRaw = parts[parts.length - 1];
+  if (NAME_SUFFIXES.indexOf(lastWordRaw.toLowerCase().replace(/\.$/, '')) > -1 && parts.length > 2) {
+    suffix = ' ' + lastWordRaw;
+    parts = parts.slice(0, parts.length - 1);
+  }
+  
+  var secondLastWord = parts.length > 2 ? parts[parts.length - 2].toLowerCase() : '';
+  
+  if (secondLastWord && SURNAME_PREFIXES.indexOf(secondLastWord) > -1) {
+    return {
+      lastName: parts.slice(parts.length - 2).join(' ') + suffix,
+      firstName: parts.slice(0, parts.length - 2).join(' ')
+    };
+  }
+  
+  return {
+    lastName: parts[parts.length - 1] + suffix,
+    firstName: parts.slice(0, parts.length - 1).join(' ')
+  };
+}
+function toLastFirst(fullName) {
+  var n = splitName(fullName);
+  return n.firstName ? (n.lastName + ', ' + n.firstName) : n.lastName;
+}
+function fromLastFirst(lastFirstStr) {
+  var parts = lastFirstStr.split(',');
+  if (parts.length < 2) return lastFirstStr.trim();
+  return parts[1].trim() + ' ' + parts[0].trim();
+}
+
+// Sorts an array of objects (each having a `name` property, or via a custom accessor)
+// alphabetically by last name. Used to keep grade/attendance/student tables in A-Z order.
+function sortByLastName(arr, nameAccessor) {
+  var getName = nameAccessor || function(item) { return item.name; };
+  return arr.slice().sort(function(a, b) {
+    var lastA = splitName(getName(a)).lastName.toUpperCase();
+    var lastB = splitName(getName(b)).lastName.toUpperCase();
+    if (lastA < lastB) return -1;
+    if (lastA > lastB) return 1;
+    return 0;
+  });
+}
