@@ -385,6 +385,11 @@ tr:hover td{background:var(--cr)}
 </div>
 <div id="sectionsList" style="margin-bottom:18px"></div>
 <hr style="border:none;border-top:1px solid var(--g2);margin:18px 0">
+<h4 style="font-size:14px;margin-bottom:12px">&#129529; Orphaned Data Cleanup</h4>
+<p style="font-size:13px;color:var(--g5);margin-bottom:12px">If you deleted a section above, its grades/attendance/schedule records are NOT automatically deleted — they remain stored but are no longer reachable through any dropdown. Use this tool to find and remove that leftover data.</p>
+<div style="display:flex;gap:10px;margin-bottom:12px"><button class="btn btn-s btn-sm" onclick="scanOrphanedData()">&#128269; Scan for Orphaned Data</button></div>
+<div id="orphanedList"></div>
+<hr style="border:none;border-top:1px solid var(--g2);margin:18px 0">
 <h4 style="font-size:14px;margin-bottom:12px">&#127912; Portal Appearance</h4>
 <div class="fg-row"><div class="fg"><label>Primary Color</label><input type="color" value="#E85D1A" style="height:40px;padding:4px" onchange="document.documentElement.style.setProperty('--o',this.value)"></div><div class="fg"><label>Secondary Color</label><input type="color" value="#1B2A4A" style="height:40px;padding:4px" onchange="document.documentElement.style.setProperty('--n',this.value)"></div></div>
 <div style="display:flex;gap:10px;margin-top:18px"><button class="btn btn-p" onclick="saveSettings()">&#128190; Save Settings</button><button class="btn btn-s" onclick="resetData()">Reset</button></div>

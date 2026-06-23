@@ -427,6 +427,66 @@ function removeSection(index) {
   toast(name + ' removed', 'su');
 }
 
+// ============================================
+// ORPHANED DATA CLEANUP
+// ============================================
+
+function scanOrphanedData() {
+  var currentSections = getSections().map(function(s) { return typeof s === 'object' ? s.name : s; });
+  var prefixes = ['grades_', 'attendance_', 'schedule_'];
+  var orphans = {}; // sectionName -> {grades: bool, attendance: bool, schedule: bool, students: n}
+  
+  Object.keys(_cache).forEach(function(key) {
+    prefixes.forEach(function(prefix) {
+      if (key.indexOf(prefix) === 0) {
+        var sectionName = key.substring(prefix.length).replace(/_/g, ' ');
+        if (currentSections.indexOf(sectionName) === -1) {
+          if (!orphans[sectionName]) orphans[sectionName] = {grades: false, attendance: false, schedule: false, students: 0};
+          var type = prefix.replace('_', '');
+          orphans[sectionName][type] = true;
+          var data = _cache[key];
+          if (data && typeof data === 'object') {
+            orphans[sectionName].students = Math.max(orphans[sectionName].students, Object.keys(data).length);
+          }
+        }
+      }
+    });
+  });
+  
+  var names = Object.keys(orphans);
+  var el = document.getElementById('orphanedList');
+  if (names.length === 0) {
+    el.innerHTML = '<div style="text-align:center;padding:16px;color:var(--g5);font-size:13px;background:var(--g1);border-radius:8px">&#9989; No orphaned data found. Everything is clean!</div>';
+    return;
+  }
+  
+  var html = '<div style="font-size:12px;color:var(--g5);margin-bottom:8px">Found ' + names.length + ' section(s) with leftover data not linked to any current section:</div>';
+  names.forEach(function(name) {
+    var o = orphans[name];
+    var types = [];
+    if (o.grades) types.push('Grades');
+    if (o.attendance) types.push('Attendance');
+    if (o.schedule) types.push('Schedule');
+    html += '<div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;margin-bottom:6px">';
+    html += '<div style="flex:1"><strong style="font-size:14px">' + name + '</strong><div style="font-size:12px;color:var(--g5)">' + types.join(', ') + (o.students ? ' &middot; ~' + o.students + ' student record(s)' : '') + '</div></div>';
+    html += '<button class="btn btn-d btn-sm" onclick="deleteOrphanedData(\'' + name.replace(/'/g, "\\'") + '\')">&#128465; Delete</button>';
+    html += '</div>';
+  });
+  el.innerHTML = html;
+}
+
+function deleteOrphanedData(sectionName) {
+  if (!confirm('Permanently delete all leftover grades/attendance/schedule data for "' + sectionName + '"?\n\nThis cannot be undone.')) return;
+  var key = sectionName.replace(/\s/g, '_');
+  ['grades_', 'attendance_', 'schedule_'].forEach(function(prefix) {
+    var docKey = prefix + key;
+    delete _cache[docKey];
+    db.collection('portal_data').doc(docKey).delete();
+  });
+  toast('Orphaned data for "' + sectionName + '" deleted', 'su');
+  scanOrphanedData();
+}
+
 
 // ============================================
 // TEACHER RESOURCES MANAGEMENT
