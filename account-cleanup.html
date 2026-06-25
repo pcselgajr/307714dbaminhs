@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DBAMINHS — Account Cleanup Tool</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --o:#E85D1A;--od:#C44A10;
+  --n:#1B2A4A;--nl:#2D4470;--w:#FFF;
+  --g1:#F7F5F2;--g2:#EDE9E3;--g3:#D4CFC7;--g5:#8A8477;--g7:#4A4640;--g9:#1A1815;
+  --su:#2D8B46;--sub:#E8F5EC;--da:#D32F2F;--dab:#FDECEA;--wa:#E6A817;--wab:#FFF8E1;
+  --fb:'Segoe UI',sans-serif;--r:10px;
+}
+body{font-family:var(--fb);color:var(--g9);background:var(--g1);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+.wrap{max-width:560px;width:100%}
+.card{background:var(--w);border-radius:16px;padding:28px;box-shadow:0 4px 20px rgba(0,0,0,.08);margin-bottom:18px}
+h1{font-size:18px;color:var(--n);margin-bottom:4px}
+.sub{font-size:13px;color:var(--g5);margin-bottom:20px;line-height:1.5}
+label{display:block;font-size:13px;font-weight:600;color:var(--g7);margin-bottom:6px}
+input,select{width:100%;padding:10px 13px;border:1.5px solid var(--g2);border-radius:8px;font-size:14px;font-family:var(--fb);background:var(--g1);margin-bottom:14px}
+input:focus,select:focus{outline:none;border-color:var(--o);background:var(--w)}
+button{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:600;border:none;cursor:pointer;font-family:var(--fb);width:100%}
+.btn-p{background:var(--o);color:var(--w)}.btn-p:hover{background:var(--od)}
+.btn-d{background:var(--dab);color:var(--da)}.btn-d:hover{background:#FACFCF}
+.btn-s{background:var(--g1);color:var(--g7);border:1.5px solid var(--g2)}.btn-s:hover{background:var(--g2)}
+.result{margin-top:16px;padding:14px 16px;border-radius:10px;font-size:13px;display:none}
+.result.found{background:var(--g1);border:1px solid var(--g2);display:block}
+.result.notfound{background:var(--wab);color:#92660b;display:block}
+.result.deleted{background:var(--sub);color:var(--su);display:block}
+.acc-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--g2);font-size:13px}
+.acc-row:last-child{border-bottom:none}
+.acc-label{color:var(--g5)}
+.lockscreen{text-align:center}
+.lockscreen h1{margin-bottom:14px}
+.warn-banner{background:var(--dab);color:var(--da);padding:10px 14px;border-radius:8px;font-size:12px;margin-bottom:18px;line-height:1.5}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="card lockscreen" id="lockCard">
+    <h1>&#128272; DBAMINHS Account Cleanup Tool</h1>
+    <p class="sub">This tool can permanently delete teacher login accounts directly from the database. Enter the admin password to continue.</p>
+    <input type="password" id="gatePw" placeholder="Admin password" onkeydown="if(event.key==='Enter')checkGate()">
+    <button class="btn-p" onclick="checkGate()">Unlock</button>
+    <p id="gateError" style="color:var(--da);font-size:12px;margin-top:10px;display:none">Incorrect password.</p>
+  </div>
+
+  <div class="card hidden" id="toolCard">
+    <h1>&#128272; Account Cleanup Tool</h1>
+    <p class="sub">Look up a teacher's login account by Employee ID, and delete it if needed — for example, to let them sign up again after being removed from Teachers &amp; Staff.</p>
+
+    <div class="warn-banner">&#9888;&#65039; This only deletes the <strong>login account</strong>. It does NOT delete any grades or attendance they already uploaded — use the Orphaned Data Cleanup tool in Admin Settings for that.</div>
+
+    <label>Employee ID</label>
+    <input type="text" id="searchEid" placeholder="e.g. T-2024-006" onkeydown="if(event.key==='Enter')searchAccount()">
+    <button class="btn-p" onclick="searchAccount()">&#128269; Search</button>
+
+    <div class="result" id="searchResult"></div>
+  </div>
+
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+// Same Firebase project as the main portal
+var firebaseConfig = {
+  apiKey: "AIzaSyBV3UhpZNgn19cvgAHqckNniGTu8fX8gXw",
+  authDomain: "dbaminhs-bd727.firebaseapp.com",
+  projectId: "dbaminhs-bd727",
+  storageBucket: "dbaminhs-bd727.firebasestorage.app",
+  messagingSenderId: "459830769786",
+  appId: "1:459830769786:web:8f537cc381e242222a63c3"
+};
+firebase.initializeApp(firebaseConfig);
+var db = firebase.firestore();
+
+// Simple password gate. This is NOT real security (anyone reading the page source can see it) -
+// it's just a speed bump to stop this page from being used accidentally or by curious students.
+// Keep the real protection in mind: don't share this page's link or filename publicly.
+var GATE_PASSWORD = 'dbaminhs-admin-2026';
+
+function checkGate() {
+  var entered = document.getElementById('gatePw').value;
+  if (entered === GATE_PASSWORD) {
+    document.getElementById('lockCard').classList.add('hidden');
+    document.getElementById('toolCard').classList.remove('hidden');
+  } else {
+    document.getElementById('gateError').style.display = 'block';
+  }
+}
+
+var lastFoundAccount = null;
+
+function searchAccount() {
+  var eid = document.getElementById('searchEid').value.trim();
+  var resultEl = document.getElementById('searchResult');
+  if (!eid) {
+    resultEl.className = 'result notfound';
+    resultEl.innerHTML = 'Please enter an Employee ID.';
+    return;
+  }
+  
+  resultEl.className = 'result found';
+  resultEl.innerHTML = 'Searching...';
+  
+  db.collection('portal_data').doc('accounts').get().then(function(doc) {
+    var accounts = (doc.exists && doc.data().data) ? JSON.parse(doc.data().data) : [];
+    var match = accounts.find(function(a) { return a.eid === eid; });
+    
+    if (!match) {
+      lastFoundAccount = null;
+      resultEl.className = 'result notfound';
+      resultEl.innerHTML = '&#9989; No login account found for Employee ID "' + eid + '". This teacher should already be able to sign up.';
+      return;
+    }
+    
+    lastFoundAccount = match;
+    resultEl.className = 'result found';
+    var html = '<div class="acc-row"><span class="acc-label">Name</span><strong>' + (match.fname || '') + ' ' + (match.lname || '') + '</strong></div>';
+    html += '<div class="acc-row"><span class="acc-label">Employee ID</span><span>' + match.eid + '</span></div>';
+    html += '<div class="acc-row"><span class="acc-label">Email</span><span>' + (match.email || '&mdash;') + '</span></div>';
+    html += '<div class="acc-row"><span class="acc-label">Fingerprint login</span><span>' + (match.webauthnCredentialId ? 'Enabled' : 'Not set up') + '</span></div>';
+    html += '<button class="btn-d" style="margin-top:14px" onclick="deleteAccount()">&#128465; Delete this login account</button>';
+    resultEl.innerHTML = html;
+  }).catch(function(err) {
+    resultEl.className = 'result notfound';
+    resultEl.innerHTML = 'Error reading database: ' + err.message;
+  });
+}
+
+function deleteAccount() {
+  if (!lastFoundAccount) return;
+  var ok = confirm('Permanently delete the login account for "' + lastFoundAccount.fname + ' ' + lastFoundAccount.lname + '" (Employee ID: ' + lastFoundAccount.eid + ')?\n\nThey will need to sign up again from scratch.\n\nThis does NOT delete their grades/attendance data.');
+  if (!ok) return;
+  
+  db.collection('portal_data').doc('accounts').get().then(function(doc) {
+    var accounts = (doc.exists && doc.data().data) ? JSON.parse(doc.data().data) : [];
+    var filtered = accounts.filter(function(a) { return a.eid !== lastFoundAccount.eid; });
+    return db.collection('portal_data').doc('accounts').set({
+      data: JSON.stringify(filtered),
+      updated: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  }).then(function() {
+    var resultEl = document.getElementById('searchResult');
+    resultEl.className = 'result deleted';
+    resultEl.innerHTML = '&#9989; Login account for Employee ID "' + lastFoundAccount.eid + '" has been deleted. They can now sign up again.';
+    lastFoundAccount = null;
+  }).catch(function(err) {
+    alert('Error deleting account: ' + err.message);
+  });
+}
+</script>
+</body>
+</html>
