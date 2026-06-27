@@ -161,10 +161,29 @@ function del(type,id){
     toast('Teacher and login account deleted','su');
     return;
   }
+  if(type==='s'){
+    var studentRecord = S.find(function(x){return x.id===id});
+    if(!studentRecord){return}
+    var msg = 'Delete "'+studentRecord.name+'"?\n\nThis will also remove their login account (they will no longer be able to log in, and the LRN will be free to sign up again).\n\nNote: any grades/attendance already recorded for this student under their section will NOT be deleted automatically.';
+    if(!confirm(msg))return;
+    S=S.filter(function(x){return x.id!==id});
+    saveData('students',S);
+    if(studentRecord.lrn){
+      var accts2 = loadData('accounts', []);
+      var before2 = accts2.length;
+      accts2 = accts2.filter(function(a){return a.lrn!==studentRecord.lrn});
+      if(accts2.length < before2){
+        saveData('accounts', accts2);
+      }
+    }
+    rS();
+    uS();
+    toast('Student and login account deleted','su');
+    return;
+  }
   if(!confirm('Delete this item?'))return;
   if(type==='n'){N=N.filter(function(x){return x.id!==id});saveData('news',N);rN()}
   if(type==='e'){E=E.filter(function(x){return x.id!==id});saveData('events',E);rE()}
-  if(type==='s'){S=S.filter(function(x){return x.id!==id});saveData('students',S);rS()}
   uS();toast('Deleted & synced','su')
 }
 
@@ -885,15 +904,29 @@ function getSelectedIds() {
   return ids;
 }
 
+// Removes login accounts matching any of the given LRNs (used after bulk student deletion,
+// so the LRNs become free to sign up again instead of being silently stuck).
+function removeAccountsByLrns(lrns) {
+  if (!lrns || lrns.length === 0) return;
+  var accts = loadData('accounts', []);
+  var before = accts.length;
+  accts = accts.filter(function(a){ return lrns.indexOf(a.lrn) === -1; });
+  if (accts.length < before) {
+    saveData('accounts', accts);
+  }
+}
+
 function deleteSelected() {
   var ids = getSelectedIds();
   if (ids.length === 0) { toast('No students selected. Check the boxes first.', 'er'); return; }
-  if (!confirm('Delete ' + ids.length + ' selected student(s)? This cannot be undone.')) return;
+  if (!confirm('Delete ' + ids.length + ' selected student(s)? This will also remove their login accounts, freeing up their LRNs to sign up again. This cannot be undone.')) return;
+  var deletedLrns = S.filter(function(s) { return ids.indexOf(s.id) > -1; }).map(function(s) { return s.lrn; });
   S = S.filter(function(s) { return ids.indexOf(s.id) === -1; });
   saveData('students', S);
+  removeAccountsByLrns(deletedLrns);
   rS(); uS();
   document.getElementById('selectAllStudents').checked = false;
-  toast(ids.length + ' student(s) deleted!', 'su');
+  toast(ids.length + ' student(s) and their login accounts deleted!', 'su');
 }
 
 function deleteBySection() {
@@ -901,22 +934,26 @@ function deleteBySection() {
   if (!sec) { toast('Select a section first from the dropdown.', 'er'); return; }
   var count = S.filter(function(s) { return s.grade === sec; }).length;
   if (count === 0) { toast('No students in this section.', 'er'); return; }
-  if (!confirm('Delete ALL ' + count + ' students in "' + sec + '"? This cannot be undone.')) return;
+  if (!confirm('Delete ALL ' + count + ' students in "' + sec + '"? This will also remove their login accounts, freeing up their LRNs to sign up again. This cannot be undone.')) return;
+  var deletedLrns2 = S.filter(function(s) { return s.grade === sec; }).map(function(s) { return s.lrn; });
   S = S.filter(function(s) { return s.grade !== sec; });
   saveData('students', S);
+  removeAccountsByLrns(deletedLrns2);
   document.getElementById('filterSection').value = '';
   rS(); uS();
-  toast(count + ' students in ' + sec + ' deleted!', 'su');
+  toast(count + ' students in ' + sec + ' and their login accounts deleted!', 'su');
 }
 
 function clearAllStudents() {
   if (S.length === 0) { toast('No students to delete.', 'er'); return; }
-  if (!confirm('DELETE ALL ' + S.length + ' STUDENTS? This cannot be undone!')) return;
-  if (!confirm('Are you REALLY sure? This will remove ALL student records.')) return;
+  if (!confirm('DELETE ALL ' + S.length + ' STUDENTS? This will also remove all of their login accounts. This cannot be undone!')) return;
+  if (!confirm('Are you REALLY sure? This will remove ALL student records and login accounts.')) return;
+  var allLrns = S.map(function(s) { return s.lrn; });
   S = [];
   saveData('students', S);
+  removeAccountsByLrns(allLrns);
   rS(); uS();
-  toast('All students cleared!', 'su');
+  toast('All students and their login accounts cleared!', 'su');
 }
 
 // ============================================
