@@ -51,12 +51,18 @@ button{display:inline-flex;align-items:center;justify-content:center;gap:6px;pad
 
   <div class="card hidden" id="toolCard">
     <h1>&#128272; Account Cleanup Tool</h1>
-    <p class="sub">Look up a teacher's login account by Employee ID, and delete it if needed — for example, to let them sign up again after being removed from Teachers &amp; Staff.</p>
+    <p class="sub">Look up a teacher or student login account, and delete it if needed — for example, to let them sign up again after being removed from Teachers &amp; Staff or Students.</p>
 
-    <div class="warn-banner">&#9888;&#65039; This only deletes the <strong>login account</strong>. It does NOT delete any grades or attendance they already uploaded — use the Orphaned Data Cleanup tool in Admin Settings for that.</div>
+    <div class="warn-banner">&#9888;&#65039; This only deletes the <strong>login account</strong>. It does NOT delete any grades or attendance already recorded — use the Orphaned Data Cleanup tool in Admin Settings for that.</div>
 
-    <label>Employee ID</label>
-    <input type="text" id="searchEid" placeholder="e.g. T-2024-006" onkeydown="if(event.key==='Enter')searchAccount()">
+    <label>Account Type</label>
+    <select id="searchType" onchange="updateSearchLabel()">
+      <option value="eid">Teacher (search by Employee ID)</option>
+      <option value="lrn">Student (search by LRN)</option>
+    </select>
+
+    <label id="searchLabel">Employee ID</label>
+    <input type="text" id="searchValue" placeholder="e.g. T-2024-006" onkeydown="if(event.key==='Enter')searchAccount()">
     <button class="btn-p" onclick="searchAccount()">&#128269; Search</button>
 
     <div class="result" id="searchResult"></div>
@@ -94,14 +100,33 @@ function checkGate() {
   }
 }
 
+function updateSearchLabel() {
+  var type = document.getElementById('searchType').value;
+  var label = document.getElementById('searchLabel');
+  var input = document.getElementById('searchValue');
+  if (type === 'lrn') {
+    label.textContent = 'LRN';
+    input.placeholder = 'e.g. 136789012345';
+  } else {
+    label.textContent = 'Employee ID';
+    input.placeholder = 'e.g. T-2024-006';
+  }
+  document.getElementById('searchResult').className = 'result';
+  document.getElementById('searchResult').innerHTML = '';
+}
+
 var lastFoundAccount = null;
+var lastSearchType = null;
 
 function searchAccount() {
-  var eid = document.getElementById('searchEid').value.trim();
+  var type = document.getElementById('searchType').value;
+  var value = document.getElementById('searchValue').value.trim();
+  var fieldName = type === 'lrn' ? 'lrn' : 'eid';
+  var fieldLabel = type === 'lrn' ? 'LRN' : 'Employee ID';
   var resultEl = document.getElementById('searchResult');
-  if (!eid) {
+  if (!value) {
     resultEl.className = 'result notfound';
-    resultEl.innerHTML = 'Please enter an Employee ID.';
+    resultEl.innerHTML = 'Please enter a ' + fieldLabel + '.';
     return;
   }
   
@@ -110,20 +135,24 @@ function searchAccount() {
   
   db.collection('portal_data').doc('accounts').get().then(function(doc) {
     var accounts = (doc.exists && doc.data().data) ? JSON.parse(doc.data().data) : [];
-    var match = accounts.find(function(a) { return a.eid === eid; });
+    var match = accounts.find(function(a) { return a[fieldName] === value; });
     
     if (!match) {
       lastFoundAccount = null;
       resultEl.className = 'result notfound';
-      resultEl.innerHTML = '&#9989; No login account found for Employee ID "' + eid + '". This teacher should already be able to sign up.';
+      resultEl.innerHTML = '&#9989; No login account found for ' + fieldLabel + ' "' + value + '". This person should already be able to sign up.';
       return;
     }
     
     lastFoundAccount = match;
+    lastSearchType = type;
     resultEl.className = 'result found';
     var html = '<div class="acc-row"><span class="acc-label">Name</span><strong>' + (match.fname || '') + ' ' + (match.lname || '') + '</strong></div>';
-    html += '<div class="acc-row"><span class="acc-label">Employee ID</span><span>' + match.eid + '</span></div>';
+    html += '<div class="acc-row"><span class="acc-label">' + fieldLabel + '</span><span>' + match[fieldName] + '</span></div>';
     html += '<div class="acc-row"><span class="acc-label">Email</span><span>' + (match.email || '&mdash;') + '</span></div>';
+    if (type === 'lrn') {
+      html += '<div class="acc-row"><span class="acc-label">Section on file</span><span>' + (match.grade || '&mdash;') + '</span></div>';
+    }
     html += '<div class="acc-row"><span class="acc-label">Fingerprint login</span><span>' + (match.webauthnCredentialId ? 'Enabled' : 'Not set up') + '</span></div>';
     html += '<button class="btn-d" style="margin-top:14px" onclick="deleteAccount()">&#128465; Delete this login account</button>';
     resultEl.innerHTML = html;
@@ -135,12 +164,15 @@ function searchAccount() {
 
 function deleteAccount() {
   if (!lastFoundAccount) return;
-  var ok = confirm('Permanently delete the login account for "' + lastFoundAccount.fname + ' ' + lastFoundAccount.lname + '" (Employee ID: ' + lastFoundAccount.eid + ')?\n\nThey will need to sign up again from scratch.\n\nThis does NOT delete their grades/attendance data.');
+  var fieldName = lastSearchType === 'lrn' ? 'lrn' : 'eid';
+  var fieldLabel = lastSearchType === 'lrn' ? 'LRN' : 'Employee ID';
+  var idValue = lastFoundAccount[fieldName];
+  var ok = confirm('Permanently delete the login account for "' + lastFoundAccount.fname + ' ' + lastFoundAccount.lname + '" (' + fieldLabel + ': ' + idValue + ')?\n\nThey will need to sign up again from scratch.\n\nThis does NOT delete their grades/attendance data.');
   if (!ok) return;
   
   db.collection('portal_data').doc('accounts').get().then(function(doc) {
     var accounts = (doc.exists && doc.data().data) ? JSON.parse(doc.data().data) : [];
-    var filtered = accounts.filter(function(a) { return a.eid !== lastFoundAccount.eid; });
+    var filtered = accounts.filter(function(a) { return a[fieldName] !== idValue; });
     return db.collection('portal_data').doc('accounts').set({
       data: JSON.stringify(filtered),
       updated: firebase.firestore.FieldValue.serverTimestamp()
@@ -148,7 +180,7 @@ function deleteAccount() {
   }).then(function() {
     var resultEl = document.getElementById('searchResult');
     resultEl.className = 'result deleted';
-    resultEl.innerHTML = '&#9989; Login account for Employee ID "' + lastFoundAccount.eid + '" has been deleted. They can now sign up again.';
+    resultEl.innerHTML = '&#9989; Login account for ' + fieldLabel + ' "' + idValue + '" has been deleted. They can now sign up again.';
     lastFoundAccount = null;
   }).catch(function(err) {
     alert('Error deleting account: ' + err.message);
