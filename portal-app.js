@@ -124,6 +124,10 @@ var id=document.getElementById('liId').value.trim().toLowerCase();
 var pw=document.getElementById('liPw').value;
 var user=accounts.find(function(a){return (a.id===id||a.lrn===id||a.eid===id||(a.email&&a.email.toLowerCase()===id))&&a.pw===pw});
 if(!user){toast('Invalid credentials. Please check your ID and password.','er');return}
+completeLogin(user);
+}
+
+function completeLogin(user){
 curUser=user;closeM();
 document.getElementById('publicSite').style.display='none';
 if(user.type==='student'){
@@ -155,6 +159,131 @@ if(document.getElementById('pdChild'))document.getElementById('pdChild').textCon
 setTimeout(function() { loadParentGrades(); loadParentAttendance(); }, 200);
 }
 toast('Welcome, '+user.fname+'!');
+}
+
+// ============================================
+// FINGERPRINT LOGIN (WebAuthn) - Teacher accounts only
+// ============================================
+// NOTE: this is a convenience feature, not a full security implementation.
+// There is no backend server to verify the cryptographic signature - we only
+// check that the browser's platform authenticator (fingerprint/Face ID/Windows Hello)
+// returns a credential ID matching one stored for a teacher account. The actual
+// biometric check happens at the OS/hardware level via the browser, which is what
+// prevents someone without the registered fingerprint from completing the prompt.
+
+function isWebAuthnAvailable() {
+  return !!(window.PublicKeyCredential && navigator.credentials);
+}
+
+function closeFingerprintModal() {
+  document.getElementById('fingerprintModal').style.display = 'none';
+}
+
+function openFingerprintEnroll() {
+  if (!isWebAuthnAvailable()) {
+    toast('Fingerprint login is not supported on this browser/device.', 'er');
+    return;
+  }
+  if (!window.isSecureContext) {
+    toast('Fingerprint login requires a secure (HTTPS) connection.', 'er');
+    return;
+  }
+  var already = curUser && curUser.webauthnCredentialId;
+  var body = '<p style="font-size:13px;color:var(--g5);margin-bottom:14px">' +
+    (already
+      ? 'Fingerprint login is already enabled for your account on a registered device. You can re-enroll if you\'re setting this up on a new device.'
+      : 'This will use your device\'s fingerprint sensor, Face ID, or Windows Hello as a quick way to log in next time, instead of typing your password. Your password will still work as a backup.') +
+    '</p>' +
+    '<div style="display:flex;gap:10px"><button class="btn btn-p" onclick="enrollFingerprint()">&#128272; ' + (already ? 'Re-enroll on this device' : 'Set Up Fingerprint Login') + '</button><button class="btn btn-s" onclick="closeFingerprintModal()">Cancel</button></div>';
+  document.getElementById('fingerprintModalContent').innerHTML = body;
+  document.getElementById('fingerprintModal').style.display = 'flex';
+}
+
+function enrollFingerprint() {
+  var challenge = crypto.getRandomValues(new Uint8Array(32));
+  var userIdBytes = new TextEncoder().encode(curUser.id);
+  
+  navigator.credentials.create({
+    publicKey: {
+      challenge: challenge,
+      rp: { name: 'DBAMINHS Teacher Portal' },
+      user: {
+        id: userIdBytes,
+        name: curUser.email || curUser.id,
+        displayName: curUser.fname + ' ' + curUser.lname
+      },
+      pubKeyCredParams: [{ alg: -7, type: 'public-key' }, { alg: -257, type: 'public-key' }],
+      authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required' },
+      timeout: 60000,
+      attestation: 'none'
+    }
+  }).then(function(credential) {
+    var credentialId = btoa(String.fromCharCode.apply(null, new Uint8Array(credential.rawId)));
+    curUser.webauthnCredentialId = credentialId;
+    
+    // Persist to the saved accounts list in Firebase
+    var saved = loadData('accounts', []);
+    var idx = saved.findIndex(function(a) { return a.id === curUser.id; });
+    if (idx > -1) {
+      saved[idx].webauthnCredentialId = credentialId;
+    } else {
+      saved.push(curUser);
+    }
+    saveData('accounts', saved);
+    
+    closeFingerprintModal();
+    toast('Fingerprint login enabled on this device!', 'su');
+  }).catch(function(err) {
+    console.error('Fingerprint enrollment error:', err);
+    toast('Could not set up fingerprint login: ' + err.message, 'er');
+  });
+}
+
+function loginWithFingerprint() {
+  if (!isWebAuthnAvailable()) {
+    toast('Fingerprint login is not supported on this browser/device.', 'er');
+    return;
+  }
+  if (!window.isSecureContext) {
+    toast('Fingerprint login requires a secure (HTTPS) connection.', 'er');
+    return;
+  }
+  
+  loadSavedAccounts();
+  var enrolled = accounts.filter(function(a) { return a.type === 'teacher' && a.webauthnCredentialId; });
+  if (enrolled.length === 0) {
+    toast('No teacher account on this device has fingerprint login set up yet. Log in with your password first, then enable it from the dashboard.', 'er');
+    return;
+  }
+  
+  var allowCredentials = enrolled.map(function(a) {
+    var binary = atob(a.webauthnCredentialId);
+    var bytes = new Uint8Array(binary.length);
+    for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return { id: bytes, type: 'public-key' };
+  });
+  
+  var challenge = crypto.getRandomValues(new Uint8Array(32));
+  
+  navigator.credentials.get({
+    publicKey: {
+      challenge: challenge,
+      allowCredentials: allowCredentials,
+      userVerification: 'required',
+      timeout: 60000
+    }
+  }).then(function(assertion) {
+    var credentialId = btoa(String.fromCharCode.apply(null, new Uint8Array(assertion.rawId)));
+    var matchedUser = enrolled.find(function(a) { return a.webauthnCredentialId === credentialId; });
+    if (!matchedUser) {
+      toast('Fingerprint not recognized for any enrolled account.', 'er');
+      return;
+    }
+    completeLogin(matchedUser);
+  }).catch(function(err) {
+    console.error('Fingerprint login error:', err);
+    toast('Fingerprint login failed or was cancelled.', 'er');
+  });
 }
 
 function doLogout(){
@@ -216,6 +345,7 @@ db.collection('portal_data').doc('pending').get().then(function(doc) {
     type: newAcc.type.charAt(0).toUpperCase() + newAcc.type.slice(1),
     email: em,
     idnum: newAcc.lrn || newAcc.eid || newAcc.childLrn || '',
+    grade: newAcc.grade || '',
     date: new Date().toISOString().split('T')[0]
   });
   saveData('pending', pending);

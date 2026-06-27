@@ -140,7 +140,33 @@ function edE(id){var d=E.find(function(x){return x.id===id});if(d)openEM(d)}
 function edS(id){var d=S.find(function(x){return x.id===id});if(d)openSM(d)}
 function edT(id){var d=T.find(function(x){return x.id===id});if(d)openTM(d)}
 
-function del(type,id){if(!confirm('Delete this item?'))return;if(type==='n'){N=N.filter(function(x){return x.id!==id});saveData('news',N);rN()}if(type==='e'){E=E.filter(function(x){return x.id!==id});saveData('events',E);rE()}if(type==='s'){S=S.filter(function(x){return x.id!==id});saveData('students',S);rS()}if(type==='t'){T=T.filter(function(x){return x.id!==id});saveData('teachers',T);rT()}uS();toast('Deleted & synced','su')}
+function del(type,id){
+  if(type==='t'){
+    var teacherRecord = T.find(function(x){return x.id===id});
+    if(!teacherRecord){return}
+    var msg = 'Delete "'+teacherRecord.name+'"?\n\nThis will also remove their login account (they will no longer be able to log in or sign up again with the same Employee ID).\n\nNote: any grades/attendance they already uploaded will NOT be deleted automatically. If needed, use the Orphaned Data Cleanup tool afterward to remove leftover section data.';
+    if(!confirm(msg))return;
+    T=T.filter(function(x){return x.id!==id});
+    saveData('teachers',T);
+    if(teacherRecord.eid){
+      var accts = loadData('accounts', []);
+      var before = accts.length;
+      accts = accts.filter(function(a){return a.eid!==teacherRecord.eid});
+      if(accts.length < before){
+        saveData('accounts', accts);
+      }
+    }
+    rT();
+    uS();
+    toast('Teacher and login account deleted','su');
+    return;
+  }
+  if(!confirm('Delete this item?'))return;
+  if(type==='n'){N=N.filter(function(x){return x.id!==id});saveData('news',N);rN()}
+  if(type==='e'){E=E.filter(function(x){return x.id!==id});saveData('events',E);rE()}
+  if(type==='s'){S=S.filter(function(x){return x.id!==id});saveData('students',S);rS()}
+  uS();toast('Deleted & synced','su')
+}
 
 function apv(id){
   var p=P.find(function(x){return x.id===id});
@@ -151,7 +177,7 @@ function apv(id){
       '<p style="margin-bottom:16px;color:var(--g5)">Assign details for <strong>'+p.name+'</strong> before approving:</p>'+
       '<div class="fg"><label>LRN</label><input id="apvLrn" value="'+p.idnum+'"></div>'+
       '<div class="fg-row"><div class="fg"><label>Grade Level &amp; Section</label><select id="apvGrade">' +
-      (function(){ var secs=getSections(); var opts=''; secs.forEach(function(s){ var name=typeof s==='object'?s.name:s; opts+='<option value="'+name+'">'+name+'</option>'; }); return opts; })() +
+      (function(){ var secs=getSections(); var opts=''; secs.forEach(function(s){ var name=typeof s==='object'?s.name:s; var sel=(p.grade && p.grade===name)?' selected':''; opts+='<option value="'+name+'"'+sel+'>'+name+'</option>'; }); return opts; })() +
       '</select></div>'+
       '<div class="fg"><label>Status</label><select id="apvStatus"><option>Active</option><option>Inactive</option></select></div></div>'+
       '<div style="display:flex;gap:10px;margin-top:18px">'+
@@ -220,7 +246,7 @@ function approveAll(){
   if(!confirm('Approve all '+P.length+' pending signups?'))return;
   P.forEach(function(p){
     if(p.type==='Student'){
-      S.unshift({id:getNextId(S),lrn:p.idnum,name:p.name,grade:'TBA',contact:p.email,status:'Active'});
+      S.unshift({id:getNextId(S),lrn:p.idnum,name:p.name,grade:(p.grade && p.grade!=='') ? p.grade : 'TBA',contact:p.email,status:'Active'});
     } else if(p.type==='Teacher'){
       T.unshift({id:getNextId(T),eid:p.idnum,name:p.name,dept:'TBA',pos:'Teacher I',contact:p.email});
     }
