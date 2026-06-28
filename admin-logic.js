@@ -1,4 +1,4 @@
-var N, E, S, T, P, SETTINGS;
+var N, E, S, T, P, PWRESET, SETTINGS;
 
 function initData() {
   N = loadData('news', DEFAULT_NEWS);
@@ -6,6 +6,7 @@ function initData() {
   S = loadData('students', DEFAULT_STUDENTS);
   T = loadData('teachers', DEFAULT_TEACHERS);
   P = loadData('pending', DEFAULT_PENDING);
+  PWRESET = loadData('passwordResetRequests', []);
   SETTINGS = loadData('settings', DEFAULT_SETTINGS);
 }
 
@@ -28,6 +29,7 @@ function initFromFirebase(callback) {
       S = loadData('students', DEFAULT_STUDENTS);
       T = loadData('teachers', DEFAULT_TEACHERS);
       P = loadData('pending', DEFAULT_PENDING);
+      PWRESET = loadData('passwordResetRequests', []);
       SETTINGS = loadData('settings', DEFAULT_SETTINGS);
       renderAll();
       console.log('Admin auto-refreshed from Firebase!');
@@ -58,7 +60,7 @@ function go(p,el){
   document.getElementById('sidebar').classList.remove('open');
 }
 
-function renderAll(){rN();rE();rS();rT();rP();uS();loadSettings();loadResources();loadGallery();loadAchievements();loadHistory();loadAlumni();loadDTRDashboard();setTimeout(updateDashChart,100)}
+function renderAll(){rN();rE();rS();rT();rP();rPwReset();uS();loadSettings();loadResources();loadGallery();loadAchievements();loadHistory();loadAlumni();loadDTRDashboard();setTimeout(updateDashChart,100)}
 function uS(){
   document.getElementById('sS').textContent=S.length.toLocaleString();
   document.getElementById('sT').textContent=T.length;
@@ -83,6 +85,54 @@ function rS(){
 function rT(){document.getElementById('tB').innerHTML=T.map(function(t){var secLabel=(t.sections&&t.sections.length>0)?t.sections.join(', '):'<span style="color:var(--g5)">All sections</span>';return '<tr><td style="font-family:monospace;font-size:12px">'+t.eid+'</td><td><strong>'+t.name+'</strong></td><td>'+t.dept+'</td><td>'+t.pos+'</td><td>'+t.contact+'</td><td style="font-size:12px">'+secLabel+'</td><td><div class="ab"><button class="abtn" title="Edit" onclick="edT('+t.id+')">&#9998;</button><button class="abtn del" title="Delete" onclick="del(\'t\','+t.id+')">&#128465;</button></div></td></tr>'}).join('')}
 
 function rP(){document.getElementById('pB').innerHTML=P.map(function(p){return '<tr><td><strong>'+p.name+'</strong></td><td><span class="badge b-pe">'+p.type+'</span></td><td>'+p.email+'</td><td style="font-family:monospace;font-size:12px">'+p.idnum+'</td><td>'+formatDate(p.date)+'</td><td><div class="ab"><button class="abtn apv" title="Approve" onclick="apv('+p.id+')">&#10003;</button><button class="abtn del" title="Reject" onclick="rej('+p.id+')">&#10005;</button></div></td></tr>'}).join('')}
+
+function rPwReset(){
+  var pending = PWRESET.filter(function(r){ return r.status==='pending'; });
+  var countEl = document.getElementById('pwResetCount');
+  if (countEl) countEl.textContent = pending.length;
+  var tbody = document.getElementById('pwB');
+  if (!tbody) return;
+  if (pending.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--g5)">No pending password reset requests.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = pending.map(function(r){
+    return '<tr><td><strong>'+r.name+'</strong></td><td><span class="badge b-pe">'+r.accountType+'</span></td><td style="font-family:monospace;font-size:12px">'+r.lookupId+'</td><td>'+formatDate(r.requestedAt)+'</td><td><div class="ab"><button class="abtn apv" title="Approve" onclick="approvePwReset('+r.id+')">&#10003;</button><button class="abtn del" title="Reject" onclick="rejectPwReset('+r.id+')">&#10005;</button></div></td></tr>';
+  }).join('');
+}
+
+function approvePwReset(id){
+  var req = PWRESET.find(function(r){ return r.id===id; });
+  if (!req) return;
+  if (!confirm('Approve password reset for "'+req.name+'"?\n\nThis will immediately change their password to the one they requested. Make sure you have verified their identity first.')) return;
+  
+  var accts = loadData('accounts', []);
+  var idx = accts.findIndex(function(a){ return a.id===req.accountId; });
+  if (idx === -1) {
+    toast('Could not find that account anymore \u2014 it may have been deleted.', 'er');
+    req.status = 'rejected';
+    saveData('passwordResetRequests', PWRESET);
+    rPwReset();
+    return;
+  }
+  accts[idx].pw = req.newPassword;
+  saveData('accounts', accts);
+  
+  req.status = 'approved';
+  saveData('passwordResetRequests', PWRESET);
+  rPwReset();
+  toast('Password updated for '+req.name, 'su');
+}
+
+function rejectPwReset(id){
+  var req = PWRESET.find(function(r){ return r.id===id; });
+  if (!req) return;
+  if (!confirm('Reject this password reset request for "'+req.name+'"?')) return;
+  req.status = 'rejected';
+  saveData('passwordResetRequests', PWRESET);
+  rPwReset();
+  toast('Request rejected', 'su');
+}
 
 // === MODALS ===
 function opM(t,b){document.getElementById('mT').textContent=t;document.getElementById('mB').innerHTML=b;document.getElementById('modal').classList.add('act')}

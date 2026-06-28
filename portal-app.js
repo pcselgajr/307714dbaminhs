@@ -286,6 +286,69 @@ function loginWithFingerprint() {
   });
 }
 
+// ============================================
+// FORGOT PASSWORD (Admin-assisted reset)
+// ============================================
+// There is no email server in this setup, so a true self-service reset isn't possible.
+// Instead, the person submits a reset request (ID + the new password they want), which is
+// stored for an admin to review and approve. The password is only changed once an admin
+// confirms the requester's identity and approves the request.
+
+function closeForgotPasswordModal() {
+  document.getElementById('forgotPasswordModal').style.display = 'none';
+}
+
+function openForgotPassword() {
+  var body = '<p style="font-size:13px;color:var(--g5);margin-bottom:14px">' +
+    'There is no automatic email reset for this portal. Instead, submit your ID and the new password you\'d like \u2014 a school administrator will verify your identity and approve the change. You\'ll be notified once it\'s approved.' +
+    '</p>' +
+    '<div class="fg"><label>LRN / Employee ID / Email</label><input type="text" id="fpId" placeholder="Enter your ID or email"></div>' +
+    '<div class="fg"><label>New Password (at least 8 characters)</label><input type="password" id="fpNewPw" placeholder="Enter a new password"></div>' +
+    '<div class="fg"><label>Confirm New Password</label><input type="password" id="fpNewPw2" placeholder="Re-enter the new password"></div>' +
+    '<button class="btn btn-p btn-full" onclick="submitPasswordResetRequest()">Submit Request</button>';
+  document.getElementById('forgotPasswordModalContent').innerHTML = body;
+  document.getElementById('forgotPasswordModal').style.display = 'flex';
+}
+
+function submitPasswordResetRequest() {
+  loadSavedAccounts();
+  var id = document.getElementById('fpId').value.trim();
+  var pw1 = document.getElementById('fpNewPw').value;
+  var pw2 = document.getElementById('fpNewPw2').value;
+  
+  if (!id) { toast('Please enter your ID or email.', 'er'); return; }
+  if (!pw1 || pw1.length < 8) { toast('New password must be at least 8 characters.', 'er'); return; }
+  if (pw1 !== pw2) { toast('Passwords do not match.', 'er'); return; }
+  
+  var idLower = id.toLowerCase();
+  var account = accounts.find(function(a) {
+    return a.id === idLower || a.lrn === id || a.eid === id || (a.email && a.email.toLowerCase() === idLower);
+  });
+  
+  if (!account) {
+    toast('No account found with that ID or email.', 'er');
+    return;
+  }
+  
+  var requests = loadData('passwordResetRequests', []);
+  // Replace any existing pending request for the same account so there's only one active request at a time.
+  requests = requests.filter(function(r) { return r.accountId !== account.id; });
+  requests.unshift({
+    id: Date.now(),
+    accountId: account.id,
+    accountType: account.type,
+    name: (account.fname || '') + ' ' + (account.lname || ''),
+    lookupId: id,
+    newPassword: pw1,
+    status: 'pending',
+    requestedAt: new Date().toISOString().split('T')[0]
+  });
+  saveData('passwordResetRequests', requests);
+  
+  closeForgotPasswordModal();
+  toast('Request submitted! An administrator will review and approve it shortly.', 'su');
+}
+
 function doLogout(){
 curUser=null;
 document.querySelectorAll('.dash-page').forEach(function(p){p.classList.remove('act')});

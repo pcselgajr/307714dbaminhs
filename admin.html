@@ -156,6 +156,7 @@ tr:hover td{background:var(--cr)}
 <button class="sl" onclick="go('students',this)"><span class="i">&#127891;</span> Students</button>
 <button class="sl" onclick="go('teachers',this)"><span class="i">&#128104;&#8205;&#127979;</span> Teachers &amp; Staff</button>
 <button class="sl" onclick="go('pending',this)"><span class="i">&#128203;</span> Pending Signups <span class="sb-count" id="pendCount">3</span></button>
+<button class="sl" onclick="go('pwreset',this)"><span class="i">&#128273;</span> Password Reset Requests <span class="sb-count" id="pwResetCount">0</span></button>
 <div class="sb-sec">System</div>
 <button class="sl" onclick="go('resources',this)"><span class="i">&#128194;</span> Teacher Resources</button>
 <button class="sl" onclick="go('dtr',this)"><span class="i">&#128336;</span> DTR System</button>
@@ -246,6 +247,11 @@ tr:hover td{background:var(--cr)}
 <!-- PENDING SIGNUPS -->
 <div class="pg" id="pg-pending"><div class="panel"><div class="ph"><h3>&#128203; Pending Signups</h3><div class="pa"><button class="btn btn-su btn-sm" onclick="approveAll()">&#10003; Approve All</button></div></div>
 <table id="pT"><thead><tr><th>Name</th><th>Type</th><th>Email</th><th>LRN / ID</th><th>Date</th><th>Actions</th></tr></thead><tbody id="pB"></tbody></table></div></div>
+
+<!-- PASSWORD RESET REQUESTS -->
+<div class="pg" id="pg-pwreset"><div class="panel"><div class="ph"><h3>&#128273; Password Reset Requests</h3></div>
+<p style="font-size:13px;color:var(--g5);padding:0 22px 16px">Review each request and confirm the requester's identity (e.g. by asking them in person or checking their registered email) before approving. Approving will immediately change their password to the one they requested.</p>
+<table id="pwT"><thead><tr><th>Name</th><th>Type</th><th>ID Used</th><th>Date Requested</th><th>Actions</th></tr></thead><tbody id="pwB"></tbody></table></div></div>
 
 <!-- TEACHER RESOURCES -->
 <div class="pg" id="pg-resources"><div class="panel"><div class="ph"><h3>&#128194; Teacher Resources</h3><div class="pa"><button class="btn btn-p btn-sm" onclick="openAddResource()">+ Add Link</button></div></div>
