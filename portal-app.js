@@ -495,9 +495,6 @@ function downloadTemplate() {
   
   var students = loadData('students', DEFAULT_STUDENTS);
   var classStudents = students.filter(function(s) { return s.grade === cls && s.status === 'Active'; });
-  if (classStudents.length === 0) {
-    classStudents = students.filter(function(s) { return s.status === 'Active'; });
-  }
   
   var csv = 'LRN,"Name (Last Name, First Name)",' + subjects.join(',') + '\n';
   classStudents.forEach(function(s) {
@@ -785,9 +782,6 @@ function downloadAttTemplate() {
   var cls = document.getElementById('attClass').value;
   var students = loadData('students', DEFAULT_STUDENTS);
   var classStudents = students.filter(function(s) { return s.grade === cls && s.status === 'Active'; });
-  if (classStudents.length === 0) {
-    classStudents = students.filter(function(s) { return s.status === 'Active'; });
-  }
   
   var csv = 'LRN,"Name (Last Name, First Name)",Days Present,Days Absent,Days Late,Total School Days\n';
   classStudents.forEach(function(s) {
