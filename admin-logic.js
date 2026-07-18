@@ -956,6 +956,73 @@ function getSelectedIds() {
 
 // Removes login accounts matching any of the given LRNs (used after bulk student deletion,
 // so the LRNs become free to sign up again instead of being silently stuck).
+// ============================================
+// BACKUP & RESTORE
+// ============================================
+
+function exportBackup() {
+  // Collect all important keys from the cache
+  var backupKeys = [
+    'students', 'teachers', 'accounts', 'pending', 'settings',
+    'news', 'events', 'resources', 'quizzes', 'passwordResetRequests',
+    'dtr_employees', 'dtr_settings'
+  ];
+
+  // Also include all grades_, attendance_, schedule_ documents
+  Object.keys(_cache).forEach(function(key) {
+    if (key.startsWith('grades_') || key.startsWith('attendance_') || key.startsWith('schedule_')) {
+      if (backupKeys.indexOf(key) === -1) backupKeys.push(key);
+    }
+  });
+
+  var backup = { exportedAt: new Date().toISOString(), version: '1.0', data: {} };
+  backupKeys.forEach(function(key) {
+    var val = loadData(key, null);
+    if (val !== null) backup.data[key] = val;
+  });
+
+  var json = JSON.stringify(backup, null, 2);
+  var blob = new Blob([json], { type: 'application/json' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'DBAMINHS_Backup_' + new Date().toISOString().split('T')[0] + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('Backup downloaded successfully!', 'su');
+}
+
+function importBackup() {
+  var fileInput = document.getElementById('restoreFile');
+  if (!fileInput.files || fileInput.files.length === 0) {
+    toast('Please select a backup JSON file first.', 'er');
+    return;
+  }
+  if (!confirm('WARNING: This will overwrite ALL current data with the backup file.\n\nAre you sure you want to continue? This cannot be undone.')) return;
+  if (!confirm('Last chance — are you REALLY sure? All current data will be replaced.')) return;
+
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var backup = JSON.parse(e.target.result);
+      if (!backup.data) { toast('Invalid backup file format.', 'er'); return; }
+
+      var keys = Object.keys(backup.data);
+      var count = 0;
+      keys.forEach(function(key) {
+        saveData(key, backup.data[key]);
+        count++;
+      });
+
+      toast('Restored ' + count + ' data sets from backup. Reloading...', 'su');
+      setTimeout(function() { location.reload(); }, 2000);
+    } catch(err) {
+      toast('Error reading backup file: ' + err.message, 'er');
+    }
+  };
+  reader.readAsText(fileInput.files[0]);
+}
+
 function removeAccountsByLrns(lrns) {
   if (!lrns || lrns.length === 0) return;
   var accts = loadData('accounts', []);
