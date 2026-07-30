@@ -76,7 +76,8 @@ function rE(){document.getElementById('eB').innerHTML=E.map(function(e){return '
 function rS(){
   var sorted = sortByLastName(S);
   document.getElementById('sB').innerHTML=sorted.map(function(s){
-    return '<tr><td><input type="checkbox" class="sCb" value="'+s.id+'" onchange="updateSelectedCount()"></td><td style="font-family:monospace;font-size:12px">'+s.lrn+'</td><td><strong>'+s.name.toUpperCase()+'</strong></td><td>'+s.grade+'</td><td>'+s.contact+'</td><td><span class="badge '+(s.status==='Active'?'b-ac':'b-in')+'">'+s.status+'</span></td><td><div class="ab"><button class="abtn" title="Edit" onclick="edS('+s.id+')">&#9998;</button><button class="abtn del" title="Delete" onclick="del(\'s\','+s.id+')">&#128465;</button></div></td></tr>';
+    var genderBadge = s.gender ? '<span style="font-size:11px;padding:2px 8px;border-radius:10px;background:'+(s.gender==='Male'?'#dbeafe':'#fce7f3')+';color:'+(s.gender==='Male'?'#1d4ed8':'#be185d')+'">'+s.gender+'</span>' : '<span style="color:var(--g5);font-size:11px">—</span>';
+    return '<tr><td><input type="checkbox" class="sCb" value="'+s.id+'" onchange="updateSelectedCount()"></td><td style="font-family:monospace;font-size:12px">'+s.lrn+'</td><td><strong>'+s.name.toUpperCase()+'</strong></td><td>'+s.grade+'</td><td>'+genderBadge+'</td><td>'+s.contact+'</td><td><span class="badge '+(s.status==='Active'?'b-ac':'b-in')+'">'+s.status+'</span></td><td><div class="ab"><button class="abtn" title="Edit" onclick="edS('+s.id+')">&#9998;</button><button class="abtn del" title="Delete" onclick="del(\'s\','+s.id+')">&#128465;</button></div></td></tr>';
   }).join('');
   populateSectionFilter();
   updateSelectedCount();

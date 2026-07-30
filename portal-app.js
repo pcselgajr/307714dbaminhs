@@ -116,7 +116,7 @@ function openM(m){document.getElementById('authModal').classList.add('act');swit
 function closeM(){document.getElementById('authModal').classList.remove('act')}
 function switchMode(m){var l=m==='login';document.getElementById('loginForm').style.display=l?'block':'none';document.getElementById('signupForm').style.display=l?'none':'block';document.getElementById('mtL').className='tab'+(l?' act':'');document.getElementById('mtS').className='tab'+(l?'':' act')}
 function stab(el){el.parentElement.querySelectorAll('.tab').forEach(function(t){t.className='tab'});el.className='tab act'}
-function stype(el,t){stab(el);signupType=t;document.getElementById('fLrn').style.display=t==='s'?'block':'none';document.getElementById('fEmp').style.display=t==='t'?'block':'none';document.getElementById('fChild').style.display=t==='p'?'block':'none';document.getElementById('fGrade').style.display=t==='s'?'block':'none'}
+function stype(el,t){stab(el);signupType=t;document.getElementById('fLrn').style.display=t==='s'?'block':'none';document.getElementById('fGender').style.display=t==='s'?'block':'none';document.getElementById('fEmp').style.display=t==='t'?'block':'none';document.getElementById('fChild').style.display=t==='p'?'block':'none';document.getElementById('fGrade').style.display=t==='s'?'block':'none'}
 
 function doLogin(){
 loadSavedAccounts();
@@ -374,7 +374,9 @@ var newAcc={id:em.toLowerCase(),pw:p1,type:signupType==='s'?'student':signupType
 if(signupType==='s'){
 newAcc.lrn=document.getElementById('sLrn').value.trim();
 newAcc.grade=document.getElementById('sGradeSection').value||'TBA';
+newAcc.gender=document.getElementById('sGender').value||'';
 if(!newAcc.lrn){toast('Please enter LRN.','er');return}
+if(!newAcc.gender){toast('Please select your gender.','er');return}
 if(accounts.find(function(a){return a.lrn===newAcc.lrn})){toast('This LRN is already registered. Please log in instead, or contact the admin if this is a mistake.','er');return}
 newAcc.id=newAcc.lrn;
 }else if(signupType==='t'){
@@ -1489,6 +1491,20 @@ function deleteClassData(sec) {
   });
   loadMyClasses();
   toast(sec + ' data deleted', 'su');
+}
+
+function clearSectionGrades() {
+  var cls = document.getElementById('gradeClass').value;
+  if (!cls) { toast('Please select a section first.', 'er'); return; }
+  if (!confirm('Clear ALL grades for "' + cls + '"?\n\nThis will permanently delete all uploaded grades for this section. You will need to re-upload the CSV to restore them.\n\nThis cannot be undone.')) return;
+  var key = 'grades_' + cls.replace(/\s/g, '_');
+  delete _cache[key];
+  db.collection('portal_data').doc(key).delete().then(function() {
+    updateGradeView();
+    toast('Grades for "' + cls + '" cleared successfully.', 'su');
+  }).catch(function(err) {
+    toast('Error clearing grades: ' + err.message, 'er');
+  });
 }
 
 

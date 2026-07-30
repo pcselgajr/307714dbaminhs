@@ -377,6 +377,7 @@ td{padding:12px 16px;border-bottom:1px solid var(--g1);font-size:13.5px}
 <button class="btn btn-p btn-sm" onclick="downloadTemplate()">&#128229; Download CSV Template</button>
 <label class="btn btn-s btn-sm" style="cursor:pointer">&#128228; Upload CSV File <input type="file" id="csvUpload" accept=".csv,.txt" onchange="handleCSVUpload(event)" style="display:none"></label>
 <button class="btn btn-s btn-sm" onclick="updateGradeView()">&#128260; Refresh</button>
+<button class="btn btn-sm" style="background:#fdecea;color:#d32f2f;border:1px solid #ffcdd2" onclick="clearSectionGrades()">&#128465; Clear Grades</button>
 </div>
 
 <div id="uploadStatus" style="display:none;padding:14px;border-radius:10px;margin-bottom:16px;font-size:14px"></div>
@@ -498,6 +499,7 @@ Example: <code style="background:var(--w);padding:2px 6px;border-radius:4px;font
 <div class="tabs" id="sigTabs"><button class="tab act" onclick="stype(this,'s')">Student</button><button class="tab" onclick="stype(this,'t')">Teacher</button><button class="tab" onclick="stype(this,'p')">Parent</button></div>
 <div class="fg-row"><div class="fg"><label>First Name *</label><input id="sf" placeholder="Juan"></div><div class="fg"><label>Last Name *</label><input id="sl" placeholder="Dela Cruz"></div></div>
 <div class="fg" id="fLrn"><label>LRN *</label><input id="sLrn" placeholder="136789012345"></div>
+<div class="fg" id="fGender"><label>Gender *</label><select id="sGender"><option value="">Select Gender</option><option value="Male">Male</option><option value="Female">Female</option></select></div>
 <div class="fg" id="fEmp" style="display:none"><label>Employee ID *</label><input id="sEmp" placeholder="T-2024-001"></div>
 <div class="fg" id="fChild" style="display:none"><label>Child's LRN *</label><input id="sChild" placeholder="Child's LRN"></div>
 <div class="fg"><label>Email *</label><input type="email" id="se" placeholder="juan@email.com"></div>
