@@ -498,12 +498,45 @@ function downloadTemplate() {
   var students = loadData('students', DEFAULT_STUDENTS);
   var classStudents = students.filter(function(s) { return s.grade === cls && s.status === 'Active'; });
   
+  // Sort: Male first (A-Z by last name), then Female (A-Z by last name), then no gender (A-Z)
+  var males = sortByLastName(classStudents.filter(function(s){ return s.gender === 'Male'; }));
+  var females = sortByLastName(classStudents.filter(function(s){ return s.gender === 'Female'; }));
+  var others = sortByLastName(classStudents.filter(function(s){ return !s.gender || (s.gender !== 'Male' && s.gender !== 'Female'); }));
+  var sorted = males.concat(females).concat(others);
+
   var csv = 'LRN,"Name (Last Name, First Name)",' + subjects.join(',') + '\n';
-  classStudents.forEach(function(s) {
-    csv += s.lrn + ',"' + toLastFirst(s.name) + '"';
-    subjects.forEach(function() { csv += ','; });
-    csv += '\n';
-  });
+
+  // Male section
+  if (males.length > 0) {
+    csv += '"--- MALE ---","",'; subjects.forEach(function(){ csv += ','; }); csv = csv.slice(0,-1) + '\n';
+    males.forEach(function(s) {
+      csv += s.lrn + ',"' + toLastFirst(s.name) + '"';
+      subjects.forEach(function() { csv += ','; });
+      csv += '\n';
+    });
+  }
+
+  // Female section
+  if (females.length > 0) {
+    csv += '"--- FEMALE ---","",'; subjects.forEach(function(){ csv += ','; }); csv = csv.slice(0,-1) + '\n';
+    females.forEach(function(s) {
+      csv += s.lrn + ',"' + toLastFirst(s.name) + '"';
+      subjects.forEach(function() { csv += ','; });
+      csv += '\n';
+    });
+  }
+
+  // No gender assigned
+  if (others.length > 0) {
+    if (males.length > 0 || females.length > 0) {
+      csv += '"--- OTHER/UNSET ---","",'; subjects.forEach(function(){ csv += ','; }); csv = csv.slice(0,-1) + '\n';
+    }
+    others.forEach(function(s) {
+      csv += s.lrn + ',"' + toLastFirst(s.name) + '"';
+      subjects.forEach(function() { csv += ','; });
+      csv += '\n';
+    });
+  }
   
   var blob = new Blob(['\uFEFF' + csv], {type: 'text/csv;charset=utf-8'});
   var url = URL.createObjectURL(blob);
@@ -784,11 +817,26 @@ function downloadAttTemplate() {
   var cls = document.getElementById('attClass').value;
   var students = loadData('students', DEFAULT_STUDENTS);
   var classStudents = students.filter(function(s) { return s.grade === cls && s.status === 'Active'; });
-  
+
+  // Sort: Male first (A-Z), then Female (A-Z), then no gender
+  var males = sortByLastName(classStudents.filter(function(s){ return s.gender === 'Male'; }));
+  var females = sortByLastName(classStudents.filter(function(s){ return s.gender === 'Female'; }));
+  var others = sortByLastName(classStudents.filter(function(s){ return !s.gender || (s.gender !== 'Male' && s.gender !== 'Female'); }));
+
   var csv = 'LRN,"Name (Last Name, First Name)",Days Present,Days Absent,Days Late,Total School Days\n';
-  classStudents.forEach(function(s) {
-    csv += s.lrn + ',"' + toLastFirst(s.name) + '",,,,\n';
-  });
+
+  if (males.length > 0) {
+    csv += '"--- MALE ---","",,,, \n';
+    males.forEach(function(s){ csv += s.lrn + ',"' + toLastFirst(s.name) + '",,,,\n'; });
+  }
+  if (females.length > 0) {
+    csv += '"--- FEMALE ---","",,,, \n';
+    females.forEach(function(s){ csv += s.lrn + ',"' + toLastFirst(s.name) + '",,,,\n'; });
+  }
+  if (others.length > 0) {
+    if (males.length > 0 || females.length > 0) csv += '"--- OTHER/UNSET ---","",,,, \n';
+    others.forEach(function(s){ csv += s.lrn + ',"' + toLastFirst(s.name) + '",,,,\n'; });
+  }
   
   var blob = new Blob(['\uFEFF' + csv], {type: 'text/csv;charset=utf-8'});
   var url = URL.createObjectURL(blob);
