@@ -411,6 +411,7 @@ db.collection('portal_data').doc('pending').get().then(function(doc) {
     email: em,
     idnum: newAcc.lrn || newAcc.eid || newAcc.childLrn || '',
     grade: newAcc.grade || '',
+    gender: newAcc.gender || '',
     date: new Date().toISOString().split('T')[0]
   });
   saveData('pending', pending);

@@ -289,7 +289,7 @@ function confirmApvStudent(id){
   var lrn=document.getElementById('apvLrn').value;
   var grade=document.getElementById('apvGrade').value||'TBA';
   var status=document.getElementById('apvStatus').value;
-  S.unshift({id:getNextId(S),lrn:lrn,name:p.name,grade:grade,contact:p.email,status:status});
+  S.unshift({id:getNextId(S),lrn:lrn,name:p.name,grade:grade,gender:p.gender||'',contact:p.email,status:status});
   saveData('students',S);
   P=P.filter(function(x){return x.id!==id});
   saveData('pending',P);
@@ -316,7 +316,7 @@ function approveAll(){
   if(!confirm('Approve all '+P.length+' pending signups?'))return;
   P.forEach(function(p){
     if(p.type==='Student'){
-      S.unshift({id:getNextId(S),lrn:p.idnum,name:p.name,grade:(p.grade && p.grade!=='') ? p.grade : 'TBA',contact:p.email,status:'Active'});
+      S.unshift({id:getNextId(S),lrn:p.idnum,name:p.name,grade:(p.grade && p.grade!=='') ? p.grade : 'TBA',gender:p.gender||'',contact:p.email,status:'Active'});
     } else if(p.type==='Teacher'){
       T.unshift({id:getNextId(T),eid:p.idnum,name:p.name,dept:'TBA',pos:'Teacher I',contact:p.email});
     }
