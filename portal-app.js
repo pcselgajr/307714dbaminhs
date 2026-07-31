@@ -576,6 +576,7 @@ function handleCSVUpload(event) {
       if (!row[0] || !row[0].trim()) continue;
       
       var lrn = row[0].trim();
+      if (lrn.indexOf('---') === 0) continue; // skip gender separator rows
       var name = row[1] ? fromLastFirst(row[1].trim()) : '';
       var grades = {};
       var hasError = false;
@@ -869,6 +870,7 @@ function handleAttUpload(event) {
       if (!row[0] || !row[0].trim()) continue;
       
       var lrn = row[0].trim();
+      if (lrn.indexOf('---') === 0) continue; // skip gender separator rows
       var name = row[1] ? fromLastFirst(row[1].trim()) : '';
       var present = parseInt(row[2]) || 0;
       var absent = parseInt(row[3]) || 0;
