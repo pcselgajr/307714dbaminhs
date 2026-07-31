@@ -1555,6 +1555,207 @@ function clearSectionGrades() {
   });
 }
 
+// ============================================
+// PRINT FUNCTIONS
+// ============================================
+
+function openPrintWindow(html) {
+  var win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+  setTimeout(function() { win.print(); }, 500);
+}
+
+function getPrintHeader(title, cls) {
+  var settings = loadData('settings', DEFAULT_SETTINGS);
+  var schoolName = settings.schoolName || 'Dr. Bonifacio A. Masilungan Integrated National High School';
+  var sy = settings.schoolYear || 'SY 2025-2026';
+  var teacherName = curUser ? (curUser.fname + ' ' + curUser.lname).toUpperCase() : '';
+  return '<div style="text-align:center;margin-bottom:16px">' +
+    '<div style="font-size:13px">Republic of the Philippines — Department of Education</div>' +
+    '<div style="font-size:16px;font-weight:700;margin:4px 0">' + schoolName + '</div>' +
+    '<div style="font-size:13px">' + sy + '</div>' +
+    '<div style="font-size:18px;font-weight:700;margin:12px 0 4px">' + title + '</div>' +
+    '<div style="font-size:14px">Section: <strong>' + cls + '</strong></div>' +
+    '<div style="font-size:13px">Class Adviser: <strong>' + teacherName + '</strong></div>' +
+    '</div>';
+}
+
+function getPrintStyles() {
+  return '<style>' +
+    'body{font-family:"Times New Roman",serif;font-size:11px;margin:20px}' +
+    'table{width:100%;border-collapse:collapse;margin-top:10px}' +
+    'th,td{border:1px solid #000;padding:4px 6px;text-align:center}' +
+    'th{background:#f0f0f0;font-weight:700;font-size:10px}' +
+    'td:nth-child(2){text-align:left}' +
+    '.passed{color:#166534;font-weight:700}' +
+    '.failed{color:#991b1b;font-weight:700}' +
+    '.section-label{background:#1B2A4A;color:#fff;font-weight:700;text-align:left!important}' +
+    '.sig-block{margin-top:40px;display:flex;justify-content:space-between}' +
+    '.sig-line{text-align:center;width:200px}' +
+    '.sig-line hr{border-top:1px solid #000;margin-bottom:4px}' +
+    '@media print{body{margin:10px}.no-print{display:none}}' +
+    '</style>';
+}
+
+function printGradeSummary() {
+  var cls = document.getElementById('gradeClass').value;
+  if (!cls) { toast('Please select a section first.', 'er'); return; }
+  var key = 'grades_' + cls.replace(/\s/g, '_');
+  var data = loadData(key, {});
+  var lrns = Object.keys(data);
+  if (lrns.length === 0) { toast('No grades to print yet.', 'er'); return; }
+
+  var settings = loadData('settings', DEFAULT_SETTINGS);
+  var secs = (settings.sections && settings.sections.length > 0) ? settings.sections : DEFAULT_SECTIONS;
+  var baseSubjects = getSubjectsForSection(cls, secs);
+  var allSubjects = baseSubjects.slice();
+  if (baseSubjects.indexOf('Music & Arts') > -1) allSubjects.push('MAPEH');
+
+  // Sort by gender then last name
+  var allStudents = lrns.map(function(lrn){ return { lrn: lrn, record: data[lrn] }; });
+  var males = sortByLastName(allStudents.filter(function(s){ return (loadData('students', []).find(function(st){ return st.lrn === s.lrn; }) || {}).gender === 'Male'; }), function(s){ return s.record.name; });
+  var females = sortByLastName(allStudents.filter(function(s){ return (loadData('students', []).find(function(st){ return st.lrn === s.lrn; }) || {}).gender === 'Female'; }), function(s){ return s.record.name; });
+  var others = sortByLastName(allStudents.filter(function(s){
+    var g = (loadData('students', []).find(function(st){ return st.lrn === s.lrn; }) || {}).gender;
+    return !g || (g !== 'Male' && g !== 'Female');
+  }), function(s){ return s.record.name; });
+  var sorted = males.concat(females).concat(others);
+
+  var shortLabels = allSubjects.map(function(s){
+    return s === 'Mathematics' ? 'Math' : s === 'Music & Arts' ? 'M&A' : s === 'PE & Health' ? 'PE' : s === 'Araling Panlipunan' ? 'AP' : s === 'Edukasyon sa Pagpapakatao' ? 'EsP' : s;
+  });
+
+  var thead = '<tr><th>#</th><th>LRN</th><th style="text-align:left">Name</th>' + shortLabels.map(function(l){ return '<th>' + l + '</th>'; }).join('') + '<th>GEN AVG</th><th>Remarks</th></tr>';
+
+  var rowNum = 0;
+  function buildRows(students) {
+    return students.map(function(item) {
+      rowNum++;
+      var r = item.record;
+      var g = r.grades || {};
+      var total = 0, count = 0;
+      var cells = allSubjects.map(function(s) {
+        var v = g[s];
+        if (v !== undefined) { total += v; count++; }
+        return '<td>' + (v !== undefined ? v : '—') + '</td>';
+      }).join('');
+      var avg = count > 0 ? Math.round((total / count) * 10) / 10 : '—';
+      var passed = typeof avg === 'number' && avg >= 75;
+      return '<tr><td>' + rowNum + '</td><td style="font-size:9px">' + item.lrn + '</td><td style="text-align:left">' + r.name.toUpperCase() + '</td>' + cells + '<td class="' + (passed ? 'passed' : 'failed') + '">' + avg + '</td><td class="' + (passed ? 'passed' : 'failed') + '">' + (typeof avg === 'number' ? (passed ? 'PASSED' : 'FAILED') : '—') + '</td></tr>';
+    }).join('');
+  }
+
+  var tableRows = '';
+  if (males.length > 0) {
+    tableRows += '<tr><td colspan="' + (allSubjects.length + 5) + '" class="section-label">MALE</td></tr>' + buildRows(males);
+  }
+  if (females.length > 0) {
+    tableRows += '<tr><td colspan="' + (allSubjects.length + 5) + '" class="section-label">FEMALE</td></tr>' + buildRows(females);
+  }
+  if (others.length > 0) {
+    tableRows += '<tr><td colspan="' + (allSubjects.length + 5) + '" class="section-label">OTHER</td></tr>' + buildRows(others);
+  }
+
+  var teacherName = curUser ? (curUser.fname + ' ' + curUser.lname).toUpperCase() : '___________________';
+  var html = '<!DOCTYPE html><html><head><title>Grade Summary - ' + cls + '</title>' + getPrintStyles() + '</head><body>' +
+    getPrintHeader('CLASS GRADE SUMMARY', cls) +
+    '<table><thead>' + thead + '</thead><tbody>' + tableRows + '</tbody></table>' +
+    '<div class="sig-block">' +
+    '<div class="sig-line"><hr>' + teacherName + '<br><small>Class Adviser</small></div>' +
+    '<div class="sig-line"><hr>___________________<br><small>Principal</small></div>' +
+    '</div></body></html>';
+
+  openPrintWindow(html);
+}
+
+function printGradePerLearner() {
+  var cls = document.getElementById('gradeClass').value;
+  if (!cls) { toast('Please select a section first.', 'er'); return; }
+  var key = 'grades_' + cls.replace(/\s/g, '_');
+  var data = loadData(key, {});
+  var lrns = Object.keys(data);
+  if (lrns.length === 0) { toast('No grades to print yet.', 'er'); return; }
+
+  var settings = loadData('settings', DEFAULT_SETTINGS);
+  var secs = (settings.sections && settings.sections.length > 0) ? settings.sections : DEFAULT_SECTIONS;
+  var baseSubjects = getSubjectsForSection(cls, secs);
+  var allSubjects = baseSubjects.slice();
+  if (baseSubjects.indexOf('Music & Arts') > -1) allSubjects.push('MAPEH');
+
+  var sortedLrns = sortByLastName(lrns, function(lrn){ return data[lrn].name; });
+  var schoolName = (loadData('settings', DEFAULT_SETTINGS).schoolName) || 'Dr. Bonifacio A. Masilungan Integrated National High School';
+  var sy = (loadData('settings', DEFAULT_SETTINGS).schoolYear) || 'SY 2025-2026';
+  var teacherName = curUser ? (curUser.fname + ' ' + curUser.lname).toUpperCase() : '___________________';
+
+  var pages = sortedLrns.map(function(lrn) {
+    var r = data[lrn];
+    var g = r.grades || {};
+    var total = 0, count = 0;
+    var rows = allSubjects.map(function(s) {
+      var v = g[s];
+      if (v !== undefined) { total += v; count++; }
+      return '<tr><td style="text-align:left;padding-left:8px">' + s + '</td><td>' + (v !== undefined ? v : '—') + '</td><td>' + (v !== undefined ? (v >= 75 ? 'Passed' : 'Failed') : '—') + '</td></tr>';
+    }).join('');
+    var avg = count > 0 ? Math.round((total / count) * 10) / 10 : '—';
+    var passed = typeof avg === 'number' && avg >= 75;
+
+    return '<div style="page-break-after:always;padding:10px">' +
+      '<div style="text-align:center;margin-bottom:12px">' +
+      '<div style="font-size:11px">Republic of the Philippines — Department of Education</div>' +
+      '<div style="font-size:14px;font-weight:700">' + schoolName + '</div>' +
+      '<div style="font-size:11px">' + sy + '</div>' +
+      '<div style="font-size:16px;font-weight:700;margin:8px 0 2px">INDIVIDUAL GRADE REPORT</div>' +
+      '</div>' +
+      '<table style="margin-bottom:8px"><tr><td style="text-align:left;border:none;padding:2px"><strong>Name:</strong> ' + r.name.toUpperCase() + '</td><td style="text-align:left;border:none;padding:2px"><strong>LRN:</strong> ' + lrn + '</td></tr>' +
+      '<tr><td style="text-align:left;border:none;padding:2px"><strong>Section:</strong> ' + cls + '</td><td style="text-align:left;border:none;padding:2px"><strong>Adviser:</strong> ' + teacherName + '</td></tr></table>' +
+      '<table><thead><tr><th style="text-align:left">Subject</th><th>Grade</th><th>Remarks</th></tr></thead><tbody>' + rows +
+      '<tr style="background:#f0f0f0"><td style="text-align:left;padding-left:8px;font-weight:700">GENERAL AVERAGE</td><td class="' + (passed ? 'passed' : 'failed') + '">' + avg + '</td><td class="' + (passed ? 'passed' : 'failed') + '">' + (typeof avg === 'number' ? (passed ? 'PASSED' : 'FAILED') : '—') + '</td></tr>' +
+      '</tbody></table>' +
+      '<div class="sig-block" style="margin-top:30px">' +
+      '<div class="sig-line"><hr>' + teacherName + '<br><small>Class Adviser</small></div>' +
+      '<div class="sig-line"><hr>___________________<br><small>Principal</small></div>' +
+      '</div></div>';
+  }).join('');
+
+  var html = '<!DOCTYPE html><html><head><title>Grade Per Learner - ' + cls + '</title>' + getPrintStyles() + '</head><body>' + pages + '</body></html>';
+  openPrintWindow(html);
+}
+
+function printAttendanceSummary() {
+  var cls = document.getElementById('attClass').value;
+  if (!cls) { toast('Please select a section first.', 'er'); return; }
+  var key = 'attendance_' + cls.replace(/\s/g, '_');
+  var data = loadData(key, {});
+  var lrns = Object.keys(data);
+  if (lrns.length === 0) { toast('No attendance records to print yet.', 'er'); return; }
+
+  var sortedLrns = sortByLastName(lrns, function(lrn){ return data[lrn].name; });
+  var teacherName = curUser ? (curUser.fname + ' ' + curUser.lname).toUpperCase() : '___________________';
+
+  var rowNum = 0;
+  var tableRows = sortedLrns.map(function(lrn) {
+    rowNum++;
+    var r = data[lrn];
+    var rateClass = r.rate >= 90 ? 'passed' : 'failed';
+    return '<tr><td>' + rowNum + '</td><td style="font-size:9px">' + lrn + '</td><td style="text-align:left">' + r.name.toUpperCase() + '</td>' +
+      '<td>' + r.present + '</td><td>' + r.absent + '</td><td>' + r.late + '</td><td>' + r.totalDays + '</td>' +
+      '<td class="' + rateClass + '">' + r.rate + '%</td></tr>';
+  }).join('');
+
+  var html = '<!DOCTYPE html><html><head><title>Attendance - ' + cls + '</title>' + getPrintStyles() + '</head><body>' +
+    getPrintHeader('CLASS ATTENDANCE RECORD', cls) +
+    '<table><thead><tr><th>#</th><th>LRN</th><th style="text-align:left">Name</th><th>Present</th><th>Absent</th><th>Late</th><th>Total Days</th><th>Rate</th></tr></thead>' +
+    '<tbody>' + tableRows + '</tbody></table>' +
+    '<div class="sig-block">' +
+    '<div class="sig-line"><hr>' + teacherName + '<br><small>Class Adviser</small></div>' +
+    '<div class="sig-line"><hr>___________________<br><small>Principal</small></div>' +
+    '</div></body></html>';
+
+  openPrintWindow(html);
+}
+
 
 
 // ============================================
