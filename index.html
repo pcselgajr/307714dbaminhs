@@ -382,8 +382,17 @@ td{padding:12px 16px;border-bottom:1px solid var(--g1);font-size:13.5px}
 <button class="btn btn-p btn-sm" onclick="downloadTemplate()">&#128229; Download CSV Template</button>
 <label class="btn btn-s btn-sm" style="cursor:pointer">&#128228; Upload CSV File <input type="file" id="csvUpload" accept=".csv,.txt" onchange="handleCSVUpload(event)" style="display:none"></label>
 <button class="btn btn-s btn-sm" onclick="updateGradeView()">&#128260; Refresh</button>
-<button class="btn btn-sm" style="background:#e8f5ec;color:#2d8b46;border:1px solid #a5d6b7" onclick="printGradeSummary()">&#128438; Print Summary</button>
-<button class="btn btn-sm" style="background:#e8f5ec;color:#2d8b46;border:1px solid #a5d6b7" onclick="printGradePerLearner()">&#128438; Print Per Learner</button>
+<div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+<span style="font-size:12px;color:var(--g5);align-self:center">Per Term:</span>
+<button class="btn btn-sm" style="background:#e8f5ec;color:#2d8b46;border:1px solid #a5d6b7" onclick="printGradeSummary('Term_1')">&#128438; Term 1</button>
+<button class="btn btn-sm" style="background:#e8f5ec;color:#2d8b46;border:1px solid #a5d6b7" onclick="printGradeSummary('Term_2')">&#128438; Term 2</button>
+<button class="btn btn-sm" style="background:#e8f5ec;color:#2d8b46;border:1px solid #a5d6b7" onclick="printGradeSummary('Term_3')">&#128438; Term 3</button>
+</div>
+<div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+<span style="font-size:12px;color:var(--g5);align-self:center">Consolidated:</span>
+<button class="btn btn-sm" style="background:#e8f0fe;color:#1B2A4A;border:1px solid #c5cae9" onclick="printConsolidatedSummary()">&#128438; All Terms Summary</button>
+<button class="btn btn-sm" style="background:#e8f0fe;color:#1B2A4A;border:1px solid #c5cae9" onclick="printConsolidatedPerLearner()">&#128438; All Terms Per Learner</button>
+</div>
 <button class="btn btn-sm" style="background:#fdecea;color:#d32f2f;border:1px solid #ffcdd2" onclick="clearSectionGrades()">&#128465; Clear Grades</button>
 </div>
 
