@@ -362,10 +362,15 @@ td{padding:12px 16px;border-bottom:1px solid var(--g1);font-size:13.5px}
 <div id="tdClasses" class="dash-card"><div id="tdClassesContent"><div style="text-align:center;padding:24px;color:var(--g5)">Loading classes...</div></div></div>
 <div id="tdGrade" class="dash-card" style="display:none">
 <h3>&#128202; Grade Upload System</h3>
-<p style="color:var(--g5);font-size:14px;margin-bottom:18px">Upload student grades per quarter using a CSV file</p>
+<p style="color:var(--g5);font-size:14px;margin-bottom:18px">Upload student grades per term using a CSV file</p>
 
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px">
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:18px">
 <div class="fg"><label>Class / Section</label><select id="gradeClass" onchange="updateGradeView()">
+</select></div>
+<div class="fg"><label>Term</label><select id="gradeTerm" onchange="updateGradeView()">
+<option value="Term_1">Term 1</option>
+<option value="Term_2">Term 2</option>
+<option value="Term_3">Term 3</option>
 </select></div>
 <div class="fg"><label>School Year</label><select id="gradeSchoolYear">
 <option value="2025-2026">SY 2025-2026</option>

@@ -490,6 +490,18 @@ function parseCSVLine(line) {
 // splitName, toLastFirst, fromLastFirst, and sortByLastName are defined in firebase-data.js
 // (shared with admin.html), which is loaded before this file.
 
+// Returns the currently selected term from the Grade Input dropdown
+function getSelectedTerm() {
+  var el = document.getElementById('gradeTerm');
+  return el ? el.value : 'Term_1';
+}
+
+// Builds the Firestore document key for a given section and term
+// e.g. "GRADE 12 ABM APOLLO" + "Term_1" → "grades_GRADE_12_ABM_APOLLO_Term_1"
+function getGradeKey(cls, term) {
+  return 'grades_' + cls.replace(/\s/g, '_') + '_' + (term || getSelectedTerm());
+}
+
 function downloadTemplate() {
   var cls = document.getElementById('gradeClass').value;
   var settings = loadData('settings', DEFAULT_SETTINGS);
@@ -543,7 +555,7 @@ function downloadTemplate() {
   var url = URL.createObjectURL(blob);
   var a = document.createElement('a');
   a.href = url;
-  a.download = 'grades_' + cls.replace(/\s/g,'_') + '.csv';
+  a.download = 'grades_' + cls.replace(/\s/g,'_') + '_' + getSelectedTerm() + '.csv';
   a.click();
   URL.revokeObjectURL(url);
   
@@ -668,7 +680,7 @@ function saveUploadedGrades() {
   
   var cls = window._pendingClass;
   var records = window._pendingRecords;
-  var key = 'grades_' + cls.replace(/\s/g, '_');
+  var key = getGradeKey(cls);
   
   var existing = loadData(key, {});
   
@@ -697,7 +709,7 @@ function cancelUpload() {
 
 function updateGradeView() {
   var cls = document.getElementById('gradeClass').value;
-  var key = 'grades_' + cls.replace(/\s/g, '_');
+  var key = getGradeKey(cls);
   var data = loadData(key, {});
   var lrns = Object.keys(data);
   
@@ -712,7 +724,7 @@ function updateGradeView() {
   var baseSubjects = getSubjectsForSection(cls, secs);
   var allSubjects = baseSubjects.slice();
   if (baseSubjects.indexOf('Music & Arts') > -1) allSubjects.push('MAPEH');
-  var html = '<h4 style="font-size:15px;margin-bottom:12px">&#128202; Grades &mdash; ' + cls + '</h4>';
+  var html = '<h4 style="font-size:15px;margin-bottom:12px">&#128202; Grades &mdash; ' + cls + ' &nbsp;<span style="font-size:13px;color:var(--o);font-weight:600">[' + getSelectedTerm().replace('_',' ') + ']</span></h4>';
   html += '<div style="overflow-x:auto"><table><thead><tr><th>LRN</th><th>Name</th>';
   allSubjects.forEach(function(s) {
     var label = s === 'Mathematics' ? 'Math' : s === 'Music & Arts' ? 'M&A' : s === 'PE & Health' ? 'PE' : s;
@@ -1548,7 +1560,7 @@ function clearSectionGrades() {
   var cls = document.getElementById('gradeClass').value;
   if (!cls) { toast('Please select a section first.', 'er'); return; }
   if (!confirm('Clear ALL grades for "' + cls + '"?\n\nThis will permanently delete all uploaded grades for this section. You will need to re-upload the CSV to restore them.\n\nThis cannot be undone.')) return;
-  var key = 'grades_' + cls.replace(/\s/g, '_');
+  var key = getGradeKey(cls);
   delete _cache[key];
   db.collection('portal_data').doc(key).delete().then(function() {
     updateGradeView();
@@ -1605,7 +1617,7 @@ function getPrintStyles() {
 function printGradeSummary() {
   var cls = document.getElementById('gradeClass').value;
   if (!cls) { toast('Please select a section first.', 'er'); return; }
-  var key = 'grades_' + cls.replace(/\s/g, '_');
+  var key = getGradeKey(cls);
   var data = loadData(key, {});
   var lrns = Object.keys(data);
   if (lrns.length === 0) { toast('No grades to print yet.', 'er'); return; }
@@ -1663,7 +1675,7 @@ function printGradeSummary() {
 
   var teacherName = curUser ? (curUser.fname + ' ' + curUser.lname).toUpperCase() : '___________________';
   var html = '<!DOCTYPE html><html><head><title>Grade Summary - ' + cls + '</title>' + getPrintStyles() + '</head><body>' +
-    getPrintHeader('CLASS GRADE SUMMARY', cls) +
+    getPrintHeader('CLASS GRADE SUMMARY — ' + getSelectedTerm().replace('_',' '), cls) +
     '<table><thead>' + thead + '</thead><tbody>' + tableRows + '</tbody></table>' +
     '<div class="sig-block">' +
     '<div class="sig-line"><hr>' + teacherName + '<br><small>Class Adviser</small></div>' +
@@ -1676,7 +1688,7 @@ function printGradeSummary() {
 function printGradePerLearner() {
   var cls = document.getElementById('gradeClass').value;
   if (!cls) { toast('Please select a section first.', 'er'); return; }
-  var key = 'grades_' + cls.replace(/\s/g, '_');
+  var key = getGradeKey(cls);
   var data = loadData(key, {});
   var lrns = Object.keys(data);
   if (lrns.length === 0) { toast('No grades to print yet.', 'er'); return; }
@@ -1709,7 +1721,7 @@ function printGradePerLearner() {
       '<div style="font-size:11px">Republic of the Philippines — Department of Education</div>' +
       '<div style="font-size:14px;font-weight:700">' + schoolName + '</div>' +
       '<div style="font-size:11px">' + sy + '</div>' +
-      '<div style="font-size:16px;font-weight:700;margin:8px 0 2px">INDIVIDUAL GRADE REPORT</div>' +
+      '<div style="font-size:16px;font-weight:700;margin:8px 0 2px">INDIVIDUAL GRADE REPORT — ' + getSelectedTerm().replace('_',' ') + '</div>' +
       '</div>' +
       '<table style="margin-bottom:8px"><tr><td style="text-align:left;border:none;padding:2px"><strong>Name:</strong> ' + r.name.toUpperCase() + '</td><td style="text-align:left;border:none;padding:2px"><strong>LRN:</strong> ' + lrn + '</td></tr>' +
       '<tr><td style="text-align:left;border:none;padding:2px"><strong>Section:</strong> ' + cls + '</td><td style="text-align:left;border:none;padding:2px"><strong>Adviser:</strong> ' + teacherName + '</td></tr></table>' +
