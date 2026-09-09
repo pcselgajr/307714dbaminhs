@@ -365,9 +365,9 @@ td{padding:12px 16px;border-bottom:1px solid var(--g1);font-size:13.5px}
 <p style="color:var(--g5);font-size:14px;margin-bottom:18px">Upload student grades per term using a CSV file</p>
 
 <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:18px">
-<div class="fg"><label>Class / Section</label><select id="gradeClass" onchange="updateGradeView()">
+<div class="fg"><label>Class / Section</label><select id="gradeClass" onchange="updateGradeView();updateReleaseToggle()">
 </select></div>
-<div class="fg"><label>Term</label><select id="gradeTerm" onchange="updateGradeView()">
+<div class="fg"><label>Term</label><select id="gradeTerm" onchange="updateGradeView();updateReleaseToggle()">
 <option value="Term_1">Term 1</option>
 <option value="Term_2">Term 2</option>
 <option value="Term_3">Term 3</option>
@@ -376,6 +376,20 @@ td{padding:12px 16px;border-bottom:1px solid var(--g1);font-size:13.5px}
 <option value="2025-2026">SY 2025-2026</option>
 <option value="2026-2027">SY 2026-2027</option>
 </select></div>
+</div>
+
+<div id="gradeReleasePanel" style="display:flex;align-items:center;justify-content:space-between;background:var(--g1);border-radius:10px;padding:12px 16px;margin-bottom:16px;border:1.5px solid var(--g2)">
+<div>
+  <div style="font-size:14px;font-weight:600;color:var(--g9)" id="releasePanelLabel">Grade Visibility for Students &amp; Parents</div>
+  <div style="font-size:12px;color:var(--g5);margin-top:2px" id="releaseStatusText">Loading...</div>
+</div>
+<div style="display:flex;align-items:center;gap:10px">
+  <span style="font-size:13px;color:var(--g5)" id="releaseOffLabel">Hidden</span>
+  <div id="releaseToggleWrap" onclick="toggleGradeRelease()" style="width:48px;height:26px;border-radius:13px;background:var(--g3);cursor:pointer;position:relative;transition:background 0.3s">
+    <div id="releaseToggleKnob" style="width:20px;height:20px;border-radius:50%;background:#fff;position:absolute;top:3px;left:3px;transition:left 0.3s;box-shadow:0 1px 4px rgba(0,0,0,0.2)"></div>
+  </div>
+  <span style="font-size:13px;font-weight:600;color:var(--su)" id="releaseOnLabel">Visible</span>
+</div>
 </div>
 
 <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">

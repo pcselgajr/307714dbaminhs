@@ -143,6 +143,7 @@ var teacherRecord = teacherRecords.find(function(t){return t.eid===user.eid});
 curUser.sections = (teacherRecord && teacherRecord.sections && teacherRecord.sections.length > 0) ? teacherRecord.sections : null;
 setTimeout(function() {
   try { populateSectionDropdowns(); } catch(e) { console.error('populateSectionDropdowns error:', e); }
+  try { updateReleaseToggle(); } catch(e) { console.error('updateReleaseToggle error:', e); }
   try { loadMyClasses(); } catch(e) { console.error('loadMyClasses error:', e); }
   try { loadTeacherQuizzes(); } catch(e) { console.error('loadTeacherQuizzes error:', e); }
   try { updateTeacherStats(); } catch(e) { console.error('updateTeacherStats error:', e); }
@@ -502,6 +503,62 @@ function getGradeKey(cls, term) {
   return 'grades_' + cls.replace(/\s/g, '_') + '_' + (term || getSelectedTerm());
 }
 
+// Builds the release status key for a section+term combo
+// e.g. "GRADE 12 ABM APOLLO_Term_1"
+function getReleaseKey(cls, term) {
+  return cls.replace(/\s/g, '_') + '_' + (term || getSelectedTerm());
+}
+
+// ============================================
+// GRADE RELEASE TOGGLE
+// ============================================
+
+function updateReleaseToggle() {
+  var cls = document.getElementById('gradeClass') ? document.getElementById('gradeClass').value : '';
+  var term = getSelectedTerm();
+  var panel = document.getElementById('gradeReleasePanel');
+  var label = document.getElementById('releasePanelLabel');
+  var statusText = document.getElementById('releaseStatusText');
+  var toggleWrap = document.getElementById('releaseToggleWrap');
+  var knob = document.getElementById('releaseToggleKnob');
+  if (!panel || !cls) return;
+
+  var releaseData = loadData('gradeRelease', {});
+  var key = getReleaseKey(cls, term);
+  var isReleased = releaseData[key] === true;
+
+  if (label) label.textContent = 'Grade Visibility — ' + cls + ' (' + term.replace('_',' ') + ')';
+  if (statusText) statusText.textContent = isReleased
+    ? '✅ Visible to students and parents'
+    : '🔒 Hidden from students and parents';
+
+  if (toggleWrap) toggleWrap.style.background = isReleased ? 'var(--su)' : 'var(--g3)';
+  if (knob) knob.style.left = isReleased ? '25px' : '3px';
+}
+
+function toggleGradeRelease() {
+  var cls = document.getElementById('gradeClass') ? document.getElementById('gradeClass').value : '';
+  var term = getSelectedTerm();
+  if (!cls) { toast('Please select a section first.', 'er'); return; }
+
+  var releaseData = loadData('gradeRelease', {});
+  var key = getReleaseKey(cls, term);
+  var current = releaseData[key] === true;
+  var newVal = !current;
+
+  var msg = newVal
+    ? 'Make grades for "' + cls + ' ' + term.replace('_',' ') + '" VISIBLE to students and parents?'
+    : 'HIDE grades for "' + cls + ' ' + term.replace('_',' ') + '" from students and parents?';
+  if (!confirm(msg)) return;
+
+  releaseData[key] = newVal;
+  saveData('gradeRelease', releaseData);
+  updateReleaseToggle();
+  toast(newVal
+    ? '✅ Grades are now visible to students and parents.'
+    : '🔒 Grades are now hidden from students and parents.', 'su');
+}
+
 function downloadTemplate() {
   var cls = document.getElementById('gradeClass').value;
   var settings = loadData('settings', DEFAULT_SETTINGS);
@@ -774,51 +831,60 @@ function showUploadStatus(msg, type) {
 function loadStudentGrades() {
   if (!curUser || curUser.type !== 'student') return;
   var lrn = curUser.lrn;
+  var grade = curUser.grade; // student's section
   if (!lrn) return;
-  
-  var grades = null;
-  var keys = Object.keys(_cache);
-  
-  keys.forEach(function(k) {
-    if (k.startsWith('grades_')) {
-      var data = _cache[k];
-      if (data && data[lrn]) {
-        grades = data[lrn];
-      }
-    }
-  });
-  
-  if (!grades || !grades.grades) return;
-  
+
   var el = document.getElementById('sdGrades');
   if (!el) return;
-  
-  var g = grades.grades;
-  var allSubjects = Object.keys(g);
-  var html = '<h3>&#128202; My Grades</h3>';
-  html += '<div style="overflow-x:auto"><table><thead><tr><th>Subject</th><th>Final Grade</th><th>Remarks</th></tr></thead><tbody>';
-  
-  var total = 0, count = 0;
-  allSubjects.forEach(function(s) {
-    var v = g[s];
-    if (v === undefined) return;
-    total += v; count++;
-    var remarks = v >= 75 ? 'Passed' : 'Failed';
-    var badge = v >= 75 ? 'b-g' : 'b-r';
-    var isMAPEH = s === 'MAPEH';
-    html += '<tr style="' + (isMAPEH ? 'background:#f0f7ff;font-weight:600' : '') + '">';
-    html += '<td>' + (isMAPEH ? '&#128900; ' : '') + s + '</td>';
-    html += '<td style="text-align:center"><strong>' + v + '</strong></td>';
-    html += '<td><span class="badge ' + badge + '">' + remarks + '</span></td></tr>';
+
+  var releaseData = loadData('gradeRelease', {});
+  var terms = ['Term_1', 'Term_2', 'Term_3'];
+  var releasedTerms = terms.filter(function(t) {
+    var key = (grade || '').replace(/\s/g, '_') + '_' + t;
+    return releaseData[key] === true;
   });
-  
-  var avg = count > 0 ? Math.round((total / count) * 10) / 10 : '';
-  html += '<tr style="background:#f9f9f9;border-top:2px solid #ddd"><td><strong>General Average</strong></td>';
-  html += '<td style="text-align:center"><strong style="font-size:18px;color:' + (avg >= 75 ? '#22c55e' : '#ef4444') + '">' + avg + '</strong></td>';
-  html += '<td><span class="badge ' + (avg >= 75 ? 'b-g' : 'b-r') + '">' + (avg >= 75 ? 'Passed' : 'Failed') + '</span></td></tr>';
-  
-  html += '</tbody></table></div>';
-  el.innerHTML = html;
+
+  if (releasedTerms.length === 0) {
+    el.innerHTML = '<h3>&#128202; My Grades</h3><div style="padding:24px;text-align:center;color:var(--g5);font-size:14px">&#128274; Grades have not been released yet by your adviser. Please check back later.</div>';
+    return;
+  }
+
+  var html = '<h3>&#128202; My Grades</h3>';
+
+  releasedTerms.forEach(function(term) {
+    var key = 'grades_' + (grade || '').replace(/\s/g, '_') + '_' + term;
+    var data = loadData(key, {});
+    var record = data[lrn];
+    if (!record || !record.grades) return;
+
+    var g = record.grades;
+    var allSubjects = Object.keys(g);
+    var total = 0, count = 0;
+
+    html += '<div style="margin-bottom:20px"><div style="font-size:15px;font-weight:700;color:var(--n);margin-bottom:10px;padding:8px 12px;background:var(--g1);border-radius:8px;border-left:4px solid var(--o)">' + term.replace('_', ' ') + '</div>';
+    html += '<div style="overflow-x:auto"><table><thead><tr><th>Subject</th><th>Grade</th><th>Remarks</th></tr></thead><tbody>';
+
+    allSubjects.forEach(function(s) {
+      var v = g[s];
+      if (v === undefined) return;
+      total += v; count++;
+      var remarks = v >= 75 ? 'Passed' : 'Failed';
+      var badge = v >= 75 ? 'b-g' : 'b-r';
+      var isMAPEH = s === 'MAPEH';
+      html += '<tr style="' + (isMAPEH ? 'background:#f0f7ff;font-weight:600' : '') + '">';
+      html += '<td>' + (isMAPEH ? '&#128900; ' : '') + s + '</td>';
+      html += '<td style="text-align:center"><strong>' + v + '</strong></td>';
+      html += '<td><span class="badge ' + badge + '">' + remarks + '</span></td></tr>';
+    });
+
+    var avg = count > 0 ? Math.round((total / count) * 10) / 10 : '';
+    html += '<tr style="background:#f9f9f9;border-top:2px solid #ddd"><td><strong>General Average</strong></td>';
+    html += '<td style="text-align:center"><strong style="font-size:16px;color:' + (avg >= 75 ? '#22c55e' : '#ef4444') + '">' + avg + '</strong></td>';
+    html += '<td><span class="badge ' + (avg >= 75 ? 'b-g' : 'b-r') + '">' + (avg >= 75 ? 'Passed' : 'Failed') + '</span></td></tr>';
+    html += '</tbody></table></div></div>';
+  });
+
+  el.innerHTML = html || '<div style="padding:24px;text-align:center;color:var(--g5);font-size:14px">&#128274; No released grades found.</div>';
 }
 
 
@@ -1128,63 +1194,77 @@ function loadParentGrades() {
   if (!curUser || curUser.type !== 'parent') return;
   var lrn = curUser.childLrn;
   if (!lrn) return;
-  
-  var grades = null;
-  var childName = curUser.childName || 'Your Child';
-  
-  var keys = Object.keys(_cache);
-  keys.forEach(function(k) {
-    if (k.startsWith('grades_')) {
-      var data = _cache[k];
-      if (data && data[lrn]) {
-        grades = data[lrn];
-        if (grades.name) childName = grades.name;
-      }
-    }
-  });
-  
+
   var el = document.getElementById('pdGradesContent');
   if (!el) return;
-  
-  if (!grades || !grades.grades) {
+
+  var childName = curUser.childName || 'Your Child';
+  var releaseData = loadData('gradeRelease', {});
+  var terms = ['Term_1', 'Term_2', 'Term_3'];
+
+  // Find which section the child belongs to
+  var students = loadData('students', DEFAULT_STUDENTS);
+  var childRecord = students.find(function(s){ return s.lrn === lrn; });
+  var childGrade = childRecord ? childRecord.grade : '';
+
+  var releasedTerms = terms.filter(function(t) {
+    var key = (childGrade || '').replace(/\s/g, '_') + '_' + t;
+    return releaseData[key] === true;
+  });
+
+  if (releasedTerms.length === 0) {
     el.innerHTML = '<h3>&#128202; Child\'s Grades &mdash; ' + childName + '</h3>' +
       '<div style="text-align:center;padding:32px;color:var(--g5)">' +
-      '<div style="font-size:48px;margin-bottom:12px">&#128203;</div>' +
-      '<p>No grades uploaded yet for your child (LRN: ' + lrn + ').</p>' +
-      '<p style="font-size:13px;margin-top:8px">Grades will appear here once the teacher uploads them.</p></div>';
+      '<div style="font-size:48px;margin-bottom:12px">&#128274;</div>' +
+      '<p>Grades have not been released yet by the class adviser.</p>' +
+      '<p style="font-size:13px;margin-top:8px">Please check back later.</p></div>';
     return;
   }
-  
-  var g = grades.grades;
-  var allSubjects = Object.keys(g);
+
   var html = '<h3>&#128202; Child\'s Grades &mdash; ' + childName + '</h3>';
-  html += '<div style="overflow-x:auto"><table><thead><tr><th>Subject</th><th>Final Grade</th><th>Remarks</th></tr></thead><tbody>';
-  
-  var total = 0, count = 0;
-  allSubjects.forEach(function(s) {
-    var v = g[s];
-    if (v === undefined) return;
-    total += v; count++;
-    var remarks = v >= 75 ? 'Passed' : 'Failed';
-    var badge = v >= 75 ? 'b-g' : 'b-r';
-    var isMAPEH = s === 'MAPEH';
-    html += '<tr style="' + (isMAPEH ? 'background:#f0f7ff;font-weight:600' : '') + '">';
-    html += '<td>' + (isMAPEH ? '&#128900; ' : '') + s + '</td>';
-    html += '<td style="text-align:center"><strong>' + v + '</strong></td>';
-    html += '<td><span class="badge ' + badge + '">' + remarks + '</span></td></tr>';
+  var overallTotal = 0, overallCount = 0;
+
+  releasedTerms.forEach(function(term) {
+    var key = 'grades_' + (childGrade || '').replace(/\s/g, '_') + '_' + term;
+    var data = loadData(key, {});
+    var record = data[lrn];
+    if (!record || !record.grades) return;
+
+    if (record.name) childName = record.name;
+    var g = record.grades;
+    var allSubjects = Object.keys(g);
+    var total = 0, count = 0;
+
+    html += '<div style="margin-bottom:20px"><div style="font-size:15px;font-weight:700;color:var(--n);margin-bottom:10px;padding:8px 12px;background:var(--g1);border-radius:8px;border-left:4px solid var(--o)">' + term.replace('_', ' ') + '</div>';
+    html += '<div style="overflow-x:auto"><table><thead><tr><th>Subject</th><th>Grade</th><th>Remarks</th></tr></thead><tbody>';
+
+    allSubjects.forEach(function(s) {
+      var v = g[s];
+      if (v === undefined) return;
+      total += v; count++;
+      overallTotal += v; overallCount++;
+      var remarks = v >= 75 ? 'Passed' : 'Failed';
+      var badge = v >= 75 ? 'b-g' : 'b-r';
+      var isMAPEH = s === 'MAPEH';
+      html += '<tr style="' + (isMAPEH ? 'background:#f0f7ff;font-weight:600' : '') + '">';
+      html += '<td>' + (isMAPEH ? '&#128900; ' : '') + s + '</td>';
+      html += '<td style="text-align:center"><strong>' + v + '</strong></td>';
+      html += '<td><span class="badge ' + badge + '">' + remarks + '</span></td></tr>';
+    });
+
+    var avg = count > 0 ? Math.round((total / count) * 10) / 10 : '';
+    html += '<tr style="background:#f9f9f9;border-top:2px solid #ddd"><td><strong>General Average</strong></td>';
+    html += '<td style="text-align:center"><strong style="font-size:16px;color:' + (avg >= 75 ? '#22c55e' : '#ef4444') + '">' + avg + '</strong></td>';
+    html += '<td><span class="badge ' + (avg >= 75 ? 'b-g' : 'b-r') + '">' + (avg >= 75 ? 'Passed' : 'Failed') + '</span></td></tr>';
+    html += '</tbody></table></div></div>';
   });
-  
-  var avg = count > 0 ? Math.round((total / count) * 10) / 10 : '';
-  html += '<tr style="background:#f9f9f9;border-top:2px solid #ddd"><td><strong>General Average</strong></td>';
-  html += '<td style="text-align:center"><strong style="font-size:18px;color:' + (avg >= 75 ? '#22c55e' : '#ef4444') + '">' + avg + '</strong></td>';
-  html += '<td><span class="badge ' + (avg >= 75 ? 'b-g' : 'b-r') + '">' + (avg >= 75 ? 'Passed' : 'Failed') + '</span></td></tr>';
-  html += '</tbody></table></div>';
-  
+
   el.innerHTML = html;
-  
-  // Update parent stat cards
+
+  // Update parent stat card with overall average
+  var overallAvg = overallCount > 0 ? Math.round((overallTotal / overallCount) * 10) / 10 : '';
   var statEls = document.querySelectorAll('#parentDash .dash-stat b');
-  if (statEls.length >= 1 && avg) statEls[0].textContent = avg;
+  if (statEls.length >= 1 && overallAvg) statEls[0].textContent = overallAvg;
 }
 
 function loadParentAttendance() {
