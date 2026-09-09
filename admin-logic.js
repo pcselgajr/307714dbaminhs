@@ -60,7 +60,7 @@ function go(p,el){
   document.getElementById('sidebar').classList.remove('open');
 }
 
-function renderAll(){rN();rE();rS();rT();rP();rPwReset();uS();loadSettings();loadResources();loadGallery();loadAchievements();loadHistory();loadAlumni();loadDTRDashboard();setTimeout(updateDashChart,100)}
+function renderAll(){rN();rE();rS();rT();rP();rPwReset();rParents();uS();loadSettings();loadResources();loadGallery();loadAchievements();loadHistory();loadAlumni();loadDTRDashboard();setTimeout(updateDashChart,100)}
 function uS(){
   document.getElementById('sS').textContent=S.length.toLocaleString();
   document.getElementById('sT').textContent=T.length;
@@ -84,6 +84,54 @@ function rS(){
 }
 
 function rT(){document.getElementById('tB').innerHTML=T.map(function(t){var secLabel=(t.sections&&t.sections.length>0)?t.sections.join(', '):'<span style="color:var(--g5)">All sections</span>';return '<tr><td style="font-family:monospace;font-size:12px">'+t.eid+'</td><td><strong>'+t.name+'</strong></td><td>'+t.dept+'</td><td>'+t.pos+'</td><td>'+t.contact+'</td><td style="font-size:12px">'+secLabel+'</td><td><div class="ab"><button class="abtn" title="Edit" onclick="edT('+t.id+')">&#9998;</button><button class="abtn del" title="Delete" onclick="del(\'t\','+t.id+')">&#128465;</button></div></td></tr>'}).join('')}
+
+function rParents(){
+  var accts = loadData('accounts', []);
+  var parents = accts.filter(function(a){ return a.type === 'parent'; });
+  var students = S;
+  var countEl = document.getElementById('parentCount');
+  if (countEl) countEl.textContent = parents.length;
+  var tbody = document.getElementById('parB');
+  if (!tbody) return;
+  if (parents.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--g5)">No parent accounts yet.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = parents.map(function(p) {
+    var parentName = (p.fname || '') + ' ' + (p.lname || '');
+    var childLrn = p.childLrn || '—';
+    var childName = p.childName || '—';
+    // Try to get child's section from Students Directory
+    var childRecord = students.find(function(s){ return s.lrn === p.childLrn; });
+    var childSection = childRecord ? childRecord.grade : '<span style="color:var(--g5)">—</span>';
+    var contact = p.email || '—';
+    var status = '<span class="badge b-ac">Active</span>';
+    return '<tr>' +
+      '<td><strong>' + parentName.toUpperCase() + '</strong></td>' +
+      '<td>' + childName + '</td>' +
+      '<td style="font-family:monospace;font-size:12px">' + childLrn + '</td>' +
+      '<td style="font-size:12px">' + childSection + '</td>' +
+      '<td>' + contact + '</td>' +
+      '<td>' + status + '</td>' +
+      '<td><div class="ab"><button class="abtn del" title="Delete account" onclick="deleteParentAccount(\'' + (p.id||p.email) + '\')">&#128465;</button></div></td>' +
+      '</tr>';
+  }).join('');
+}
+
+function deleteParentAccount(pid) {
+  if (!confirm('Delete this parent account? They will need to sign up again. This does not affect their child\'s records.')) return;
+  var accts = loadData('accounts', []);
+  var before = accts.length;
+  accts = accts.filter(function(a){ return a.type !== 'parent' || (a.id !== pid && a.email !== pid); });
+  if (accts.length < before) {
+    saveData('accounts', accts);
+    rParents();
+    uS();
+    toast('Parent account deleted.', 'su');
+  } else {
+    toast('Account not found.', 'er');
+  }
+}
 
 function rP(){document.getElementById('pB').innerHTML=P.map(function(p){return '<tr><td><strong>'+p.name+'</strong></td><td><span class="badge b-pe">'+p.type+'</span></td><td>'+p.email+'</td><td style="font-family:monospace;font-size:12px">'+p.idnum+'</td><td>'+formatDate(p.date)+'</td><td><div class="ab"><button class="abtn apv" title="Approve" onclick="apv('+p.id+')">&#10003;</button><button class="abtn del" title="Reject" onclick="rej('+p.id+')">&#10005;</button></div></td></tr>'}).join('')}
 

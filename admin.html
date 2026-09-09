@@ -155,6 +155,7 @@ tr:hover td{background:var(--cr)}
 <div class="sb-sec">People</div>
 <button class="sl" onclick="go('students',this)"><span class="i">&#127891;</span> Students</button>
 <button class="sl" onclick="go('teachers',this)"><span class="i">&#128104;&#8205;&#127979;</span> Teachers &amp; Staff</button>
+<button class="sl" onclick="go('parents',this)"><span class="i">&#128106;</span> Parents <span class="sb-count" id="parentCount">0</span></button>
 <button class="sl" onclick="go('pending',this)"><span class="i">&#128203;</span> Pending Signups <span class="sb-count" id="pendCount">3</span></button>
 <button class="sl" onclick="go('pwreset',this)"><span class="i">&#128273;</span> Password Reset Requests <span class="sb-count" id="pwResetCount">0</span></button>
 <button class="sl" onclick="go('backup',this)"><span class="i">&#128190;</span> Backup &amp; Restore</button>
@@ -243,6 +244,9 @@ tr:hover td{background:var(--cr)}
 
 <!-- TEACHERS -->
 <div class="pg" id="pg-teachers"><div class="panel"><div class="ph"><h3>&#128104;&#8205;&#127979; Teachers &amp; Staff</h3><div class="pa"><div class="sbox">&#128269;<input placeholder="Search..." oninput="ft('tT',this.value)"></div><button class="btn btn-p btn-sm" onclick="openTM()">+ Add Teacher</button></div></div>
+
+<div class="pg" id="pg-parents"><div class="panel"><div class="ph"><h3>&#128106; Parents Directory</h3><div class="pa"><div class="sbox">&#128269;<input placeholder="Search..." oninput="ft('parT',this.value)"></div></div></div>
+<table id="parT"><thead><tr><th>Parent Name</th><th>Child's Name</th><th>Child's LRN</th><th>Section</th><th>Contact / Email</th><th>Status</th><th>Actions</th></tr></thead><tbody id="parB"></tbody></table></div></div>
 <table id="tT"><thead><tr><th>Employee ID</th><th>Name</th><th>Department</th><th>Position</th><th>Contact</th><th>Advisory Section(s)</th><th>Actions</th></tr></thead><tbody id="tB"></tbody></table></div></div>
 
 <!-- PENDING SIGNUPS -->
