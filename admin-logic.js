@@ -55,9 +55,11 @@ function go(p,el){
   document.getElementById('pg-'+p).classList.add('act');
   document.querySelectorAll('.sl').forEach(function(x){x.classList.remove('act')});
   el.classList.add('act');
-  var t={dash:'Dashboard',news:'News & Announcements',events:'Events & Calendar',students:'Student Management',teachers:'Teachers & Staff',pending:'Pending Signups',resources:'Teacher Resources',settings:'Portal Settings'};
+  var t={dash:'Dashboard',news:'News & Announcements',events:'Events & Calendar',students:'Student Management',teachers:'Teachers & Staff',parents:'Parents Directory',pending:'Pending Signups',resources:'Teacher Resources',settings:'Portal Settings'};
   document.getElementById('pt').textContent=t[p]||p;
   document.getElementById('sidebar').classList.remove('open');
+  // Refresh parents panel on navigate (accounts loaded separately)
+  if(p==='parents') rParents();
 }
 
 function renderAll(){rN();rE();rS();rT();rP();rPwReset();rParents();uS();loadSettings();loadResources();loadGallery();loadAchievements();loadHistory();loadAlumni();loadDTRDashboard();setTimeout(updateDashChart,100)}
@@ -87,6 +89,18 @@ function rT(){document.getElementById('tB').innerHTML=T.map(function(t){var secL
 
 function rParents(){
   var accts = loadData('accounts', []);
+  // If accounts not yet in cache, fetch directly from Firestore
+  if (accts.length === 0 && db) {
+    db.collection('portal_data').doc('accounts').get().then(function(doc) {
+      if (doc.exists && doc.data().data) {
+        _cache['accounts'] = JSON.parse(doc.data().data);
+        rParents(); // re-render after fetch
+      }
+    });
+    var tbody = document.getElementById('parB');
+    if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--g5)">Loading...</td></tr>';
+    return;
+  }
   var parents = accts.filter(function(a){ return a.type === 'parent'; });
   var students = S;
   var countEl = document.getElementById('parentCount');
@@ -101,18 +115,16 @@ function rParents(){
     var parentName = (p.fname || '') + ' ' + (p.lname || '');
     var childLrn = p.childLrn || '—';
     var childName = p.childName || '—';
-    // Try to get child's section from Students Directory
     var childRecord = students.find(function(s){ return s.lrn === p.childLrn; });
     var childSection = childRecord ? childRecord.grade : '<span style="color:var(--g5)">—</span>';
     var contact = p.email || '—';
-    var status = '<span class="badge b-ac">Active</span>';
     return '<tr>' +
       '<td><strong>' + parentName.toUpperCase() + '</strong></td>' +
       '<td>' + childName + '</td>' +
       '<td style="font-family:monospace;font-size:12px">' + childLrn + '</td>' +
       '<td style="font-size:12px">' + childSection + '</td>' +
       '<td>' + contact + '</td>' +
-      '<td>' + status + '</td>' +
+      '<td><span class="badge b-ac">Active</span></td>' +
       '<td><div class="ab"><button class="abtn del" title="Delete account" onclick="deleteParentAccount(\'' + (p.id||p.email) + '\')">&#128465;</button></div></td>' +
       '</tr>';
   }).join('');
