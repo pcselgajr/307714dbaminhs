@@ -89,12 +89,11 @@ function rT(){document.getElementById('tB').innerHTML=T.map(function(t){var secL
 
 function rParents(){
   var accts = loadData('accounts', []);
-  // If accounts not yet in cache, fetch directly from Firestore
   if (accts.length === 0 && db) {
     db.collection('portal_data').doc('accounts').get().then(function(doc) {
       if (doc.exists && doc.data().data) {
         _cache['accounts'] = JSON.parse(doc.data().data);
-        rParents(); // re-render after fetch
+        rParents();
       }
     });
     var tbody = document.getElementById('parB');
@@ -102,7 +101,6 @@ function rParents(){
     return;
   }
   var parents = accts.filter(function(a){ return a.type === 'parent'; });
-  var students = S;
   var countEl = document.getElementById('parentCount');
   if (countEl) countEl.textContent = parents.length;
   var tbody = document.getElementById('parB');
@@ -112,10 +110,19 @@ function rParents(){
     return;
   }
   tbody.innerHTML = parents.map(function(p) {
-    var parentName = (p.fname || '') + ' ' + (p.lname || '');
+    // Support both fname+lname and single name field
+    var parentName = '';
+    if (p.fname || p.lname) {
+      parentName = ((p.fname||'') + ' ' + (p.lname||'')).trim();
+    } else if (p.name) {
+      parentName = p.name;
+    } else {
+      parentName = p.email || '—';
+    }
     var childLrn = p.childLrn || '—';
-    var childName = p.childName || '—';
-    var childRecord = students.find(function(s){ return s.lrn === p.childLrn; });
+    // Get child name from Students Directory (more reliable than stored childName)
+    var childRecord = S.find(function(s){ return s.lrn === p.childLrn; });
+    var childName = childRecord ? childRecord.name : (p.childName && p.childName !== 'Your Child' ? p.childName : '—');
     var childSection = childRecord ? childRecord.grade : '<span style="color:var(--g5)">—</span>';
     var contact = p.email || '—';
     return '<tr>' +

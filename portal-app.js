@@ -389,6 +389,10 @@ newAcc.id=newAcc.eid;
 }else{
 newAcc.childLrn=document.getElementById('sChild').value.trim();
 newAcc.childName='Your Child';
+// Try to get child's actual name from Students Directory
+var studs = loadData('students', []);
+var childRec = studs.find(function(s){ return s.lrn===newAcc.childLrn; });
+if(childRec) newAcc.childName = childRec.name;
 if(!newAcc.childLrn){toast('Please enter child LRN.','er');return}
 }
 if(accounts.find(function(a){return a.id===newAcc.id})){toast('An account with this ID already exists. Please log in instead.','er');return}
