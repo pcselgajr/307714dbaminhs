@@ -289,6 +289,11 @@ function confirmApvStudent(id){
   var lrn=document.getElementById('apvLrn').value;
   var grade=document.getElementById('apvGrade').value||'TBA';
   var status=document.getElementById('apvStatus').value;
+  // Duplicate LRN check
+  if(S.find(function(x){return x.lrn===lrn})){
+    toast('Cannot approve — LRN "'+lrn+'" is already in the Students Directory. Delete the existing record first if you want to re-enroll this student.','er');
+    return;
+  }
   S.unshift({id:getNextId(S),lrn:lrn,name:p.name,grade:grade,gender:p.gender||'',contact:p.email,status:status});
   saveData('students',S);
   P=P.filter(function(x){return x.id!==id});
@@ -314,19 +319,40 @@ function confirmApvTeacher(id){
 function rej(id){if(!confirm('Reject this signup?'))return;P=P.filter(function(x){return x.id!==id});saveData('pending',P);rP();uS();toast('Signup rejected','su')}
 function approveAll(){
   if(!confirm('Approve all '+P.length+' pending signups?'))return;
+  var skipped=[];
   P.forEach(function(p){
     if(p.type==='Student'){
+      // Skip if LRN already exists in Students Directory
+      if(S.find(function(x){return x.lrn===p.idnum})){
+        skipped.push(p.name+' (duplicate LRN: '+p.idnum+')');
+        return;
+      }
       S.unshift({id:getNextId(S),lrn:p.idnum,name:p.name,grade:(p.grade && p.grade!=='') ? p.grade : 'TBA',gender:p.gender||'',contact:p.email,status:'Active'});
     } else if(p.type==='Teacher'){
+      // Skip if EID already exists in Teachers Directory
+      if(T.find(function(x){return x.eid===p.idnum})){
+        skipped.push(p.name+' (duplicate Employee ID: '+p.idnum+')');
+        return;
+      }
       T.unshift({id:getNextId(T),eid:p.idnum,name:p.name,dept:'TBA',pos:'Teacher I',contact:p.email});
     }
   });
   saveData('students',S);
   saveData('teachers',T);
-  P=[];
+  // Only clear non-skipped pending records
+  if(skipped.length>0){
+    P=P.filter(function(p){
+      if(p.type==='Student') return !!S.find(function(x){return x.lrn===p.idnum}) === false;
+      if(p.type==='Teacher') return !!T.find(function(x){return x.eid===p.idnum}) === false;
+      return false;
+    });
+    toast('Approved with '+skipped.length+' skipped (duplicate): '+skipped.join(', '),'er');
+  } else {
+    P=[];
+    toast('All signups approved!','su');
+  }
   saveData('pending',P);
   rP();rS();rT();uS();
-  toast('All signups approved!','su');
 }
 
 function ft(tid,q){var rows=document.getElementById(tid).querySelectorAll('tbody tr');var ql=q.toLowerCase();rows.forEach(function(r){r.style.display=r.textContent.toLowerCase().indexOf(ql)>-1?'':'none'})}
