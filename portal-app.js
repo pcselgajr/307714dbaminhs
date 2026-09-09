@@ -766,50 +766,170 @@ function cancelUpload() {
 
 function updateGradeView() {
   var cls = document.getElementById('gradeClass').value;
-  var key = getGradeKey(cls);
+  var term = getSelectedTerm();
+  var key = getGradeKey(cls, term);
   var data = loadData(key, {});
   var lrns = Object.keys(data);
-  
+
   var el = document.getElementById('savedGrades');
-  if (lrns.length === 0) {
-    el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--g5);font-size:14px">No grades uploaded yet. Download template, fill in grades, then upload.</div>';
-    return;
-  }
-  
+  if (!el) return;
+
   var settings = loadData('settings', DEFAULT_SETTINGS);
   var secs = (settings.sections && settings.sections.length > 0) ? settings.sections : DEFAULT_SECTIONS;
   var baseSubjects = getSubjectsForSection(cls, secs);
   var allSubjects = baseSubjects.slice();
   if (baseSubjects.indexOf('Music & Arts') > -1) allSubjects.push('MAPEH');
-  var html = '<h4 style="font-size:15px;margin-bottom:12px">&#128202; Grades &mdash; ' + cls + ' &nbsp;<span style="font-size:13px;color:var(--o);font-weight:600">[' + getSelectedTerm().replace('_',' ') + ']</span></h4>';
+
+  // Also show students in section who have no grades yet
+  var students = loadData('students', DEFAULT_STUDENTS);
+  var sectionStudents = students.filter(function(s){ return s.grade === cls && s.status === 'Active'; });
+
+  // Merge: students with grades + students without grades
+  var allLrns = {};
+  sectionStudents.forEach(function(s){ allLrns[s.lrn] = { name: s.name, grades: {} }; });
+  lrns.forEach(function(lrn){ allLrns[lrn] = data[lrn]; });
+
+  var mergedLrns = Object.keys(allLrns);
+  if (mergedLrns.length === 0) {
+    el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--g5);font-size:14px">No grades uploaded yet. Download template, fill in grades, then upload.</div>';
+    return;
+  }
+
+  var html = '<h4 style="font-size:15px;margin-bottom:12px">&#128202; Grades &mdash; ' + cls + ' &nbsp;<span style="font-size:13px;color:var(--o);font-weight:600">[' + term.replace('_',' ') + ']</span></h4>';
   html += '<div style="overflow-x:auto"><table><thead><tr><th>LRN</th><th>Name</th>';
   allSubjects.forEach(function(s) {
-    var label = s === 'Mathematics' ? 'Math' : s === 'Music & Arts' ? 'M&A' : s === 'PE & Health' ? 'PE' : s;
+    var label = s === 'Mathematics' ? 'Math' : s === 'Music & Arts' ? 'M&A' : s === 'PE & Health' ? 'PE' : s.length > 8 ? s.substring(0,8)+'.' : s;
     html += '<th style="font-size:11px">' + label + '</th>';
   });
-  html += '<th>Avg</th><th>Remarks</th></tr></thead><tbody>';
-  
-  var sortedLrns = sortByLastName(lrns, function(lrn) { return data[lrn].name; });
-  
+  html += '<th>Avg</th><th>Remarks</th><th>Action</th></tr></thead><tbody>';
+
+  var sortedLrns = sortByLastName(mergedLrns, function(lrn){ return allLrns[lrn].name; });
+
   sortedLrns.forEach(function(lrn) {
-    var r = data[lrn];
+    var r = allLrns[lrn];
     var g = r.grades || {};
-    html += '<tr><td style="font-family:monospace;font-size:11px">' + lrn + '</td><td style="font-size:12px">' + r.name.toUpperCase() + '</td>';
+    var hasAnyGrade = Object.keys(g).length > 0;
+    html += '<tr><td style="font-family:monospace;font-size:11px">' + lrn + '</td>';
+    html += '<td style="font-size:12px">' + (r.name || lrn).toUpperCase() + '</td>';
     var total = 0, count = 0;
     allSubjects.forEach(function(s) {
       var v = g[s];
       if (v !== undefined) { total += v; count++; }
-      html += '<td style="text-align:center;font-size:12px">' + (v !== undefined ? v : '--') + '</td>';
+      html += '<td style="text-align:center;font-size:12px">' + (v !== undefined ? v : '<span style="color:var(--g5)">—</span>') + '</td>';
     });
-    var avg = count > 0 ? Math.round((total / count) * 10) / 10 : '';
-    var remarks = avg >= 75 ? 'Passed' : (avg ? 'Failed' : '');
-    var badge = avg >= 75 ? 'b-g' : 'b-r';
-    html += '<td style="text-align:center"><strong>' + (avg || '--') + '</strong></td>';
-    html += '<td>' + (remarks ? '<span class="badge ' + badge + '">' + remarks + '</span>' : '') + '</td></tr>';
+    var avg = count > 0 ? Math.round((total / count) * 10) / 10 : null;
+    var remarks = avg !== null ? (avg >= 75 ? 'Passed' : 'Failed') : '';
+    var badge = avg !== null ? (avg >= 75 ? 'b-g' : 'b-r') : '';
+    html += '<td style="text-align:center"><strong>' + (avg !== null ? avg : '<span style="color:var(--g5)">—</span>') + '</strong></td>';
+    html += '<td>' + (remarks ? '<span class="badge ' + badge + '">' + remarks + '</span>' : '') + '</td>';
+    html += '<td><button onclick="openGradeEditModal(\'' + lrn + '\')" style="padding:4px 10px;border-radius:6px;border:1px solid ' + (hasAnyGrade ? 'var(--g3)' : 'var(--o)') + ';background:' + (hasAnyGrade ? 'var(--g1)' : '#fff3ee') + ';color:' + (hasAnyGrade ? 'var(--g7)' : 'var(--o)') + ';font-size:12px;font-weight:600;cursor:pointer">' + (hasAnyGrade ? '&#9998; Edit' : '+ Add') + '</button></td>';
+    html += '</tr>';
   });
-  
+
   html += '</tbody></table></div>';
   el.innerHTML = html;
+}
+
+// ============================================
+// INLINE GRADE EDITING (per student modal)
+// ============================================
+
+function openGradeEditModal(lrn) {
+  var cls = document.getElementById('gradeClass').value;
+  var term = getSelectedTerm();
+  var key = getGradeKey(cls, term);
+  var data = loadData(key, {});
+  var record = data[lrn] || {};
+  var g = record.grades || {};
+
+  // Get student name
+  var students = loadData('students', DEFAULT_STUDENTS);
+  var student = students.find(function(s){ return s.lrn === lrn; });
+  var name = record.name || (student ? student.name : lrn);
+
+  var settings = loadData('settings', DEFAULT_SETTINGS);
+  var secs = (settings.sections && settings.sections.length > 0) ? settings.sections : DEFAULT_SECTIONS;
+  var baseSubjects = getSubjectsForSection(cls, secs);
+  var allSubjects = baseSubjects.slice();
+  if (baseSubjects.indexOf('Music & Arts') > -1) allSubjects.push('MAPEH');
+
+  var fieldsHtml = allSubjects.map(function(s) {
+    var val = g[s] !== undefined ? g[s] : '';
+    return '<div style="margin-bottom:12px">' +
+      '<label style="display:block;font-size:12px;font-weight:600;color:var(--g7);margin-bottom:4px">' + s + '</label>' +
+      '<input type="number" id="gedit_' + s.replace(/\s/g,'_') + '" value="' + val + '" min="60" max="100" placeholder="60–100" ' +
+      'style="width:100%;padding:8px 10px;border:1.5px solid var(--g2);border-radius:7px;font-size:14px;background:var(--g1)">' +
+      '</div>';
+  }).join('');
+
+  var modalHtml = '<div style="margin-bottom:16px">' +
+    '<div style="font-size:15px;font-weight:700;color:var(--n);margin-bottom:2px">&#9998; ' + name.toUpperCase() + '</div>' +
+    '<div style="font-size:12px;color:var(--g5)">' + cls + ' &mdash; ' + term.replace('_',' ') + '</div>' +
+    '</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0 16px">' + fieldsHtml + '</div>' +
+    '<div style="margin-top:6px;font-size:12px;color:var(--g5);margin-bottom:16px">Leave blank to clear a grade. Grades must be 60–100.</div>' +
+    '<div style="display:flex;gap:10px">' +
+    '<button class="btn btn-p" onclick="saveGradeEdit(\'' + lrn + '\',[' + allSubjects.map(function(s){ return '\'' + s.replace(/'/g,"\\'") + '\''; }).join(',') + '])" style="flex:1">&#128190; Save Grades</button>' +
+    '<button class="btn btn-s" onclick="clM()" style="flex:1">Cancel</button>' +
+    '</div>';
+
+  opM('Edit Student Grades', modalHtml);
+}
+
+function saveGradeEdit(lrn, subjects) {
+  var cls = document.getElementById('gradeClass').value;
+  var term = getSelectedTerm();
+  var key = getGradeKey(cls, term);
+  var data = loadData(key, {});
+
+  var students = loadData('students', DEFAULT_STUDENTS);
+  var student = students.find(function(s){ return s.lrn === lrn; });
+  var name = (data[lrn] && data[lrn].name) || (student ? student.name : lrn);
+
+  var grades = {};
+  var errors = [];
+
+  subjects.forEach(function(s) {
+    var inputId = 'gedit_' + s.replace(/\s/g, '_');
+    var input = document.getElementById(inputId);
+    if (!input) return;
+    var val = input.value.trim();
+    if (val === '') return; // blank = clear this grade
+    var num = parseFloat(val);
+    if (isNaN(num) || num < 60 || num > 100) {
+      errors.push(s + ': must be 60–100');
+      return;
+    }
+    grades[s] = Math.round(num * 10) / 10;
+  });
+
+  if (errors.length > 0) {
+    toast('Invalid grades: ' + errors.join(', '), 'er');
+    return;
+  }
+
+  if (!data[lrn]) data[lrn] = {};
+  data[lrn].name = name;
+  data[lrn].lrn = lrn;
+  if (!data[lrn].grades) data[lrn].grades = {};
+
+  // Merge — only update subjects that were filled in, clear those that were blanked
+  subjects.forEach(function(s) {
+    var inputId = 'gedit_' + s.replace(/\s/g, '_');
+    var input = document.getElementById(inputId);
+    if (!input) return;
+    var val = input.value.trim();
+    if (val === '') {
+      delete data[lrn].grades[s]; // clear blank
+    } else {
+      data[lrn].grades[s] = grades[s];
+    }
+  });
+
+  saveData(key, data);
+  clM();
+  updateGradeView();
+  toast('Grades saved for ' + name.split(' ')[0] + '!', 'su');
 }
 
 function showUploadStatus(msg, type) {
