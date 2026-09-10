@@ -88,7 +88,16 @@ function rS(){
 function rT(){document.getElementById('tB').innerHTML=T.map(function(t){var secLabel=(t.sections&&t.sections.length>0)?t.sections.join(', '):'<span style="color:var(--g5)">All sections</span>';return '<tr><td style="font-family:monospace;font-size:12px">'+t.eid+'</td><td><strong>'+t.name+'</strong></td><td>'+t.dept+'</td><td>'+t.pos+'</td><td>'+t.contact+'</td><td style="font-size:12px">'+secLabel+'</td><td><div class="ab"><button class="abtn" title="Edit" onclick="edT('+t.id+')">&#9998;</button><button class="abtn del" title="Delete" onclick="del(\'t\','+t.id+')">&#128465;</button></div></td></tr>'}).join('')}
 
 function rParents(){
-  var accts = _cache['accounts'] || [];
+  // accounts may be stored as array-like object — convert to real array
+  var raw = _cache['accounts'];
+  var accts = [];
+  if (raw) {
+    if (Array.isArray(raw)) {
+      accts = raw;
+    } else if (typeof raw === 'object') {
+      accts = Object.values(raw);
+    }
+  }
   if (accts.length === 0) {
     db.collection('portal_data').doc('accounts').get().then(function(doc) {
       if (doc.exists && doc.data().data) {
