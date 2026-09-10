@@ -88,62 +88,51 @@ function rS(){
 function rT(){document.getElementById('tB').innerHTML=T.map(function(t){var secLabel=(t.sections&&t.sections.length>0)?t.sections.join(', '):'<span style="color:var(--g5)">All sections</span>';return '<tr><td style="font-family:monospace;font-size:12px">'+t.eid+'</td><td><strong>'+t.name+'</strong></td><td>'+t.dept+'</td><td>'+t.pos+'</td><td>'+t.contact+'</td><td style="font-size:12px">'+secLabel+'</td><td><div class="ab"><button class="abtn" title="Edit" onclick="edT('+t.id+')">&#9998;</button><button class="abtn del" title="Delete" onclick="del(\'t\','+t.id+')">&#128465;</button></div></td></tr>'}).join('')}
 
 function rParents(){
-  // accounts may be stored as array-like object — convert to real array
-  var raw = _cache['accounts'];
-  var accts = [];
-  if (raw) {
-    if (Array.isArray(raw)) {
-      accts = raw;
-    } else if (typeof raw === 'object') {
-      accts = Object.values(raw);
-    }
-  }
-  if (accts.length === 0) {
-    db.collection('portal_data').doc('accounts').get().then(function(doc) {
-      if (doc.exists && doc.data().data) {
-        _cache['accounts'] = JSON.parse(doc.data().data);
-        rParents();
-      }
-    });
-    var tbody = document.getElementById('parB');
-    if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--g5)">Loading...</td></tr>';
-    return;
-  }
-  var parents = accts.filter(function(a){ return a.type === 'parent'; });
-  var countEl = document.getElementById('parentCount');
-  if (countEl) countEl.textContent = parents.length;
   var tbody = document.getElementById('parB');
   if (!tbody) return;
-  if (parents.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--g5)">No parent accounts yet.</td></tr>';
-    return;
-  }
-  tbody.innerHTML = parents.map(function(p) {
-    // Support both fname+lname and single name field
-    var parentName = '';
-    if (p.fname || p.lname) {
-      parentName = ((p.fname||'') + ' ' + (p.lname||'')).trim();
-    } else if (p.name) {
-      parentName = p.name;
-    } else {
-      parentName = p.email || '—';
+  tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--g5)">Loading...</td></tr>';
+  // Always fetch fresh from Firestore to avoid cache format issues
+  db.collection('portal_data').doc('accounts').get().then(function(doc) {
+    if (!doc.exists || !doc.data().data) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--g5)">No parent accounts yet.</td></tr>';
+      return;
     }
-    var childLrn = p.childLrn || '—';
-    // Get child name from Students Directory (more reliable than stored childName)
-    var childRecord = S.find(function(s){ return s.lrn === p.childLrn; });
-    var childName = childRecord ? childRecord.name : (p.childName && p.childName !== 'Your Child' ? p.childName : '—');
-    var childSection = childRecord ? childRecord.grade : '<span style="color:var(--g5)">—</span>';
-    var contact = p.email || '—';
-    return '<tr>' +
-      '<td><strong>' + parentName.toUpperCase() + '</strong></td>' +
-      '<td>' + childName + '</td>' +
-      '<td style="font-family:monospace;font-size:12px">' + childLrn + '</td>' +
-      '<td style="font-size:12px">' + childSection + '</td>' +
-      '<td>' + contact + '</td>' +
-      '<td><span class="badge b-ac">Active</span></td>' +
-      '<td><div class="ab"><button class="abtn del" title="Delete account" onclick="deleteParentAccount(\'' + (p.id||p.email) + '\')">&#128465;</button></div></td>' +
-      '</tr>';
-  }).join('');
+    var parsed = JSON.parse(doc.data().data);
+    var accts = Array.isArray(parsed) ? parsed : Object.values(parsed);
+    var parents = accts.filter(function(a){ return a.type === 'parent'; });
+    var countEl = document.getElementById('parentCount');
+    if (countEl) countEl.textContent = parents.length;
+    if (parents.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--g5)">No parent accounts yet.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = parents.map(function(p) {
+      var parentName = '';
+      if (p.fname || p.lname) {
+        parentName = ((p.fname||'') + ' ' + (p.lname||'')).trim();
+      } else if (p.name) {
+        parentName = p.name;
+      } else {
+        parentName = p.email || '—';
+      }
+      var childLrn = p.childLrn || '—';
+      var childRecord = S.find(function(s){ return s.lrn === p.childLrn; });
+      var childName = childRecord ? childRecord.name : (p.childName && p.childName !== 'Your Child' ? p.childName : '—');
+      var childSection = childRecord ? childRecord.grade : '<span style="color:var(--g5)">—</span>';
+      var contact = p.email || '—';
+      return '<tr>' +
+        '<td><strong>' + parentName.toUpperCase() + '</strong></td>' +
+        '<td>' + childName + '</td>' +
+        '<td style="font-family:monospace;font-size:12px">' + childLrn + '</td>' +
+        '<td style="font-size:12px">' + childSection + '</td>' +
+        '<td>' + contact + '</td>' +
+        '<td><span class="badge b-ac">Active</span></td>' +
+        '<td><div class="ab"><button class="abtn del" title="Delete" onclick="deleteParentAccount(\'' + (p.id||p.email) + '\')">&#128465;</button></div></td>' +
+        '</tr>';
+    }).join('');
+  }).catch(function(err) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--da)">Error loading parents: ' + err.message + '</td></tr>';
+  });
 }
 
 function deleteParentAccount(pid) {
