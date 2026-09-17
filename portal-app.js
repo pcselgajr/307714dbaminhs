@@ -839,7 +839,7 @@ function updateGradeView() {
     html += '<td style="text-align:center"><strong>' + (avg !== null ? avg : '<span style="color:var(--g5)">—</span>') + '</strong></td>';
     html += '<td>' + (remarks ? '<span class="badge ' + badge + '">' + remarks + '</span>' : '') + '</td>';
     // Per-student visibility toggle
-    html += '<td style="text-align:center"><button onclick="toggleStudentGradeVisibility(\'' + lrn + '\')" title="' + (isVisible ? 'Hide from student/parent' : 'Show to student/parent') + '" style="padding:3px 8px;border-radius:6px;border:1px solid ' + (isVisible ? '#a5d6b7' : '#ffcdd2') + ';background:' + (isVisible ? '#e8f5ec' : '#fdecea') + ';color:' + (isVisible ? 'var(--su)' : 'var(--da)') + ';font-size:13px;cursor:pointer">' + (isVisible ? '&#128065;' : '&#128274;') + '</button></td>';
+    html += '<td style="text-align:center"><button data-vis-lrn="' + lrn + '" onclick="toggleStudentGradeVisibility(\'' + lrn + '\')" title="' + (isVisible ? 'Hide from student/parent' : 'Show to student/parent') + '" style="padding:3px 8px;border-radius:6px;border:1px solid ' + (isVisible ? '#a5d6b7' : '#ffcdd2') + ';background:' + (isVisible ? '#e8f5ec' : '#fdecea') + ';color:' + (isVisible ? 'var(--su)' : 'var(--da)') + ';font-size:13px;cursor:pointer">' + (isVisible ? '&#128065;' : '&#128274;') + '</button></td>';
     html += '<td><button onclick="openGradeEditModal(\'' + lrn + '\')" style="padding:4px 10px;border-radius:6px;border:1px solid ' + (hasAnyGrade ? 'var(--g3)' : 'var(--o)') + ';background:' + (hasAnyGrade ? 'var(--g1)' : '#fff3ee') + ';color:' + (hasAnyGrade ? 'var(--g7)' : 'var(--o)') + ';font-size:12px;font-weight:600;cursor:pointer">' + (hasAnyGrade ? '&#9998; Edit' : '+ Add') + '</button></td>';
     html += '</tr>';
   });
@@ -853,31 +853,36 @@ function toggleStudentGradeVisibility(lrn) {
   var term = getSelectedTerm();
   if (!cls) { toast('Please select a section first.', 'er'); return; }
 
-  // Save scroll position before re-render
-  var savedGradesEl = document.getElementById('savedGrades');
-  var tableWrap = savedGradesEl ? savedGradesEl.firstChild : null;
-  var scrollLeft = tableWrap ? tableWrap.scrollLeft : 0;
-  var scrollTop = tableWrap ? tableWrap.scrollTop : 0;
-
   var studentRelease = loadData('gradeStudentRelease', {});
   var key = cls.replace(/\s/g,'_') + '_' + term + '_' + lrn;
   var current = studentRelease[key] !== false;
+
   if (current) {
     studentRelease[key] = false;
   } else {
     delete studentRelease[key];
   }
   saveData('gradeStudentRelease', studentRelease);
-  updateGradeView();
 
-  // Restore scroll position after render completes
-  setTimeout(function() {
-    var newWrap = savedGradesEl ? savedGradesEl.firstChild : null;
-    if (newWrap) {
-      newWrap.scrollLeft = scrollLeft;
-      newWrap.scrollTop = scrollTop;
-    }
-  }, 50);
+  var newVisible = studentRelease[key] !== false;
+
+  // Update only the toggle button and row color — no full re-render
+  var btn = document.querySelector('button[data-vis-lrn="' + lrn + '"]');
+  if (btn) {
+    btn.innerHTML = newVisible ? '&#128065;' : '&#128274;';
+    btn.style.borderColor = newVisible ? '#a5d6b7' : '#ffcdd2';
+    btn.style.background = newVisible ? '#e8f5ec' : '#fdecea';
+    btn.style.color = newVisible ? 'var(--su)' : 'var(--da)';
+    btn.title = newVisible ? 'Hide from student/parent' : 'Show to student/parent';
+    // Update row background
+    var row = btn.closest('tr');
+    if (row) row.style.background = newVisible ? '' : '#fff8f0';
+    // Update sticky cells background
+    var stickyCells = row ? row.querySelectorAll('td[style*="sticky"]') : [];
+    stickyCells.forEach(function(td) {
+      td.style.background = newVisible ? '#fff' : '#fff8f0';
+    });
+  }
 
   toast(!current ? '🔒 Grade hidden from student/parent.' : '👁️ Grade now visible to student/parent.', 'su');
 }
