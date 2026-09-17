@@ -800,12 +800,17 @@ function updateGradeView() {
   }
 
   var html = '<h4 style="font-size:15px;margin-bottom:12px">&#128202; Grades &mdash; ' + cls + ' &nbsp;<span style="font-size:13px;color:var(--o);font-weight:600">[' + term.replace('_',' ') + ']</span></h4>';
+
+  // Load per-student release status
+  var studentRelease = loadData('gradeStudentRelease', {});
+  var releasePrefix = cls.replace(/\s/g,'_') + '_' + term + '_';
+
   html += '<div style="overflow-x:auto"><table><thead><tr><th>LRN</th><th>Name</th>';
   allSubjects.forEach(function(s) {
     var label = s === 'Mathematics' ? 'Math' : s === 'Music & Arts' ? 'M&A' : s === 'PE & Health' ? 'PE' : s.length > 8 ? s.substring(0,8)+'.' : s;
     html += '<th style="font-size:11px">' + label + '</th>';
   });
-  html += '<th>Avg</th><th>Remarks</th><th>Action</th></tr></thead><tbody>';
+  html += '<th>Avg</th><th>Remarks</th><th>Visible</th><th>Action</th></tr></thead><tbody>';
 
   var sortedLrns = sortByLastName(mergedLrns, function(lrn){ return allLrns[lrn].name; });
 
@@ -813,7 +818,9 @@ function updateGradeView() {
     var r = allLrns[lrn];
     var g = r.grades || {};
     var hasAnyGrade = Object.keys(g).length > 0;
-    html += '<tr><td style="font-family:monospace;font-size:11px">' + lrn + '</td>';
+    var isVisible = studentRelease[releasePrefix + lrn] === true;
+    var rowStyle = isVisible ? '' : 'background:#fff8f0';
+    html += '<tr style="' + rowStyle + '"><td style="font-family:monospace;font-size:11px">' + lrn + '</td>';
     html += '<td style="font-size:12px">' + (r.name || lrn).toUpperCase() + '</td>';
     var total = 0, count = 0;
     allSubjects.forEach(function(s) {
@@ -826,12 +833,28 @@ function updateGradeView() {
     var badge = avg !== null ? (avg >= 75 ? 'b-g' : 'b-r') : '';
     html += '<td style="text-align:center"><strong>' + (avg !== null ? avg : '<span style="color:var(--g5)">—</span>') + '</strong></td>';
     html += '<td>' + (remarks ? '<span class="badge ' + badge + '">' + remarks + '</span>' : '') + '</td>';
+    // Per-student visibility toggle
+    html += '<td style="text-align:center"><button onclick="toggleStudentGradeVisibility(\'' + lrn + '\')" title="' + (isVisible ? 'Hide from student/parent' : 'Show to student/parent') + '" style="padding:3px 8px;border-radius:6px;border:1px solid ' + (isVisible ? '#a5d6b7' : '#ffcdd2') + ';background:' + (isVisible ? '#e8f5ec' : '#fdecea') + ';color:' + (isVisible ? 'var(--su)' : 'var(--da)') + ';font-size:13px;cursor:pointer">' + (isVisible ? '&#128065;' : '&#128274;') + '</button></td>';
     html += '<td><button onclick="openGradeEditModal(\'' + lrn + '\')" style="padding:4px 10px;border-radius:6px;border:1px solid ' + (hasAnyGrade ? 'var(--g3)' : 'var(--o)') + ';background:' + (hasAnyGrade ? 'var(--g1)' : '#fff3ee') + ';color:' + (hasAnyGrade ? 'var(--g7)' : 'var(--o)') + ';font-size:12px;font-weight:600;cursor:pointer">' + (hasAnyGrade ? '&#9998; Edit' : '+ Add') + '</button></td>';
     html += '</tr>';
   });
 
   html += '</tbody></table></div>';
   el.innerHTML = html;
+}
+
+function toggleStudentGradeVisibility(lrn) {
+  var cls = document.getElementById('gradeClass').value;
+  var term = getSelectedTerm();
+  if (!cls) { toast('Please select a section first.', 'er'); return; }
+
+  var studentRelease = loadData('gradeStudentRelease', {});
+  var key = cls.replace(/\s/g,'_') + '_' + term + '_' + lrn;
+  var current = studentRelease[key] === true;
+  studentRelease[key] = !current;
+  saveData('gradeStudentRelease', studentRelease);
+  updateGradeView();
+  toast(!current ? '👁️ Grade visible to student/parent.' : '🔒 Grade hidden from student/parent.', 'su');
 }
 
 function closeGradeEditModal() {
@@ -968,6 +991,7 @@ function loadStudentGrades() {
   if (!el) return;
 
   var releaseData = loadData('gradeRelease', {});
+  var studentRelease = loadData('gradeStudentRelease', {});
   var terms = ['Term_1', 'Term_2', 'Term_3'];
   var releasedTerms = terms.filter(function(t) {
     var key = (grade || '').replace(/\s/g, '_') + '_' + t;
@@ -986,6 +1010,10 @@ function loadStudentGrades() {
     var data = loadData(key, {});
     var record = data[lrn];
     if (!record || !record.grades) return;
+
+    // Check per-student visibility
+    var studentReleaseKey = (grade || '').replace(/\s/g,'_') + '_' + term + '_' + lrn;
+    if (studentRelease[studentReleaseKey] !== true) return; // hidden for this student
 
     var g = record.grades;
     var allSubjects = Object.keys(g);
@@ -1330,6 +1358,7 @@ function loadParentGrades() {
 
   var childName = curUser.childName || 'Your Child';
   var releaseData = loadData('gradeRelease', {});
+  var studentRelease = loadData('gradeStudentRelease', {});
   var terms = ['Term_1', 'Term_2', 'Term_3'];
 
   // Find which section the child belongs to
@@ -1355,10 +1384,13 @@ function loadParentGrades() {
   var overallTotal = 0, overallCount = 0;
 
   releasedTerms.forEach(function(term) {
-    var key = 'grades_' + (childGrade || '').replace(/\s/g, '_') + '_' + term;
-    var data = loadData(key, {});
+    var gradeKey = 'grades_' + (childGrade || '').replace(/\s/g, '_') + '_' + term;
+    var data = loadData(gradeKey, {});
     var record = data[lrn];
     if (!record || !record.grades) return;
+    // Check per-student visibility
+    var studentReleaseKey = (childGrade || '').replace(/\s/g,'_') + '_' + term + '_' + lrn;
+    if (studentRelease[studentReleaseKey] !== true) return;
 
     if (record.name) childName = record.name;
     var g = record.grades;
