@@ -821,7 +821,7 @@ function updateGradeView() {
     var r = allLrns[lrn];
     var g = r.grades || {};
     var hasAnyGrade = Object.keys(g).length > 0;
-    var isVisible = studentRelease[releasePrefix + lrn] === true;
+    var isVisible = studentRelease[releasePrefix + lrn] !== false; // visible by default
     var rowStyle = isVisible ? '' : 'background:#fff8f0';
     var tdSticky = 'position:sticky;background:' + (isVisible ? '#fff' : '#fff8f0') + ';z-index:1;border-bottom:1px solid #f0f0f0';
     html += '<tr style="' + rowStyle + '">' +
@@ -855,11 +855,15 @@ function toggleStudentGradeVisibility(lrn) {
 
   var studentRelease = loadData('gradeStudentRelease', {});
   var key = cls.replace(/\s/g,'_') + '_' + term + '_' + lrn;
-  var current = studentRelease[key] === true;
-  studentRelease[key] = !current;
+  var current = studentRelease[key] !== false; // visible by default
+  if (current) {
+    studentRelease[key] = false; // explicitly hide
+  } else {
+    delete studentRelease[key]; // remove explicit hide — back to default (visible)
+  }
   saveData('gradeStudentRelease', studentRelease);
   updateGradeView();
-  toast(!current ? '👁️ Grade visible to student/parent.' : '🔒 Grade hidden from student/parent.', 'su');
+  toast(!current ? '👁️ Grade now visible to student/parent.' : '🔒 Grade hidden from student/parent.', 'su');
 }
 
 function closeGradeEditModal() {
@@ -1018,7 +1022,7 @@ function loadStudentGrades() {
 
     // Check per-student visibility
     var studentReleaseKey = (grade || '').replace(/\s/g,'_') + '_' + term + '_' + lrn;
-    if (studentRelease[studentReleaseKey] !== true) return; // hidden for this student
+    if (studentRelease[studentReleaseKey] === false) return; // hidden only if explicitly set to false
 
     var g = record.grades;
     var allSubjects = Object.keys(g);
@@ -1395,7 +1399,7 @@ function loadParentGrades() {
     if (!record || !record.grades) return;
     // Check per-student visibility
     var studentReleaseKey = (childGrade || '').replace(/\s/g,'_') + '_' + term + '_' + lrn;
-    if (studentRelease[studentReleaseKey] !== true) return;
+    if (studentRelease[studentReleaseKey] === false) return; // hidden only if explicitly set to false
 
     if (record.name) childName = record.name;
     var g = record.grades;
