@@ -853,17 +853,33 @@ function toggleStudentGradeVisibility(lrn) {
   var term = getSelectedTerm();
   if (!cls) { toast('Please select a section first.', 'er'); return; }
 
+  // Save scroll position before re-render
+  var savedGradesEl = document.getElementById('savedGrades');
+  var tableWrap = savedGradesEl ? savedGradesEl.firstChild : null;
+  var scrollLeft = tableWrap ? tableWrap.scrollLeft : 0;
+  var scrollTop = tableWrap ? tableWrap.scrollTop : 0;
+
   var studentRelease = loadData('gradeStudentRelease', {});
   var key = cls.replace(/\s/g,'_') + '_' + term + '_' + lrn;
-  var current = studentRelease[key] !== false; // visible by default
+  var current = studentRelease[key] !== false;
   if (current) {
-    studentRelease[key] = false; // explicitly hide
+    studentRelease[key] = false;
   } else {
-    delete studentRelease[key]; // remove explicit hide — back to default (visible)
+    delete studentRelease[key];
   }
   saveData('gradeStudentRelease', studentRelease);
   updateGradeView();
-  toast(!current ? '👁️ Grade now visible to student/parent.' : '🔒 Grade hidden from student/parent.', 'su');
+
+  // Restore scroll position after render completes
+  setTimeout(function() {
+    var newWrap = savedGradesEl ? savedGradesEl.firstChild : null;
+    if (newWrap) {
+      newWrap.scrollLeft = scrollLeft;
+      newWrap.scrollTop = scrollTop;
+    }
+  }, 50);
+
+  toast(!current ? '🔒 Grade hidden from student/parent.' : '👁️ Grade now visible to student/parent.', 'su');
 }
 
 function closeGradeEditModal() {
