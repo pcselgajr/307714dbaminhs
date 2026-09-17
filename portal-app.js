@@ -805,12 +805,15 @@ function updateGradeView() {
   var studentRelease = loadData('gradeStudentRelease', {});
   var releasePrefix = cls.replace(/\s/g,'_') + '_' + term + '_';
 
-  html += '<div style="overflow-x:auto"><table><thead><tr><th>LRN</th><th>Name</th>';
+  var thBase = 'position:sticky;top:0;background:#1B2A4A;color:#fff;padding:8px 10px;font-size:12px;white-space:nowrap;z-index:2';
+  html += '<div style="overflow-x:auto;max-height:520px;overflow-y:auto"><table style="border-collapse:collapse;min-width:100%"><thead><tr>' +
+    '<th style="' + thBase + ';left:0;z-index:3;min-width:110px">LRN</th>' +
+    '<th style="' + thBase + ';left:110px;z-index:3;min-width:160px">Name</th>';
   allSubjects.forEach(function(s) {
     var label = s === 'Mathematics' ? 'Math' : s === 'Music & Arts' ? 'M&A' : s === 'PE & Health' ? 'PE' : s.length > 8 ? s.substring(0,8)+'.' : s;
-    html += '<th style="font-size:11px">' + label + '</th>';
+    html += '<th style="' + thBase + ';min-width:70px">' + label + '</th>';
   });
-  html += '<th>Avg</th><th>Remarks</th><th>Visible</th><th>Action</th></tr></thead><tbody>';
+  html += '<th style="' + thBase + '">Avg</th><th style="' + thBase + '">Remarks</th><th style="' + thBase + '">Visible</th><th style="' + thBase + '">Action</th></tr></thead><tbody>';
 
   var sortedLrns = sortByLastName(mergedLrns, function(lrn){ return allLrns[lrn].name; });
 
@@ -820,8 +823,10 @@ function updateGradeView() {
     var hasAnyGrade = Object.keys(g).length > 0;
     var isVisible = studentRelease[releasePrefix + lrn] === true;
     var rowStyle = isVisible ? '' : 'background:#fff8f0';
-    html += '<tr style="' + rowStyle + '"><td style="font-family:monospace;font-size:11px">' + lrn + '</td>';
-    html += '<td style="font-size:12px">' + (r.name || lrn).toUpperCase() + '</td>';
+    var tdSticky = 'position:sticky;background:' + (isVisible ? '#fff' : '#fff8f0') + ';z-index:1;border-bottom:1px solid #f0f0f0';
+    html += '<tr style="' + rowStyle + '">' +
+      '<td style="' + tdSticky + ';left:0;font-family:monospace;font-size:11px;padding:7px 10px;min-width:110px">' + lrn + '</td>' +
+      '<td style="' + tdSticky + ';left:110px;font-size:12px;padding:7px 10px;min-width:160px;border-right:2px solid #e0e0e0">' + (r.name || lrn).toUpperCase() + '</td>';
     var total = 0, count = 0;
     allSubjects.forEach(function(s) {
       var v = g[s];
