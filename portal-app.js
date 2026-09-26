@@ -840,7 +840,8 @@ function updateGradeView() {
     html += '<td>' + (remarks ? '<span class="badge ' + badge + '">' + remarks + '</span>' : '') + '</td>';
     // Per-student visibility toggle
     html += '<td style="text-align:center"><button data-vis-lrn="' + lrn + '" onclick="toggleStudentGradeVisibility(\'' + lrn + '\')" title="' + (isVisible ? 'Hide from student/parent' : 'Show to student/parent') + '" style="padding:3px 8px;border-radius:6px;border:1px solid ' + (isVisible ? '#a5d6b7' : '#ffcdd2') + ';background:' + (isVisible ? '#e8f5ec' : '#fdecea') + ';color:' + (isVisible ? 'var(--su)' : 'var(--da)') + ';font-size:13px;cursor:pointer">' + (isVisible ? '&#128065;' : '&#128274;') + '</button></td>';
-    html += '<td><button onclick="openGradeEditModal(\'' + lrn + '\')" style="padding:4px 10px;border-radius:6px;border:1px solid ' + (hasAnyGrade ? 'var(--g3)' : 'var(--o)') + ';background:' + (hasAnyGrade ? 'var(--g1)' : '#fff3ee') + ';color:' + (hasAnyGrade ? 'var(--g7)' : 'var(--o)') + ';font-size:12px;font-weight:600;cursor:pointer">' + (hasAnyGrade ? '&#9998; Edit' : '+ Add') + '</button></td>';
+    html += '<td><button onclick="openGradeEditModal(\'' + lrn + '\')" style="padding:4px 10px;border-radius:6px;border:1px solid ' + (hasAnyGrade ? 'var(--g3)' : 'var(--o)') + ';background:' + (hasAnyGrade ? 'var(--g1)' : '#fff3ee') + ';color:' + (hasAnyGrade ? 'var(--g7)' : 'var(--o)') + ';font-size:12px;font-weight:600;cursor:pointer">' + (hasAnyGrade ? '&#9998; Edit' : '+ Add') + '</button>' +
+      ' <button onclick="printSF9(\'' + lrn + '\')" title="Print SF9" style="padding:4px 8px;border-radius:6px;border:1px solid #c5cae9;background:#e8f0fe;color:#1B2A4A;font-size:11px;font-weight:600;cursor:pointer">SF9</button></td>';
     html += '</tr>';
   });
 
@@ -2155,6 +2156,211 @@ function printConsolidatedPerLearner() {
   }).join('');
 
   var html = '<!DOCTYPE html><html><head><title>Consolidated Per Learner - ' + cls + '</title>' + getPrintStyles() + '</head><body>' + pages + '</body></html>';
+  openPrintWindow(html);
+}
+
+function printSF9(lrn) {
+  var cls = document.getElementById('gradeClass').value;
+  if (!cls) { toast('Please select a section first.', 'er'); return; }
+
+  var settings = loadData('settings', DEFAULT_SETTINGS);
+  var secs = (settings.sections && settings.sections.length > 0) ? settings.sections : DEFAULT_SECTIONS;
+  var baseSubjects = getSubjectsForSection(cls, secs);
+  var allSubjects = baseSubjects.slice();
+
+  var terms = ['Term_1', 'Term_2', 'Term_3'];
+  var termData = {};
+  terms.forEach(function(t) {
+    termData[t] = loadData(getGradeKey(cls, t), {});
+  });
+
+  // Get student info
+  var students = loadData('students', DEFAULT_STUDENTS);
+  var student = students.find(function(s){ return s.lrn === lrn; });
+  if (!student) { toast('Student not found.', 'er'); return; }
+
+  var attKey = 'attendance_' + cls.replace(/\s/g,'_');
+  var attData = loadData(attKey, {});
+  var att = attData[lrn] || {};
+
+  var schoolName = settings.schoolName || 'Dr. Bonifacio A. Masilungan Integrated National High School';
+  var schoolYear = settings.schoolYear || 'SY 2026-2027';
+  var teacherName = curUser ? (curUser.fname + ' ' + curUser.lname).toUpperCase() : '___________________';
+  var schoolHead = settings.schoolHead || 'MELITA P. OPINA';
+  var gradeLevel = cls.match(/GRADE\s+(\d+)/i) ? cls.match(/GRADE\s+(\d+)/i)[1] : '11';
+  var section = cls.replace(/GRADE\s+\d+\s*[-–]?\s*/i, '').trim();
+
+  // Get grades per subject per term
+  function getGrade(t, subj) {
+    var r = termData[t][lrn];
+    if (!r || !r.grades) return '';
+    var v = r.grades[subj];
+    return v !== undefined ? v : '';
+  }
+
+  // Compute final grade per subject (average of available terms)
+  function getFinalGrade(subj) {
+    var vals = [];
+    terms.forEach(function(t) {
+      var v = getGrade(t, subj);
+      if (v !== '') vals.push(v);
+    });
+    if (!vals.length) return '';
+    return Math.round(vals.reduce(function(a,b){return a+b;},0)/vals.length * 10)/10;
+  }
+
+  // Descriptor
+  function getDescriptor(grade) {
+    if (!grade) return '';
+    if (grade >= 90) return 'Advancing';
+    if (grade >= 80) return 'Benchmarking';
+    if (grade >= 75) return 'Connecting';
+    if (grade >= 65) return 'Developing';
+    return 'Emerging';
+  }
+
+  function getRemarks(grade) {
+    if (!grade) return '';
+    return grade >= 75 ? 'Passed' : 'Failed';
+  }
+
+  // Build subject rows
+  var subjectRows = allSubjects.map(function(s) {
+    var t1 = getGrade('Term_1', s);
+    var t2 = getGrade('Term_2', s);
+    var t3 = getGrade('Term_3', s);
+    var final = getFinalGrade(s);
+    var remarks = getRemarks(final);
+    return '<tr>' +
+      '<td style="text-align:left;padding:3px 6px;border:0.5px solid #999">' + s + '</td>' +
+      '<td style="text-align:center;padding:3px 6px;border:0.5px solid #999">' + (t1||'') + '</td>' +
+      '<td style="text-align:center;padding:3px 6px;border:0.5px solid #999">' + (t2||'') + '</td>' +
+      '<td style="text-align:center;padding:3px 6px;border:0.5px solid #999">' + (t3||'') + '</td>' +
+      '<td style="text-align:center;padding:3px 6px;border:0.5px solid #999">' + (final||'') + '</td>' +
+      '<td style="text-align:center;padding:3px 6px;border:0.5px solid #999">' + remarks + '</td>' +
+      '</tr>';
+  }).join('');
+
+  // Overall general average
+  var allFinals = allSubjects.map(getFinalGrade).filter(function(v){return v !== '';});
+  var genAvg = allFinals.length ? Math.round(allFinals.reduce(function(a,b){return a+b;},0)/allFinals.length*10)/10 : '';
+  var genRemarks = getRemarks(genAvg);
+
+  // Attendance
+  var totalDays = att.totalDays || 0;
+  var present = att.present || 0;
+  var absent = att.absent || 0;
+  var late = att.late || 0;
+
+  var name = student.name || lrn;
+  var gender = student.gender || '';
+
+  var html = '<!DOCTYPE html><html><head><title>SF9 - ' + name + '</title>' +
+    '<style>' +
+    'body{font-family:"Times New Roman",serif;font-size:10px;margin:0;padding:10px}' +
+    '@page{size:A4;margin:10mm}' +
+    '@media print{body{margin:0;padding:5mm}}' +
+    'table{border-collapse:collapse;width:100%}' +
+    'th{background:#f0f0f0;font-size:9px;padding:3px 5px;border:0.5px solid #999}' +
+    '.header-center{text-align:center;font-size:11px}' +
+    '.section-title{font-weight:bold;font-size:10px;background:#e0e0e0;padding:3px 6px;border:0.5px solid #999}' +
+    '.sig-line{border-top:0.5px solid #000;width:180px;text-align:center;margin-top:24px}' +
+    '</style>' +
+    '</head><body>' +
+
+    // Header
+    '<table style="margin-bottom:6px"><tr>' +
+    '<td style="width:60%;padding:2px">' +
+    '<div class="header-center"><strong>Republic of the Philippines</strong></div>' +
+    '<div class="header-center">Department of Education</div>' +
+    '<div class="header-center">REGION IV-A</div>' +
+    '<div class="header-center">SCHOOLS DIVISION OF BATANGAS PROVINCE</div>' +
+    '<div class="header-center">San Jose Sub-Office</div>' +
+    '<div class="header-center">Lalayat, San Jose, Batangas</div>' +
+    '<div class="header-center" style="font-size:12px;font-weight:bold;margin-top:4px">' + schoolName.toUpperCase() + '</div>' +
+    '</td>' +
+    '<td style="width:40%;vertical-align:top;padding:4px;border:0.5px solid #999">' +
+    '<div style="font-weight:bold;font-size:10px;text-align:center;margin-bottom:4px">ATTENDANCE</div>' +
+    '<table style="font-size:9px"><tr><td>Total School Days:</td><td style="text-align:right"><strong>' + totalDays + '</strong></td></tr>' +
+    '<tr><td>Days Present:</td><td style="text-align:right"><strong>' + present + '</strong></td></tr>' +
+    '<tr><td>Days Absent:</td><td style="text-align:right"><strong>' + absent + '</strong></td></tr>' +
+    '<tr><td>Days Late:</td><td style="text-align:right"><strong>' + late + '</strong></td></tr>' +
+    '</table></td>' +
+    '</tr></table>' +
+
+    // Title
+    '<div style="text-align:center;font-size:13px;font-weight:bold;border:1px solid #000;padding:4px;margin-bottom:6px">LEARNER\'S PERFORMANCE REPORT</div>' +
+    '<div style="text-align:center;font-size:10px;margin-bottom:6px">School Year ' + schoolYear + '</div>' +
+
+    // Student Info
+    '<table style="margin-bottom:6px;font-size:10px"><tr>' +
+    '<td style="width:50%">Name: <strong>' + name.toUpperCase() + '</strong></td>' +
+    '<td style="width:20%">Age: <strong>' + (student.age || '___') + '</strong></td>' +
+    '<td style="width:30%">Sex: <strong>' + (gender || '___') + '</strong></td>' +
+    '</tr><tr>' +
+    '<td>LRN: <strong>' + lrn + '</strong></td>' +
+    '<td>Grade: <strong>' + gradeLevel + '</strong></td>' +
+    '<td>Section: <strong>' + section + '</strong></td>' +
+    '</tr></table>' +
+
+    // Dear Parents intro
+    '<div style="font-size:9px;margin-bottom:8px;border:0.5px solid #ccc;padding:4px">' +
+    '<strong>Dear Parents,</strong><br>' +
+    'This Performance Report presents your child\'s learning progress and achievement in the different learning areas. ' +
+    'The school welcomes you to reach out to the teacher/adviser for concerns about your child\'s learning and performance.' +
+    '</div>' +
+
+    // Signatories
+    '<table style="margin-bottom:8px;font-size:9px"><tr>' +
+    '<td style="width:45%;text-align:center">' +
+    '<div style="border-top:0.5px solid #000;margin-top:20px;padding-top:2px"><strong>' + schoolHead.toUpperCase() + '</strong><br>School Head</div>' +
+    '</td><td style="width:10%"></td>' +
+    '<td style="width:45%;text-align:center">' +
+    '<div style="border-top:0.5px solid #000;margin-top:20px;padding-top:2px"><strong>' + teacherName + '</strong><br>Adviser</div>' +
+    '</td></tr></table>' +
+
+    // Grades Table
+    '<div class="section-title">LEARNING PROGRESS AND ACHIEVEMENT</div>' +
+    '<table style="margin-bottom:6px">' +
+    '<thead><tr>' +
+    '<th style="text-align:left;width:45%">Learning Areas</th>' +
+    '<th style="width:10%">T1</th>' +
+    '<th style="width:10%">T2</th>' +
+    '<th style="width:10%">T3</th>' +
+    '<th style="width:12%">Final Grade</th>' +
+    '<th style="width:13%">Remarks</th>' +
+    '</tr></thead>' +
+    '<tbody>' +
+    subjectRows +
+    '<tr style="background:#f5f5f5;font-weight:bold">' +
+    '<td style="padding:3px 6px;border:0.5px solid #999">GENERAL AVERAGE</td>' +
+    '<td colspan="3" style="border:0.5px solid #999"></td>' +
+    '<td style="text-align:center;padding:3px 6px;border:0.5px solid #999;font-size:12px;color:' + (genAvg >= 75 ? '#166534' : '#991b1b') + '">' + genAvg + '</td>' +
+    '<td style="text-align:center;padding:3px 6px;border:0.5px solid #999;color:' + (genAvg >= 75 ? '#166534' : '#991b1b') + '">' + genRemarks + '</td>' +
+    '</tr></tbody></table>' +
+
+    // Performance Descriptors
+    '<div class="section-title">PERFORMANCE DESCRIPTORS</div>' +
+    '<table style="margin-bottom:8px;font-size:9px"><thead><tr>' +
+    '<th style="width:20%">Grading Scale</th><th style="width:40%">Descriptors</th><th style="width:40%">Remarks</th>' +
+    '</tr></thead><tbody>' +
+    '<tr><td style="text-align:center;border:0.5px solid #999">90–100</td><td style="border:0.5px solid #999;padding:2px 4px">Advancing</td><td style="border:0.5px solid #999;padding:2px 4px">Passed</td></tr>' +
+    '<tr><td style="text-align:center;border:0.5px solid #999">80–89</td><td style="border:0.5px solid #999;padding:2px 4px">Benchmarking</td><td style="border:0.5px solid #999;padding:2px 4px">Passed</td></tr>' +
+    '<tr><td style="text-align:center;border:0.5px solid #999">75–79</td><td style="border:0.5px solid #999;padding:2px 4px">Connecting</td><td style="border:0.5px solid #999;padding:2px 4px">Passed</td></tr>' +
+    '<tr><td style="text-align:center;border:0.5px solid #999">65–74</td><td style="border:0.5px solid #999;padding:2px 4px">Developing</td><td style="border:0.5px solid #999;padding:2px 4px">Failed</td></tr>' +
+    '<tr><td style="text-align:center;border:0.5px solid #999">0–64</td><td style="border:0.5px solid #999;padding:2px 4px">Emerging</td><td style="border:0.5px solid #999;padding:2px 4px">Failed</td></tr>' +
+    '</tbody></table>' +
+
+    // Parent signature
+    '<table style="margin-bottom:4px;font-size:9px"><tr>' +
+    '<td style="width:50%"><strong>PARENT/GUARDIAN\'S SIGNATURE</strong></td>' +
+    '<td style="width:50%;border-top:0.5px solid #000;text-align:center;padding-top:2px">Term 1</td></tr>' +
+    '<tr><td></td><td style="border-top:0.5px solid #000;text-align:center;padding-top:2px">Term 2</td></tr>' +
+    '<tr><td></td><td style="border-top:0.5px solid #000;text-align:center;padding-top:2px">Term 3</td></tr>' +
+    '</table>' +
+
+    '</body></html>';
+
   openPrintWindow(html);
 }
 
