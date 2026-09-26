@@ -840,8 +840,7 @@ function updateGradeView() {
     html += '<td>' + (remarks ? '<span class="badge ' + badge + '">' + remarks + '</span>' : '') + '</td>';
     // Per-student visibility toggle
     html += '<td style="text-align:center"><button data-vis-lrn="' + lrn + '" onclick="toggleStudentGradeVisibility(\'' + lrn + '\')" title="' + (isVisible ? 'Hide from student/parent' : 'Show to student/parent') + '" style="padding:3px 8px;border-radius:6px;border:1px solid ' + (isVisible ? '#a5d6b7' : '#ffcdd2') + ';background:' + (isVisible ? '#e8f5ec' : '#fdecea') + ';color:' + (isVisible ? 'var(--su)' : 'var(--da)') + ';font-size:13px;cursor:pointer">' + (isVisible ? '&#128065;' : '&#128274;') + '</button></td>';
-    html += '<td><button onclick="openGradeEditModal(\'' + lrn + '\')" style="padding:4px 10px;border-radius:6px;border:1px solid ' + (hasAnyGrade ? 'var(--g3)' : 'var(--o)') + ';background:' + (hasAnyGrade ? 'var(--g1)' : '#fff3ee') + ';color:' + (hasAnyGrade ? 'var(--g7)' : 'var(--o)') + ';font-size:12px;font-weight:600;cursor:pointer">' + (hasAnyGrade ? '&#9998; Edit' : '+ Add') + '</button>' +
-      ' <button onclick="printSF9(\'' + lrn + '\')" title="Print SF9" style="padding:4px 8px;border-radius:6px;border:1px solid #c5cae9;background:#e8f0fe;color:#1B2A4A;font-size:11px;font-weight:600;cursor:pointer">SF9</button></td>';
+    html += '<td><button onclick="openGradeEditModal(\'' + lrn + '\')" style="padding:4px 10px;border-radius:6px;border:1px solid ' + (hasAnyGrade ? 'var(--g3)' : 'var(--o)') + ';background:' + (hasAnyGrade ? 'var(--g1)' : '#fff3ee') + ';color:' + (hasAnyGrade ? 'var(--g7)' : 'var(--o)') + ';font-size:12px;font-weight:600;cursor:pointer">' + (hasAnyGrade ? '&#9998; Edit' : '+ Add') + '</button></td>';
     html += '</tr>';
   });
 
@@ -2157,6 +2156,44 @@ function printConsolidatedPerLearner() {
 
   var html = '<!DOCTYPE html><html><head><title>Consolidated Per Learner - ' + cls + '</title>' + getPrintStyles() + '</head><body>' + pages + '</body></html>';
   openPrintWindow(html);
+}
+
+function printAllSF9() {
+  var cls = document.getElementById('gradeClass').value;
+  if (!cls) { toast('Please select a section first.', 'er'); return; }
+  var students = loadData('students', DEFAULT_STUDENTS);
+  var sectionStudents = students.filter(function(s){ return s.grade === cls && s.status === 'Active'; });
+  if (sectionStudents.length === 0) { toast('No students found in this section.', 'er'); return; }
+  if (!confirm('Print SF9 for all ' + sectionStudents.length + ' students in ' + cls + '?')) return;
+  // Print one by one — each in separate window
+  sectionStudents.forEach(function(s, i) {
+    setTimeout(function(){ printSF9(s.lrn); }, i * 800);
+  });
+}
+
+function selectStudentForSF9() {
+  var cls = document.getElementById('gradeClass').value;
+  if (!cls) { toast('Please select a section first.', 'er'); return; }
+  var students = loadData('students', DEFAULT_STUDENTS);
+  var sectionStudents = students.filter(function(s){ return s.grade === cls && s.status === 'Active'; });
+  if (sectionStudents.length === 0) { toast('No students found.', 'er'); return; }
+
+  var opts = sectionStudents.map(function(s){
+    return '<option value="' + s.lrn + '">' + s.name.toUpperCase() + ' (' + s.lrn + ')</option>';
+  }).join('');
+
+  var modal = document.getElementById('gradeEditModal');
+  modal.dataset.lrn = '';
+  document.getElementById('gradeEditModalContent').innerHTML =
+    '<div style="font-size:15px;font-weight:700;color:#1B2A4A;margin-bottom:14px">&#128438; Print SF9 — Select Student</div>' +
+    '<div style="margin-bottom:14px"><label style="font-size:12px;font-weight:600;color:#555;display:block;margin-bottom:5px">Student</label>' +
+    '<select id="sf9StudentSelect" style="width:100%;padding:9px 12px;border:1.5px solid #E0E4EF;border-radius:8px;font-size:14px">' +
+    '<option value="">— Select a student —</option>' + opts + '</select></div>' +
+    '<div style="display:flex;gap:10px">' +
+    '<button onclick="var l=document.getElementById(\'sf9StudentSelect\').value;if(l){closeGradeEditModal();printSF9(l);}else{alert(\'Please select a student.\');}" style="flex:1;padding:11px;background:#6B21A8;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">&#128438; Print SF9</button>' +
+    '<button onclick="closeGradeEditModal()" style="flex:1;padding:11px;background:#F0F2F8;color:#1B2A4A;border:1px solid #D0D4E8;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">Cancel</button>' +
+    '</div>';
+  modal.style.display = 'flex';
 }
 
 function printSF9(lrn) {
