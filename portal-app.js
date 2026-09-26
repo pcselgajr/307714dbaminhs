@@ -2262,10 +2262,25 @@ function printSF9(lrn) {
   coreSubjects[3].portalKey = findSubjectKey(['Life and Career Skills','Life & Career']);
   coreSubjects[4].portalKey = findSubjectKey(['Pag-Aaral','Kasaysayan','Lipunan','Philippine']);
 
-  // Elective subjects = any not in core
-  var coreKeys = coreSubjects.map(function(s){ return s.portalKey; }).filter(Boolean);
-  var electiveSubjects = baseSubjects.filter(function(s){
-    return !coreKeys.some(function(k){ return k === s; }) && s !== 'MAPEH';
+  // Core subject keywords to exclude from electives
+  var coreKeywords = [
+    'Effective Communication', 'Mabisang Komunikasyon',
+    'General Mathematics', 'General Science',
+    'Life and Career Skills', 'Life & Career Skills',
+    'Pag-Aaral', 'Kasaysayan', 'Lipunan',
+    'MAPEH', 'Music', 'Arts', 'PE & Health', 'Physical Education'
+  ];
+
+  // Elective subjects = subjects with actual grades AND not a core subject
+  var electiveSubjects = baseSubjects.filter(function(s) {
+    // Exclude if it matches any core keyword
+    var isCore = coreKeywords.some(function(k){
+      return s.toLowerCase().indexOf(k.toLowerCase()) >= 0;
+    });
+    if (isCore) return false;
+    // Exclude if no grades at all across all terms
+    var hasGrade = terms.some(function(t){ return getGrade(t, s) !== ''; });
+    return hasGrade;
   });
 
   function subjRow(name, t1, t2, t3, units, finalGrade, remarks, isItalic) {
