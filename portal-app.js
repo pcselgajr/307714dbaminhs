@@ -2235,14 +2235,15 @@ function printSF9(lrn) {
     return v !== undefined ? v : '';
   }
 
-  // Compute final grade per subject (average of available terms)
+  // Compute final grade per subject — ONLY if all 3 terms have grades
   function getFinalGrade(subj) {
     var vals = [];
     terms.forEach(function(t) {
       var v = getGrade(t, subj);
       if (v !== '') vals.push(v);
     });
-    if (!vals.length) return '';
+    // Final grade only appears when all 3 terms are complete
+    if (vals.length < 3) return '';
     return Math.round(vals.reduce(function(a,b){return a+b;},0)/vals.length * 10)/10;
   }
 
@@ -2278,9 +2279,10 @@ function printSF9(lrn) {
       '</tr>';
   }).join('');
 
-  // Overall general average
-  var allFinals = allSubjects.map(getFinalGrade).filter(function(v){return v !== '';});
-  var genAvg = allFinals.length ? Math.round(allFinals.reduce(function(a,b){return a+b;},0)/allFinals.length*10)/10 : '';
+  // Overall general average — only if ALL subjects have final grades (all 3 terms complete)
+  var allFinals = allSubjects.map(getFinalGrade);
+  var hasAllFinals = allFinals.every(function(v){ return v !== ''; });
+  var genAvg = hasAllFinals && allFinals.length ? Math.round(allFinals.reduce(function(a,b){return a+b;},0)/allFinals.length*10)/10 : '';
   var genRemarks = getRemarks(genAvg);
 
   // Attendance
