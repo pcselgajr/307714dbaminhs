@@ -2240,8 +2240,36 @@ function printSF9(lrn) {
   }
   function getRemarks(g) { return (g === '' || g === null || g === undefined) ? '' : (g >= 75 ? 'Passed' : 'Failed'); }
 
-  // Core subjects for Grade 11
-  var coreSubjects = [
+  // Determine if JHS or SHS based on grade level
+  var isJHS = parseInt(gradeLevel) <= 10;
+
+  // JHS Core Subjects (Grade 7-10)
+  var jhsCoreKeywords = ['Filipino','English','Mathematics','Science','Araling Panlipunan','AP','Edukasyon sa Pagpapakatao','EsP','Technology and Livelihood','TLE','MAPEH','Music','Arts','Physical Education','Health'];
+
+  // SHS Core Subjects (Grade 11-12)
+  var shsCoreKeywords = ['Effective Communication','Mabisang Komunikasyon','General Mathematics','General Science','Life and Career Skills','Life & Career','Pag-Aaral','Kasaysayan','Lipunan','MAPEH','Music','Arts','PE & Health','Physical Education'];
+
+  var coreKeywords = isJHS ? jhsCoreKeywords : shsCoreKeywords;
+
+  // For JHS — all subjects are "core", no elective section
+  // For SHS — subjects matching coreKeywords are core, rest are elective
+  var electiveSubjects = [];
+  if (!isJHS) {
+    electiveSubjects = baseSubjects.filter(function(s) {
+      var isCore = coreKeywords.some(function(k){
+        return s.toLowerCase().indexOf(k.toLowerCase()) >= 0;
+      });
+      if (isCore) return false;
+      var hasGrade = terms.some(function(t){ return getGrade(t, s) !== ''; });
+      return hasGrade;
+    });
+  }
+
+  // For JHS — treat all subjects as one flat list (no Core/Elective grouping)
+  var jhsSubjects = isJHS ? baseSubjects : [];
+
+  // SHS Core subjects definition
+  var coreSubjects = isJHS ? [] : [
     {name:'Effective Communication / Mabisang Komunikasyon', key:'EffComm', units:2},
     {name:'General Mathematics', key:'General Mathematics', units:2},
     {name:'General Science', key:'General Science', units:2},
@@ -2249,39 +2277,19 @@ function printSF9(lrn) {
     {name:'Pag-Aaral ng Kasaysayan at Lipunang Pilipino', key:'Pag-Aaral', units:2}
   ];
 
-  // Find matching keys from portal subjects
   function findSubjectKey(keywords) {
     return baseSubjects.find(function(s) {
       return keywords.some(function(k){ return s.toLowerCase().indexOf(k.toLowerCase()) >= 0; });
     }) || '';
   }
 
-  coreSubjects[0].portalKey = findSubjectKey(['Effective Communication','Mabisang Komunikasyon']);
-  coreSubjects[1].portalKey = findSubjectKey(['General Mathematics']);
-  coreSubjects[2].portalKey = findSubjectKey(['General Science']);
-  coreSubjects[3].portalKey = findSubjectKey(['Life and Career Skills','Life & Career']);
-  coreSubjects[4].portalKey = findSubjectKey(['Pag-Aaral','Kasaysayan','Lipunan','Philippine']);
-
-  // Core subject keywords to exclude from electives
-  var coreKeywords = [
-    'Effective Communication', 'Mabisang Komunikasyon',
-    'General Mathematics', 'General Science',
-    'Life and Career Skills', 'Life & Career Skills',
-    'Pag-Aaral', 'Kasaysayan', 'Lipunan',
-    'MAPEH', 'Music', 'Arts', 'PE & Health', 'Physical Education'
-  ];
-
-  // Elective subjects = subjects with actual grades AND not a core subject
-  var electiveSubjects = baseSubjects.filter(function(s) {
-    // Exclude if it matches any core keyword
-    var isCore = coreKeywords.some(function(k){
-      return s.toLowerCase().indexOf(k.toLowerCase()) >= 0;
-    });
-    if (isCore) return false;
-    // Exclude if no grades at all across all terms
-    var hasGrade = terms.some(function(t){ return getGrade(t, s) !== ''; });
-    return hasGrade;
-  });
+  if (!isJHS) {
+    coreSubjects[0].portalKey = findSubjectKey(['Effective Communication','Mabisang Komunikasyon']);
+    coreSubjects[1].portalKey = findSubjectKey(['General Mathematics']);
+    coreSubjects[2].portalKey = findSubjectKey(['General Science']);
+    coreSubjects[3].portalKey = findSubjectKey(['Life and Career Skills','Life & Career']);
+    coreSubjects[4].portalKey = findSubjectKey(['Pag-Aaral','Kasaysayan','Lipunan','Philippine']);
+  }
 
   function subjRow(name, t1, t2, t3, units, finalGrade, remarks, isItalic) {
     var st = isItalic ? 'font-style:italic;' : '';
@@ -2298,22 +2306,36 @@ function printSF9(lrn) {
 
   var coreRows = '';
   var totalUnits = 0;
-  coreSubjects.forEach(function(s) {
-    var pk = s.portalKey;
-    var t1 = pk ? getGrade('Term_1', pk) : '';
-    var t2 = pk ? getGrade('Term_2', pk) : '';
-    var t3 = pk ? getGrade('Term_3', pk) : '';
-    var fg = pk ? getFinalGrade(pk) : '';
-    totalUnits += s.units;
-    coreRows += subjRow(s.name, t1, t2, t3, s.units, fg, getRemarks(fg), false);
-    // Sub-rows for Effective Communication
-    if (s.key === 'EffComm') {
-      var ecKey = findSubjectKey(['Effective Communication']);
-      var mkKey = findSubjectKey(['Mabisang Komunikasyon']);
-      if (ecKey) coreRows += subjRow('\u00a0\u00a0\u00a0Effective Communication', getGrade('Term_1',ecKey), getGrade('Term_2',ecKey), getGrade('Term_3',ecKey), '', '', '', true);
-      if (mkKey) coreRows += subjRow('\u00a0\u00a0\u00a0Mabisang Komunikasyon', getGrade('Term_1',mkKey), getGrade('Term_2',mkKey), getGrade('Term_3',mkKey), '', '', '', true);
-    }
-  });
+
+  if (isJHS) {
+    // JHS — flat list of all subjects, no Core/Elective grouping
+    jhsSubjects.forEach(function(s) {
+      var t1 = getGrade('Term_1', s);
+      var t2 = getGrade('Term_2', s);
+      var t3 = getGrade('Term_3', s);
+      var fg = getFinalGrade(s);
+      var u = 2;
+      totalUnits += u;
+      coreRows += subjRow(s, t1, t2, t3, u, fg, getRemarks(fg), false);
+    });
+  } else {
+    // SHS — Core subjects
+    coreSubjects.forEach(function(s) {
+      var pk = s.portalKey;
+      var t1 = pk ? getGrade('Term_1', pk) : '';
+      var t2 = pk ? getGrade('Term_2', pk) : '';
+      var t3 = pk ? getGrade('Term_3', pk) : '';
+      var fg = pk ? getFinalGrade(pk) : '';
+      totalUnits += s.units;
+      coreRows += subjRow(s.name, t1, t2, t3, s.units, fg, getRemarks(fg), false);
+      if (s.key === 'EffComm') {
+        var ecKey = findSubjectKey(['Effective Communication']);
+        var mkKey = findSubjectKey(['Mabisang Komunikasyon']);
+        if (ecKey) coreRows += subjRow('\u00a0\u00a0\u00a0Effective Communication', getGrade('Term_1',ecKey), getGrade('Term_2',ecKey), getGrade('Term_3',ecKey), '', '', '', true);
+        if (mkKey) coreRows += subjRow('\u00a0\u00a0\u00a0Mabisang Komunikasyon', getGrade('Term_1',mkKey), getGrade('Term_2',mkKey), getGrade('Term_3',mkKey), '', '', '', true);
+      }
+    });
+  }
 
   var electiveRows = '';
   var electiveUnits = 0;
@@ -2334,10 +2356,13 @@ function printSF9(lrn) {
 
   totalUnits += electiveUnits;
 
-  var allFinals = coreSubjects.map(function(s){ return getFinalGrade(s.portalKey); });
-  var elecFinals = electiveSubjects.map(function(s){ return getFinalGrade(s); });
+  var allFinals = isJHS
+    ? jhsSubjects.map(function(s){ return getFinalGrade(s); })
+    : coreSubjects.map(function(s){ return getFinalGrade(s.portalKey); });
+  var elecFinals = isJHS ? [] : electiveSubjects.map(function(s){ return getFinalGrade(s); });
   var allF = allFinals.concat(elecFinals).filter(function(v){ return v !== ''; });
-  var hasAll = (allF.length === (coreSubjects.length + electiveSubjects.length)) && allF.length > 0;
+  var totalSubjects = isJHS ? jhsSubjects.length : (coreSubjects.length + electiveSubjects.length);
+  var hasAll = (allF.length === totalSubjects) && allF.length > 0;
   var genAvg = hasAll ? Math.round(allF.reduce(function(a,b){return a+b;},0)/allF.length*10)/10 : '';
 
   var present = att.present || 0;
@@ -2410,10 +2435,10 @@ function printSF9(lrn) {
   '<th style="border:0.5px solid #000;padding:2px;width:10%"></th>' +
   '<th style="border:0.5px solid #000;padding:2px;width:10%"></th>' +
   '</tr></thead><tbody>' +
-  '<tr><td colspan="7" style="font-weight:bold;font-size:7.5px;padding:1px 4px;background:#f0f0f0;border:0.5px solid #000">Core Subjects</td></tr>' +
+  (isJHS ? '' : '<tr><td colspan="7" style="font-weight:bold;font-size:7.5px;padding:1px 4px;background:#f0f0f0;border:0.5px solid #000">Core Subjects</td></tr>') +
   coreRows +
-  '<tr><td colspan="7" style="font-weight:bold;font-size:7.5px;padding:1px 4px;background:#f0f0f0;border:0.5px solid #000">Elective Subjects</td></tr>' +
-  electiveRows +
+  (isJHS ? '' : '<tr><td colspan="7" style="font-weight:bold;font-size:7.5px;padding:1px 4px;background:#f0f0f0;border:0.5px solid #000">Elective Subjects</td></tr>') +
+  (isJHS ? '' : electiveRows) +
   '<tr style="background:#e8e8e8;font-weight:bold">' +
   '<td colspan="4" style="text-align:center;border:0.5px solid #000;padding:2px;font-size:8px">General Average</td>' +
   '<td style="text-align:center;border:0.5px solid #000;padding:2px;font-size:8px">' + totalUnits + '</td>' +
