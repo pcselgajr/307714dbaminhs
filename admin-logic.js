@@ -55,14 +55,120 @@ function go(p,el){
   document.getElementById('pg-'+p).classList.add('act');
   document.querySelectorAll('.sl').forEach(function(x){x.classList.remove('act')});
   el.classList.add('act');
-  var t={dash:'Dashboard',news:'News & Announcements',events:'Events & Calendar',students:'Student Management',teachers:'Teachers & Staff',parents:'Parents Directory',pending:'Pending Signups',resources:'Teacher Resources',settings:'Portal Settings'};
+  var t={dash:'Dashboard',news:'News & Announcements',events:'Events & Calendar',students:'Student Management',teachers:'Teachers & Staff',parents:'Parents Directory',pending:'Pending Signups',enrollments:'Online Enrollments',resources:'Teacher Resources',settings:'Portal Settings'};
   document.getElementById('pt').textContent=t[p]||p;
   document.getElementById('sidebar').classList.remove('open');
-  // Refresh parents panel on navigate (accounts loaded separately)
   if(p==='parents') rParents();
+  if(p==='enrollments') rEnrollments();
 }
 
-function renderAll(){rN();rE();rS();rT();rP();rPwReset();rParents();uS();loadSettings();loadResources();loadGallery();loadAchievements();loadHistory();loadAlumni();loadDTRDashboard();setTimeout(updateDashChart,100)}
+function rEnrollments(){
+  var tbody = document.getElementById('enrollB');
+  if(!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--g5)">Loading...</td></tr>';
+  db.collection('portal_data').doc('enrollments').get().then(function(doc){
+    if(!doc.exists || !doc.data().data){
+      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--g5)">Walang enrollment applications pa.</td></tr>';
+      var c=document.getElementById('enrollCount'); if(c) c.textContent=0; return;
+    }
+    var parsed = JSON.parse(doc.data().data);
+    var enrollments = Array.isArray(parsed) ? parsed : Object.values(parsed);
+    var c=document.getElementById('enrollCount'); if(c) c.textContent=enrollments.length;
+    if(enrollments.length===0){ tbody.innerHTML='<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--g5)">Walang enrollment applications pa.</td></tr>'; return; }
+    tbody.innerHTML = enrollments.map(function(e,i){
+      var typeLabel = e.enrollType==='no_lrn'?'<span class="badge b-pu">No LRN</span>':e.enrollType==='with_lrn'?'<span class="badge b-b">With LRN</span>':'<span class="badge b-fe">Balik-Aral</span>';
+      var methodLabel = e.submissionMethod==='email'?'📧 Email':'🏫 Personal';
+      var statusBadge = e.status==='Approved'?'<span class="badge b-ac">Approved</span>':e.status==='Rejected'?'<span class="badge b-r">Rejected</span>':'<span class="badge b-pe">Pending</span>';
+      var date = e.dateSubmitted ? new Date(e.dateSubmitted).toLocaleDateString('en-PH') : '';
+      var trackStrand = (e.track?e.track:'')+(e.strand?' - '+e.strand.split(' ')[0]:'');
+      return '<tr>'+
+        '<td style="font-family:monospace;font-size:11px">'+(e.refNum||'—')+'</td>'+
+        '<td><strong>'+(e.fullName||e.lastName+', '+e.firstName)+'</strong><br><span style="font-size:11px;color:var(--g5)">'+(e.lrn?'LRN: '+e.lrn:'No LRN')+'</span></td>'+
+        '<td>'+(e.gradeLevel||'—')+'</td>'+
+        '<td>'+typeLabel+'</td>'+
+        '<td style="font-size:11px">'+(trackStrand||'—')+'</td>'+
+        '<td>'+methodLabel+'</td>'+
+        '<td style="font-size:11px">'+date+'</td>'+
+        '<td>'+statusBadge+'</td>'+
+        '<td><div class="ab">'+
+        '<button class="abtn apv" title="View" onclick="viewEnrollment('+i+')">&#128065;</button>'+
+        (e.status==='Pending'?'<button class="abtn apv" title="Approve" onclick="approveEnrollment('+i+')">&#10003;</button>':'')+
+        (e.status==='Pending'?'<button class="abtn del" title="Reject" onclick="rejectEnrollment('+i+')">&#10005;</button>':'')+
+        '</div></td></tr>';
+    }).join('');
+  }).catch(function(err){ tbody.innerHTML='<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--da)">Error: '+err.message+'</td></tr>'; });
+}
+
+function viewEnrollment(idx){
+  db.collection('portal_data').doc('enrollments').get().then(function(doc){
+    var parsed=JSON.parse(doc.data().data);
+    var enrollments=Array.isArray(parsed)?parsed:Object.values(parsed);
+    var e=enrollments[idx]; if(!e) return;
+    var html='<div style="font-size:12px;line-height:2">'+
+      '<strong>Ref #:</strong> '+e.refNum+'<br>'+
+      '<strong>Name:</strong> '+e.lastName+', '+e.firstName+' '+(e.middleName||'')+' '+(e.extName||'')+'<br>'+
+      '<strong>LRN:</strong> '+(e.lrn||'—')+'<br>'+
+      '<strong>PSA No.:</strong> '+(e.psaNo||'—')+'<br>'+
+      '<strong>Birthdate:</strong> '+(e.birthdate||'—')+' | Sex: '+(e.sex||'—')+' | Age: '+(e.age||'—')+'<br>'+
+      '<strong>Mother Tongue:</strong> '+(e.motherTongue||'—')+'<br>'+
+      '<strong>IP:</strong> '+(e.ipCommunity||'No')+(e.ipSpecify?' — '+e.ipSpecify:'')+'<hr style="margin:8px 0">'+
+      '<strong>Address:</strong> '+[e.street,e.barangay,e.city,e.zipCode].filter(Boolean).join(', ')+'<hr style="margin:8px 0">'+
+      '<strong>Father:</strong> '+(e.fatherName||'—')+'<br>'+
+      '<strong>Mother:</strong> '+(e.motherName||'—')+'<br>'+
+      '<strong>Guardian:</strong> '+(e.guardianName||'—')+'<br>'+
+      '<strong>Cell:</strong> '+(e.cellphone||'—')+' | Email: '+(e.email||'—')+'<hr style="margin:8px 0">'+
+      '<strong>Grade Level:</strong> '+(e.gradeLevel||'—')+'<br>'+
+      (e.track?'<strong>Track:</strong> '+e.track+'<br>':'')+
+      (e.strand?'<strong>Strand:</strong> '+e.strand+'<br>':'')+
+      '<strong>Type:</strong> '+(e.enrollType||'—')+' | Submission: '+(e.submissionMethod==='email'?'📧 Email':'🏫 Personal')+'<br>'+
+      (e.prevSchool?'<hr style="margin:8px 0"><strong>Prev School:</strong> '+e.prevSchool+'<br><strong>Last Grade:</strong> '+(e.lastGrade||'—')+' | Last SY: '+(e.lastSY||'—')+'<br>':'')+
+      '</div>';
+    opM('📋 Enrollment — '+(e.fullName||e.lastName), html);
+  });
+}
+
+function approveEnrollment(idx){
+  if(!confirm('Approve this enrollment?')) return;
+  db.collection('portal_data').doc('enrollments').get().then(function(doc){
+    var parsed=JSON.parse(doc.data().data);
+    var enrollments=Array.isArray(parsed)?parsed:Object.values(parsed);
+    enrollments[idx].status='Approved';
+    enrollments[idx].approvedDate=new Date().toISOString();
+    return db.collection('portal_data').doc('enrollments').set({data:JSON.stringify(enrollments),updated:firebase.firestore.FieldValue.serverTimestamp()});
+  }).then(function(){rEnrollments();toast('Enrollment approved!','su');});
+}
+
+function rejectEnrollment(idx){
+  if(!confirm('Reject this enrollment?')) return;
+  db.collection('portal_data').doc('enrollments').get().then(function(doc){
+    var parsed=JSON.parse(doc.data().data);
+    var enrollments=Array.isArray(parsed)?parsed:Object.values(parsed);
+    enrollments[idx].status='Rejected';
+    return db.collection('portal_data').doc('enrollments').set({data:JSON.stringify(enrollments),updated:firebase.firestore.FieldValue.serverTimestamp()});
+  }).then(function(){rEnrollments();toast('Enrollment rejected.','su');});
+}
+
+function exportEnrollments(){
+  db.collection('portal_data').doc('enrollments').get().then(function(doc){
+    if(!doc.exists||!doc.data().data){toast('No enrollments to export.','er');return;}
+    var parsed=JSON.parse(doc.data().data);
+    var enrollments=Array.isArray(parsed)?parsed:Object.values(parsed);
+    var headers=['Ref #','Last Name','First Name','Middle Name','Ext','LRN','PSA No','Birthdate','Age','Sex','Mother Tongue','Street','Barangay','City','Zip','Father','Mother','Guardian','Cellphone','Email','Grade Level','Track','Strand','Enrollment Type','Submission','Status','Date Submitted'];
+    var rows=[headers.join(',')];
+    enrollments.forEach(function(e){
+      rows.push([e.refNum||'',e.lastName||'',e.firstName||'',e.middleName||'',e.extName||'',e.lrn||'',e.psaNo||'',e.birthdate||'',e.age||'',e.sex||'',e.motherTongue||'','"'+(e.street||'')+'"',e.barangay||'',e.city||'',e.zipCode||'','"'+(e.fatherName||'')+'"','"'+(e.motherName||'')+'"','"'+(e.guardianName||'')+'"',e.cellphone||'',e.email||'',e.gradeLevel||'',e.track||'',e.strand||'',e.enrollType||'',e.submissionMethod||'',e.status||'',e.dateSubmitted||''].join(','));
+    });
+    var csv='\uFEFF'+rows.join('\n');
+    var blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a');
+    a.href=url;a.download='DBAMINHS_Enrollments_2026-2027.csv';a.click();
+    URL.revokeObjectURL(url);
+    toast('Enrollments exported!','su');
+  });
+}
+
+function renderAll(){rN();rE();rS();rT();rP();rPwReset();rParents();rEnrollments();uS();loadSettings();loadResources();loadGallery();loadAchievements();loadHistory();loadAlumni();loadDTRDashboard();setTimeout(updateDashChart,100)}
 function uS(){
   document.getElementById('sS').textContent=S.length.toLocaleString();
   document.getElementById('sT').textContent=T.length;

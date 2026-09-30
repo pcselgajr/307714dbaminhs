@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="tl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Online Enrollment — DBAMINHS</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--navy:#1B2A4A;--orange:#E85D1A;--green:#2D8B46;--g1:#F8F9FC;--g2:#E0E4EF;--g5:#888;--g7:#333}
+body{font-family:Arial,sans-serif;background:#f0f2f8;min-height:100vh}
+
+/* Header */
+.site-header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-items:center;gap:14px}
+.site-header img{width:44px;height:44px;border-radius:50%}
+.site-header .school-name{font-size:15px;font-weight:700;line-height:1.3}
+.site-header .school-sub{font-size:11px;opacity:.8}
+.header-right{margin-left:auto;font-size:12px;text-align:right;opacity:.8}
+
+/* Main */
+.main{max-width:800px;margin:0 auto;padding:20px 16px 60px}
+
+/* Form card */
+.form-card{background:#fff;border-radius:14px;box-shadow:0 2px 12px rgba(0,0,0,.08);overflow:hidden;margin-bottom:20px}
+.form-title{background:var(--navy);color:#fff;padding:16px 20px;font-size:16px;font-weight:700;text-align:center}
+.form-subtitle{background:#E85D1A;color:#fff;padding:8px 20px;font-size:11px;text-align:center}
+.form-body{padding:20px}
+
+/* Section headers */
+.section-hdr{background:var(--navy);color:#fff;padding:8px 14px;font-size:12px;font-weight:700;border-radius:6px;margin:18px 0 12px;letter-spacing:.5px}
+
+/* Form groups */
+.fg{margin-bottom:14px}
+.fg label{display:block;font-size:12px;font-weight:700;color:var(--g7);margin-bottom:5px}
+.fg label span.req{color:var(--orange)}
+.fg input,.fg select,.fg textarea{width:100%;padding:9px 12px;border:1.5px solid var(--g2);border-radius:8px;font-size:13px;color:var(--g7);background:var(--g1);transition:border .2s}
+.fg input:focus,.fg select:focus,.fg textarea:focus{outline:none;border-color:var(--navy);background:#fff}
+.fg textarea{resize:vertical;min-height:60px}
+.fg-row{display:grid;gap:12px}
+.fg-row.c2{grid-template-columns:1fr 1fr}
+.fg-row.c3{grid-template-columns:1fr 1fr 1fr}
+.fg-row.c4{grid-template-columns:1fr 1fr 1fr 1fr}
+
+/* Radio/checkbox groups */
+.radio-group{display:flex;gap:16px;flex-wrap:wrap;margin-top:4px}
+.radio-group label{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:400;cursor:pointer;color:var(--g7)}
+.radio-group input[type=radio],.radio-group input[type=checkbox]{width:16px;height:16px;accent-color:var(--navy)}
+.check-group{display:flex;gap:16px;flex-wrap:wrap;margin-top:4px}
+
+/* Enrollment type selector */
+.enroll-type{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px}
+.enroll-btn{border:2px solid var(--g2);background:#fff;border-radius:10px;padding:12px 8px;text-align:center;cursor:pointer;transition:all .2s}
+.enroll-btn:hover{border-color:var(--navy)}
+.enroll-btn.active{border-color:var(--orange);background:#fff3ee}
+.enroll-btn .icon{font-size:24px;margin-bottom:4px}
+.enroll-btn .label{font-size:12px;font-weight:700;color:var(--navy)}
+.enroll-btn .desc{font-size:10px;color:var(--g5);margin-top:2px}
+
+/* Submission method */
+.submit-method{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:16px 0}
+.method-card{border:2px solid var(--g2);border-radius:10px;padding:14px;cursor:pointer;transition:all .2s}
+.method-card:hover{border-color:var(--navy)}
+.method-card.active{border-color:var(--green);background:#e8f5ec}
+.method-card .method-icon{font-size:24px;margin-bottom:6px}
+.method-card .method-title{font-size:13px;font-weight:700;color:var(--navy);margin-bottom:4px}
+.method-card .method-desc{font-size:11px;color:var(--g5);line-height:1.5}
+.method-info{background:#e8f5ec;border-radius:10px;padding:14px;margin-top:10px;font-size:12px;color:var(--g7);line-height:1.7;display:none}
+.method-info.show{display:block}
+
+/* Consent */
+.consent-box{background:#f0f4ff;border:1.5px solid #c5cae9;border-radius:10px;padding:14px;margin:16px 0;font-size:11px;color:var(--g7);line-height:1.7}
+.consent-check{display:flex;align-items:flex-start;gap:10px;margin-top:10px;cursor:pointer}
+.consent-check input{width:16px;height:16px;margin-top:2px;accent-color:var(--navy);flex-shrink:0}
+
+/* Submit button */
+.btn-submit{width:100%;padding:14px;background:var(--orange);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:background .2s;margin-top:8px}
+.btn-submit:hover{background:#c94e0f}
+.btn-submit:disabled{background:#ccc;cursor:not-allowed}
+
+/* Success screen */
+.success-screen{display:none;text-align:center;padding:40px 20px}
+.success-screen .check{font-size:64px;margin-bottom:16px}
+.success-screen h2{font-size:20px;font-weight:700;color:var(--navy);margin-bottom:8px}
+.success-screen p{font-size:13px;color:var(--g5);line-height:1.7;margin-bottom:6px}
+.success-screen .ref-num{background:var(--g1);border:1.5px solid var(--g2);border-radius:8px;padding:10px 16px;font-size:15px;font-weight:700;color:var(--navy);margin:12px 0;display:inline-block}
+.success-screen .email-info{background:#e8f5ec;border-radius:10px;padding:14px;margin-top:14px;font-size:12px;color:var(--g7);text-align:left;line-height:1.8}
+
+/* Conditional sections */
+.conditional{display:none}
+.conditional.show{display:block}
+
+/* Toast */
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:12px 24px;border-radius:10px;font-size:13px;font-weight:600;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
+#toast.show{opacity:1}
+#toast.er{background:#c0392b}
+#toast.su{background:var(--green)}
+
+/* Responsive */
+@media(max-width:600px){
+  .fg-row.c2,.fg-row.c3,.fg-row.c4{grid-template-columns:1fr}
+  .enroll-type{grid-template-columns:1fr}
+  .submit-method{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="site-header">
+  <img src="https://pcselgajr.github.io/307714dbaminhs/lalayat_logo.jpg" onerror="this.style.display='none'" alt="Logo">
+  <div>
+    <div class="school-name">Dr. Bonifacio A. Masilungan Integrated National High School</div>
+    <div class="school-sub">Brgy. Lalayat, San Jose, Batangas | School ID: 307714</div>
+  </div>
+  <div class="header-right">Online Enrollment<br>SY 2026-2027</div>
+</div>
+
+<div class="main">
+
+  <!-- Intro card -->
+  <div class="form-card">
+    <div class="form-title">📋 BASIC EDUCATION ENROLLMENT FORM</div>
+    <div class="form-subtitle">THIS FORM IS NOT FOR SALE — Annex 2 | Online Version</div>
+    <div class="form-body">
+      <div style="font-size:12px;color:var(--g5);background:#fffbe6;border:1px solid #f5c842;border-radius:8px;padding:12px;margin-bottom:16px;line-height:1.7">
+        <strong>📌 PANUTO:</strong> Punan ang lahat ng required fields. Pagkatapos mag-submit, kailangan mong magpadala o personal na magdala ng mga sumusuporta na dokumento (PSA Birth Certificate, Form 138/SF9) sa school.<br>
+        <strong>📅 Enrollment Period:</strong> School Year 2026–2027
+      </div>
+
+      <!-- Enrollment Type -->
+      <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:10px">Pumili ng uri ng enrollment: <span class="req" style="color:var(--orange)">*</span></div>
+      <div class="enroll-type">
+        <div class="enroll-btn" onclick="setEnrollType('no_lrn',this)">
+          <div class="icon">🆕</div>
+          <div class="label">No LRN</div>
+          <div class="desc">Incoming Grade 7 (Mula Elementary)</div>
+        </div>
+        <div class="enroll-btn" onclick="setEnrollType('with_lrn',this)">
+          <div class="icon">🔄</div>
+          <div class="label">With LRN</div>
+          <div class="desc">Transferee / May LRN na</div>
+        </div>
+        <div class="enroll-btn" onclick="setEnrollType('balik_aral',this)">
+          <div class="icon">↩️</div>
+          <div class="label">Balik-Aral</div>
+          <div class="desc">Returning Learner</div>
+        </div>
+      </div>
+
+      <div id="formSection" style="display:none">
+
+        <!-- STUDENT INFORMATION -->
+        <div class="section-hdr">👤 STUDENT INFORMATION</div>
+
+        <div class="fg-row c2">
+          <div class="fg">
+            <label>PSA Birth Certificate No.</label>
+            <input type="text" id="psaNo" placeholder="e.g. 2009-12345">
+          </div>
+          <div class="fg" id="lrnGroup" style="display:none">
+            <label>Learner Reference No. (LRN) <span class="req">*</span></label>
+            <input type="text" id="lrn" placeholder="12-digit LRN" maxlength="12">
+          </div>
+        </div>
+
+        <div class="fg-row c2">
+          <div class="fg">
+            <label>Last Name <span class="req">*</span></label>
+            <input type="text" id="lastName" placeholder="Apelyido" oninput="this.value=this.value.toUpperCase()">
+          </div>
+          <div class="fg">
+            <label>First Name <span class="req">*</span></label>
+            <input type="text" id="firstName" placeholder="Pangalan" oninput="this.value=this.value.toUpperCase()">
+          </div>
+        </div>
+
+        <div class="fg-row c2">
+          <div class="fg">
+            <label>Middle Name</label>
+            <input type="text" id="middleName" placeholder="Gitnang Pangalan" oninput="this.value=this.value.toUpperCase()">
+          </div>
+          <div class="fg">
+            <label>Extension Name (Jr., III, etc.)</label>
+            <input type="text" id="extName" placeholder="e.g. Jr., II, III">
+          </div>
+        </div>
+
+        <div class="fg-row c3">
+          <div class="fg">
+            <label>Date of Birth <span class="req">*</span></label>
+            <input type="date" id="birthdate">
+          </div>
+          <div class="fg">
+            <label>Sex <span class="req">*</span></label>
+            <select id="sex">
+              <option value="">— Piliin —</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+            </select>
+          </div>
+          <div class="fg">
+            <label>Age</label>
+            <input type="number" id="age" placeholder="Edad" min="10" max="25" readonly style="background:#f0f0f0">
+          </div>
+        </div>
+
+        <div class="fg-row c2">
+          <div class="fg">
+            <label>IP Community Member?</label>
+            <div class="radio-group">
+              <label><input type="radio" name="ip" value="No" checked> No</label>
+              <label><input type="radio" name="ip" value="Yes"> Yes</label>
+            </div>
+          </div>
+          <div class="fg" id="ipSpecifyGroup" style="display:none">
+            <label>If Yes, please specify:</label>
+            <input type="text" id="ipSpecify" placeholder="IP Community name">
+          </div>
+        </div>
+
+        <div class="fg">
+          <label>Mother Tongue</label>
+          <input type="text" id="motherTongue" placeholder="e.g. Filipino, Tagalog, Bisaya">
+        </div>
+
+        <!-- ADDRESS -->
+        <div class="section-hdr">🏠 ADDRESS</div>
+
+        <div class="fg">
+          <label>House Number and Street <span class="req">*</span></label>
+          <input type="text" id="street" placeholder="Blk/Lot/Unit No., Street Name">
+        </div>
+
+        <div class="fg-row c2">
+          <div class="fg">
+            <label>Barangay <span class="req">*</span></label>
+            <input type="text" id="barangay" placeholder="Barangay">
+          </div>
+          <div class="fg">
+            <label>City/Municipality/Province <span class="req">*</span></label>
+            <input type="text" id="city" placeholder="City/Municipality, Province">
+          </div>
+        </div>
+
+        <div class="fg-row c2">
+          <div class="fg">
+            <label>Country</label>
+            <input type="text" id="country" value="Philippines">
+          </div>
+          <div class="fg">
+            <label>Zip Code</label>
+            <input type="text" id="zipCode" placeholder="4-digit zip code" maxlength="4">
+          </div>
+        </div>
+
+        <!-- PARENT/GUARDIAN -->
+        <div class="section-hdr">👨‍👩‍👧 PARENT'S / GUARDIAN'S INFORMATION</div>
+
+        <div class="fg-row c2">
+          <div class="fg">
+            <label>Father's Name (Last, First, Middle) <span class="req">*</span></label>
+            <input type="text" id="fatherName" placeholder="Apelyido, Pangalan, Gitnang Pangalan" oninput="this.value=this.value.toUpperCase()">
+          </div>
+          <div class="fg">
+            <label>Mother's Maiden Name (Last, First, Middle) <span class="req">*</span></label>
+            <input type="text" id="motherName" placeholder="Apelyido, Pangalan, Gitnang Pangalan" oninput="this.value=this.value.toUpperCase()">
+          </div>
+        </div>
+
+        <div class="fg">
+          <label>Guardian's Name (Last, First, Middle) <span style="font-size:11px;color:var(--g5)">(Kung hindi magulang ang mag-aalaga)</span></label>
+          <input type="text" id="guardianName" placeholder="Apelyido, Pangalan, Gitnang Pangalan" oninput="this.value=this.value.toUpperCase()">
+        </div>
+
+        <div class="fg-row c2">
+          <div class="fg">
+            <label>Telephone No.</label>
+            <input type="text" id="telephone" placeholder="(043) XXX-XXXX">
+          </div>
+          <div class="fg">
+            <label>Cellphone No. <span class="req">*</span></label>
+            <input type="text" id="cellphone" placeholder="09XX XXX XXXX">
+          </div>
+        </div>
+
+        <div class="fg">
+          <label>Email Address <span style="font-size:11px;color:var(--g5)">(Para sa confirmation)</span></label>
+          <input type="email" id="email" placeholder="example@gmail.com">
+        </div>
+
+        <!-- RETURNING / TRANSFEREE -->
+        <div id="returningSection" class="conditional">
+          <div class="section-hdr">🔄 PARA SA BALIK-ARAL AT TRANSFEREES</div>
+          <div class="fg-row c2">
+            <div class="fg">
+              <label>Last Grade Level Completed</label>
+              <input type="text" id="lastGrade" placeholder="e.g. Grade 7">
+            </div>
+            <div class="fg">
+              <label>Last School Year Completed</label>
+              <input type="text" id="lastSY" placeholder="e.g. 2023-2024">
+            </div>
+          </div>
+          <div class="fg-row c2">
+            <div class="fg">
+              <label>School Name</label>
+              <input type="text" id="prevSchool" placeholder="Previous School Name">
+            </div>
+            <div class="fg">
+              <label>School ID</label>
+              <input type="text" id="prevSchoolId" placeholder="School ID Number">
+            </div>
+          </div>
+          <div class="fg">
+            <label>School Address</label>
+            <input type="text" id="prevSchoolAddr" placeholder="Address ng nakaraang paaralan">
+          </div>
+        </div>
+
+        <!-- SHS ONLY -->
+        <div id="shsSection" class="conditional">
+          <div class="section-hdr">🎓 PARA SA SENIOR HIGH SCHOOL</div>
+          <div class="fg-row c2">
+            <div class="fg">
+              <label>Grade Level <span class="req">*</span></label>
+              <select id="gradeLevel">
+                <option value="">— Piliin —</option>
+                <option value="Grade 7">Grade 7 (JHS)</option>
+                <option value="Grade 8">Grade 8 (JHS)</option>
+                <option value="Grade 9">Grade 9 (JHS)</option>
+                <option value="Grade 10">Grade 10 (JHS)</option>
+                <option value="Grade 11">Grade 11 (SHS)</option>
+                <option value="Grade 12">Grade 12 (SHS)</option>
+              </select>
+            </div>
+            <div class="fg" id="semesterGroup" style="display:none">
+              <label>Semester</label>
+              <div class="radio-group" style="margin-top:10px">
+                <label><input type="radio" name="sem" value="1st Sem" checked> 1st Sem</label>
+                <label><input type="radio" name="sem" value="2nd Sem"> 2nd Sem</label>
+              </div>
+            </div>
+          </div>
+          <div class="fg-row c2" id="trackStrandGroup" style="display:none">
+            <div class="fg">
+              <label>Track <span class="req">*</span></label>
+              <select id="track" onchange="updateStrands()">
+                <option value="">— Piliin ang Track —</option>
+                <option value="Academic">Academic</option>
+                <option value="TVL">TVL (Technical-Vocational-Livelihood)</option>
+                <option value="Arts and Design">Arts and Design</option>
+                <option value="Sports">Sports</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label>Strand (if any)</label>
+              <select id="strand">
+                <option value="">— Piliin ang Strand —</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Grade level selector for JHS -->
+        <div id="jhsGradeGroup" class="conditional">
+          <div class="section-hdr">📚 GRADE LEVEL</div>
+          <div class="fg">
+            <label>Grade Level na Pagsasalihan <span class="req">*</span></label>
+            <select id="gradeLevelJhs">
+              <option value="">— Piliin —</option>
+              <option value="Grade 7">Grade 7</option>
+              <option value="Grade 8">Grade 8</option>
+              <option value="Grade 9">Grade 9</option>
+              <option value="Grade 10">Grade 10</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- DOCUMENT SUBMISSION -->
+        <div class="section-hdr">📄 PARAAN NG PAGPAPADALA NG MGA DOKUMENTO</div>
+        <div style="font-size:12px;color:var(--g5);margin-bottom:10px">
+          Piliin kung paano mo ipapadala ang mga sumusuportang dokumento (PSA Birth Certificate, Form 138/SF9, at iba pa):
+        </div>
+        <div class="submit-method">
+          <div class="method-card" id="methodEmail" onclick="setMethod('email')">
+            <div class="method-icon">📧</div>
+            <div class="method-title">I-email ang mga Dokumento</div>
+            <div class="method-desc">I-scan at i-email ang mga dokumento sa school email address.</div>
+          </div>
+          <div class="method-card" id="methodPersonal" onclick="setMethod('personal')">
+            <div class="method-icon">🏫</div>
+            <div class="method-title">Personal na Magdala sa School</div>
+            <div class="method-desc">Personal na dalhin ang mga original/photocopy ng dokumento sa Registrar's Office.</div>
+          </div>
+        </div>
+
+        <div class="method-info" id="emailInfo">
+          📧 <strong>I-email ang mga dokumento sa:</strong><br>
+          <strong style="color:var(--navy);font-size:13px">307714@deped.gov.ph</strong><br><br>
+          <strong>Mga kailangang i-attach:</strong><br>
+          • PSA Birth Certificate (scanned/photo)<br>
+          • Form 138 / SF9 (Report Card)<br>
+          • 2x2 ID Photo<br>
+          • Barangay Clearance (optional)<br><br>
+          <strong>Subject ng email:</strong> ENROLLMENT 2026-2027 - [Iyong Buong Pangalan]
+        </div>
+
+        <div class="method-info" id="personalInfo">
+          🏫 <strong>Dalhin ang mga dokumento sa:</strong><br>
+          <strong style="color:var(--navy);font-size:13px">DBAMINHS Registrar's Office</strong><br>
+          Brgy. Lalayat, San Jose, Batangas<br><br>
+          <strong>Mga kailangang dalhin:</strong><br>
+          • PSA Birth Certificate (original + 1 photocopy)<br>
+          • Form 138 / SF9 (Report Card)<br>
+          • 2x2 ID Photo (2 copies)<br>
+          • Barangay Clearance (optional)<br><br>
+          <strong>Oras ng pagtatanggap:</strong> Lunes–Biyernes, 8:00 AM – 4:00 PM
+        </div>
+
+        <!-- CONSENT -->
+        <div class="consent-box">
+          <strong>PAHAYAG NG PAHINTULOT / CONSENT STATEMENT</strong><br><br>
+          Pinatutunayan ko na ang mga impormasyong naibigay sa itaas ay totoo at tama ayon sa aking kaalaman at pinapayagan ko ang Kagawaran ng Edukasyon na gamitin ang mga detalye ng aking anak para malikha at/o ma-update ang kanyang learner profile sa Learner Information System. Ang mga impormasyon dito ay ituturing na kumpidensyal alinsunod sa Data Privacy Act of 2012.
+          <div class="consent-check">
+            <input type="checkbox" id="consentCheck">
+            <label for="consentCheck" style="font-weight:400;cursor:pointer">
+              <strong>Sumasang-ayon ako</strong> at pinatutunayan ang katumpakan ng lahat ng impormasyong naibigay.
+            </label>
+          </div>
+        </div>
+
+        <button class="btn-submit" onclick="submitEnrollment()" id="submitBtn">
+          📤 I-SUBMIT ANG ENROLLMENT APPLICATION
+        </button>
+      </div><!-- end formSection -->
+
+      <!-- SUCCESS SCREEN -->
+      <div class="success-screen" id="successScreen">
+        <div class="check">✅</div>
+        <h2>Matagumpay na Natanggap ang iyong Application!</h2>
+        <p>Ang iyong enrollment application ay naitala na sa sistema ng DBAMINHS.</p>
+        <div class="ref-num" id="refNum">REF-XXXXXXXX</div>
+        <p style="margin-top:8px">I-keep ang reference number na ito para sa iyong rekord.</p>
+        <div class="email-info" id="submissionInfo"></div>
+        <p style="margin-top:16px;font-size:12px;color:var(--g5)">Para sa mga katanungan, makipag-ugnayan sa school:<br>
+        📞 (043) 332 8939 | ✉️ 307714@deped.gov.ph</p>
+        <button onclick="location.reload()" style="margin-top:16px;padding:10px 24px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">
+          🔄 Mag-enroll ng isa pa
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div style="text-align:center;font-size:11px;color:var(--g5);margin-top:10px">
+    Dr. Bonifacio A. Masilungan Integrated National High School | School ID: 307714<br>
+    Brgy. Lalayat, San Jose, Batangas | DepEd Region IV-A CALABARZON, Division of Batangas
+  </div>
+
+</div><!-- end main -->
+
+<div id="toast"></div>
+
+<script>
+// Firebase
+var firebaseConfig = {
+  apiKey: "AIzaSyBV3UhpZNgn19cvgAHqckNniGTu8fX8gXw",
+  authDomain: "dbaminhs-bd727.firebaseapp.com",
+  projectId: "dbaminhs-bd727"
+};
+firebase.initializeApp(firebaseConfig);
+var db = firebase.firestore();
+
+var enrollType = '';
+var submitMethod = '';
+
+// Toast
+var toastTimer;
+function toast(msg, type) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast ' + (type||'') + ' show';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ t.classList.remove('show'); }, 3500);
+}
+
+// Enrollment type
+function setEnrollType(type, el) {
+  enrollType = type;
+  document.querySelectorAll('.enroll-btn').forEach(function(b){ b.classList.remove('active'); });
+  el.classList.add('active');
+  document.getElementById('formSection').style.display = 'block';
+
+  // LRN field
+  var lrnGroup = document.getElementById('lrnGroup');
+  lrnGroup.style.display = (type === 'no_lrn') ? 'none' : 'block';
+
+  // Returning section
+  var ret = document.getElementById('returningSection');
+  ret.classList.toggle('show', type === 'balik_aral');
+
+  // Grade level
+  document.getElementById('shsSection').classList.add('show');
+  document.getElementById('jhsGradeGroup').classList.remove('show');
+}
+
+// Grade level change
+document.getElementById('gradeLevel').addEventListener('change', function() {
+  var isSHS = this.value === 'Grade 11' || this.value === 'Grade 12';
+  document.getElementById('semesterGroup').style.display = isSHS ? 'block' : 'none';
+  document.getElementById('trackStrandGroup').style.display = isSHS ? 'flex' : 'none';
+});
+
+// Track/Strand
+function updateStrands() {
+  var track = document.getElementById('track').value;
+  var strands = {
+    'Academic': ['ABM (Accountancy, Business and Management)', 'HUMSS (Humanities and Social Sciences)', 'STEM (Science, Technology, Engineering and Mathematics)', 'GAS (General Academic Strand)'],
+    'TVL': ['ICT (Information and Communications Technology)', 'Industrial Arts', 'Agri-Fishery Arts', 'Home Economics'],
+    'Arts and Design': ['Arts and Design'],
+    'Sports': ['Sports']
+  };
+  var sel = document.getElementById('strand');
+  sel.innerHTML = '<option value="">— Piliin ang Strand —</option>';
+  if (strands[track]) {
+    strands[track].forEach(function(s){
+      sel.innerHTML += '<option value="' + s + '">' + s + '</option>';
+    });
+  }
+}
+
+// Auto-compute age from birthdate
+document.getElementById('birthdate').addEventListener('change', function() {
+  var bd = new Date(this.value);
+  var today = new Date();
+  var age = today.getFullYear() - bd.getFullYear();
+  var m = today.getMonth() - bd.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < bd.getDate())) age--;
+  document.getElementById('age').value = age > 0 ? age : '';
+});
+
+// IP Community
+document.querySelectorAll('input[name=ip]').forEach(function(r) {
+  r.addEventListener('change', function() {
+    document.getElementById('ipSpecifyGroup').style.display = this.value === 'Yes' ? 'block' : 'none';
+  });
+});
+
+// Submission method
+function setMethod(method) {
+  submitMethod = method;
+  document.querySelectorAll('.method-card').forEach(function(c){ c.classList.remove('active'); });
+  document.getElementById('method' + (method === 'email' ? 'Email' : 'Personal')).classList.add('active');
+  document.getElementById('emailInfo').classList.toggle('show', method === 'email');
+  document.getElementById('personalInfo').classList.toggle('show', method === 'personal');
+}
+
+// Generate reference number
+function genRefNum() {
+  var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789';
+  var ref = 'ENR-';
+  for (var i = 0; i < 8; i++) ref += chars.charAt(Math.floor(Math.random() * chars.length));
+  return ref;
+}
+
+// Submit
+function submitEnrollment() {
+  if (!enrollType) { toast('Piliin muna ang uri ng enrollment.', 'er'); return; }
+
+  var lastName = document.getElementById('lastName').value.trim();
+  var firstName = document.getElementById('firstName').value.trim();
+  var birthdate = document.getElementById('birthdate').value;
+  var sex = document.getElementById('sex').value;
+  var street = document.getElementById('street').value.trim();
+  var barangay = document.getElementById('barangay').value.trim();
+  var city = document.getElementById('city').value.trim();
+  var fatherName = document.getElementById('fatherName').value.trim();
+  var motherName = document.getElementById('motherName').value.trim();
+  var cellphone = document.getElementById('cellphone').value.trim();
+  var gradeLevel = document.getElementById('gradeLevel').value;
+  var consent = document.getElementById('consentCheck').checked;
+
+  if (!lastName || !firstName) { toast('Punan ang Apelyido at Pangalan.', 'er'); return; }
+  if (!birthdate) { toast('Punan ang Date of Birth.', 'er'); return; }
+  if (!sex) { toast('Piliin ang Sex.', 'er'); return; }
+  if (!street || !barangay || !city) { toast('Punan ang kumpletong Address.', 'er'); return; }
+  if (!fatherName || !motherName) { toast("Punan ang pangalan ng magulang.", 'er'); return; }
+  if (!cellphone) { toast('Punan ang Cellphone No.', 'er'); return; }
+  if (!gradeLevel) { toast('Piliin ang Grade Level.', 'er'); return; }
+  if (!submitMethod) { toast('Piliin ang paraan ng pagpapadala ng dokumento.', 'er'); return; }
+  if (!consent) { toast('Kailangan mong sumang-ayon sa consent statement.', 'er'); return; }
+
+  var btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.textContent = 'Nagse-save...';
+
+  var refNum = genRefNum();
+  var isSHS = gradeLevel === 'Grade 11' || gradeLevel === 'Grade 12';
+
+  var data = {
+    refNum: refNum,
+    enrollType: enrollType,
+    submissionMethod: submitMethod,
+    schoolYear: '2026-2027',
+    // Student info
+    psaNo: document.getElementById('psaNo').value.trim(),
+    lrn: document.getElementById('lrn').value.trim(),
+    lastName: lastName,
+    firstName: firstName,
+    middleName: document.getElementById('middleName').value.trim(),
+    extName: document.getElementById('extName').value.trim(),
+    birthdate: birthdate,
+    age: document.getElementById('age').value,
+    sex: sex,
+    ipCommunity: document.querySelector('input[name=ip]:checked').value,
+    ipSpecify: document.getElementById('ipSpecify').value.trim(),
+    motherTongue: document.getElementById('motherTongue').value.trim(),
+    // Address
+    street: street,
+    barangay: barangay,
+    city: city,
+    country: document.getElementById('country').value,
+    zipCode: document.getElementById('zipCode').value.trim(),
+    // Parent/Guardian
+    fatherName: fatherName,
+    motherName: motherName,
+    guardianName: document.getElementById('guardianName').value.trim(),
+    telephone: document.getElementById('telephone').value.trim(),
+    cellphone: cellphone,
+    email: document.getElementById('email').value.trim(),
+    // Grade/Track
+    gradeLevel: gradeLevel,
+    track: isSHS ? document.getElementById('track').value : '',
+    strand: isSHS ? document.getElementById('strand').value : '',
+    semester: isSHS ? document.querySelector('input[name=sem]:checked').value : '',
+    // Previous school (for returning/transferee)
+    lastGrade: document.getElementById('lastGrade') ? document.getElementById('lastGrade').value.trim() : '',
+    lastSY: document.getElementById('lastSY') ? document.getElementById('lastSY').value.trim() : '',
+    prevSchool: document.getElementById('prevSchool') ? document.getElementById('prevSchool').value.trim() : '',
+    prevSchoolId: document.getElementById('prevSchoolId') ? document.getElementById('prevSchoolId').value.trim() : '',
+    prevSchoolAddr: document.getElementById('prevSchoolAddr') ? document.getElementById('prevSchoolAddr').value.trim() : '',
+    // Meta
+    status: 'Pending',
+    dateSubmitted: new Date().toISOString(),
+    fullName: lastName + ', ' + firstName + (document.getElementById('middleName').value.trim() ? ' ' + document.getElementById('middleName').value.trim().charAt(0) + '.' : '')
+  };
+
+  db.collection('portal_data').doc('enrollments').get().then(function(doc) {
+    var enrollments = [];
+    if (doc.exists && doc.data().data) {
+      try { enrollments = JSON.parse(doc.data().data); } catch(e) { enrollments = []; }
+    }
+    if (!Array.isArray(enrollments)) enrollments = Object.values(enrollments);
+    enrollments.unshift(data);
+    return db.collection('portal_data').doc('enrollments').set({
+      data: JSON.stringify(enrollments),
+      updated: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  }).then(function() {
+    document.getElementById('formSection').style.display = 'none';
+    document.getElementById('successScreen').style.display = 'block';
+    document.getElementById('refNum').textContent = refNum;
+
+    var infoHtml = '';
+    if (submitMethod === 'email') {
+      infoHtml = '📧 <strong>Susunod na hakbang:</strong><br>I-scan at i-email ang iyong mga dokumento sa:<br>' +
+        '<strong>307714@deped.gov.ph</strong><br><br>' +
+        'Subject: <strong>ENROLLMENT 2026-2027 - ' + lastName + ', ' + firstName + '</strong><br><br>' +
+        'Mga kailangang i-attach:<br>• PSA Birth Certificate<br>• Form 138 / SF9<br>• 2x2 ID Photo';
+    } else {
+      infoHtml = '🏫 <strong>Susunod na hakbang:</strong><br>Personal na dalhin ang mga dokumento sa:<br>' +
+        '<strong>DBAMINHS Registrar\'s Office</strong><br>Brgy. Lalayat, San Jose, Batangas<br><br>' +
+        'Lunes–Biyernes, 8:00 AM – 4:00 PM<br><br>' +
+        'Mga kailangang dalhin:<br>• PSA Birth Certificate (original + 1 photocopy)<br>• Form 138 / SF9<br>• 2x2 ID Photo (2 copies)';
+    }
+    document.getElementById('submissionInfo').innerHTML = infoHtml;
+    toast('Enrollment application submitted!', 'su');
+  }).catch(function(err) {
+    toast('Error: ' + err.message, 'er');
+    btn.disabled = false;
+    btn.textContent = '📤 I-SUBMIT ANG ENROLLMENT APPLICATION';
+  });
+}
+</script>
+</body>
+</html>
