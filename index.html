@@ -227,7 +227,7 @@ td{padding:12px 16px;border-bottom:1px solid var(--g1);font-size:13.5px}
 <h1>Dr. Bonifacio A. Masilungan <em>Integrated National High School</em></h1>
 <div class="hero-sub">Brgy. Lalayat, San Jose, Batangas</div>
 <div class="hero-tag">"Nurturing Minds, Building Futures, Serving the Community"</div>
-<div class="hero-btns"><a href="#portals" class="btn btn-p">&#9654; Explore Portal</a><a href="#" class="btn btn-o" onclick="openM('signup');return false">&#9998; Sign Up Now</a><a href="#about" class="btn btn-o">&#9432; Learn More</a></div>
+<div class="hero-btns"><a href="#portals" class="btn btn-p">&#9654; Explore Portal</a><a href="enrollment.html" class="btn btn-o" style="background:#fff;color:var(--navy);border:2px solid #fff">&#128203; Mag-Enroll Online</a><a href="#" class="btn btn-o" onclick="openM('signup');return false">&#9998; Sign Up Now</a><a href="#about" class="btn btn-o">&#9432; Learn More</a></div>
 </div></section>
 
 <div class="stats"><div class="stat"><b id="pStat1">1,200+</b><small>Students</small></div><div class="stat"><b id="pStat2">65+</b><small>Faculty</small></div><div class="stat"><b id="pStat3">17</b><small>Years</small></div><div class="stat"><b id="pStat4">98%</b><small>Graduation</small></div></div>
@@ -253,7 +253,7 @@ td{padding:12px 16px;border-bottom:1px solid var(--g1);font-size:13.5px}
 <div class="qcard" onclick="openM('login')"><div class="qi qi-a">&#127891;</div><h3>Student Portal</h3><p>View grades, schedules, and assignments</p></div>
 <div class="qcard" onclick="openM('login')"><div class="qi qi-b">&#128218;</div><h3>Teacher Portal</h3><p>Manage classes and input grades</p></div>
 <div class="qcard" onclick="openM('login')"><div class="qi qi-c">&#128202;</div><h3>Grades &amp; Records</h3><p>Check academic performance</p></div>
-<div class="qcard" onclick="openM('signup')"><div class="qi qi-d">&#128221;</div><h3>Online Enrollment</h3><p>Enroll for the upcoming school year</p></div>
+<div class="qcard" onclick="window.location.href='enrollment.html'"><div class="qi qi-d">&#128221;</div><h3>Online Enrollment</h3><p>Enroll for the upcoming school year</p></div>
 <div class="qcard" onclick="openM('login')"><div class="qi qi-e">&#128214;</div><h3>E-Library</h3><p>Browse digital books and modules</p></div>
 <div class="qcard"><div class="qi qi-f">&#128197;</div><h3>School Calendar</h3><p>Events, holidays, and important dates</p></div>
 <div class="qcard" onclick="openM('login')"><div class="qi qi-g">&#128203;</div><h3>Attendance</h3><p>Track daily attendance records</p></div>
@@ -411,6 +411,7 @@ td{padding:12px 16px;border-bottom:1px solid var(--g1);font-size:13.5px}
 <span style="font-size:12px;color:var(--g5);align-self:center">SF9:</span>
 <button class="btn btn-sm" style="background:#f3e8ff;color:#6B21A8;border:1px solid #d8b4fe" onclick="printAllSF9()">&#128438; Print All SF9</button>
 <button class="btn btn-sm" style="background:#f3e8ff;color:#6B21A8;border:1px solid #d8b4fe" onclick="selectStudentForSF9()">&#128438; Print SF9 per Student</button>
+<button class="btn btn-sm" style="background:#e8f5ec;color:#166534;border:1px solid #a5d6b7" onclick="exportSF9CSV()">&#128190; Export SF9 CSV</button>
 </div>
 <button class="btn btn-sm" style="background:#fdecea;color:#d32f2f;border:1px solid #ffcdd2" onclick="clearSectionGrades()">&#128465; Clear Grades</button>
 </div>
