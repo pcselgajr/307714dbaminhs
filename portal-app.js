@@ -2158,6 +2158,133 @@ function printConsolidatedPerLearner() {
   openPrintWindow(html);
 }
 
+function exportSF9CSV() {
+  var cls = document.getElementById('gradeClass').value;
+  if (!cls) { toast('Please select a section first.', 'er'); return; }
+
+  var settings = loadData('settings', DEFAULT_SETTINGS);
+  var secs = (settings.sections && settings.sections.length > 0) ? settings.sections : DEFAULT_SECTIONS;
+  var baseSubjects = getSubjectsForSection(cls, secs);
+
+  var terms = ['Term_1', 'Term_2', 'Term_3'];
+  var termData = {};
+  terms.forEach(function(t) { termData[t] = loadData(getGradeKey(cls, t), {}); });
+
+  var students = loadData('students', DEFAULT_STUDENTS);
+  var sectionStudents = students.filter(function(s){ return s.grade === cls && s.status === 'Active'; });
+
+  if (sectionStudents.length === 0) { toast('No students found in this section.', 'er'); return; }
+
+  // Core subjects mapping
+  function findKey(keywords) {
+    return baseSubjects.find(function(s){
+      return keywords.some(function(k){ return s.toLowerCase().indexOf(k.toLowerCase()) >= 0; });
+    }) || '';
+  }
+  var ecKey = findKey(['Effective Communication','Mabisang Komunikasyon']);
+  var ec2Key = findKey(['Effective Communication']);
+  var mkKey = findKey(['Mabisang Komunikasyon']);
+  var gmKey = findKey(['General Mathematics']);
+  var gsKey = findKey(['General Science']);
+  var lcKey = findKey(['Life and Career','Life & Career']);
+  var pkKey = findKey(['Pag-Aaral','Kasaysayan','Lipunan','Philippine']);
+
+  // Elective subjects
+  var coreKeysList = [ecKey, ec2Key, mkKey, gmKey, gsKey, lcKey, pkKey, 'MAPEH'].filter(Boolean);
+  var electiveSubjects = baseSubjects.filter(function(s){
+    return !coreKeysList.some(function(k){ return k === s; });
+  });
+
+  function getGrade(term, subj, lrn) {
+    var r = termData[term][lrn];
+    if (!r || !r.grades || !subj) return '';
+    var v = r.grades[subj];
+    return v !== undefined ? v : '';
+  }
+
+  var selectedTerm = getSelectedTerm(); // current term
+  var termKey = selectedTerm; // e.g. Term_1
+
+  // Sort students: Male A-Z, Female A-Z
+  var males = sectionStudents.filter(function(s){ return (s.gender||'').toLowerCase() === 'male'; })
+    .sort(function(a,b){ return a.name.localeCompare(b.name); });
+  var females = sectionStudents.filter(function(s){ return (s.gender||'').toLowerCase() !== 'male'; })
+    .sort(function(a,b){ return a.name.localeCompare(b.name); });
+  var sorted = males.concat(females);
+
+  // Build CSV header matching Excel T1/T2/T3 column structure
+  var electiveHeaders = electiveSubjects.map(function(s){ return '"' + s + '"'; });
+  var header = ['No.', 'Name', '', '', 'LRN', '', 'Date of Birth', 'Age', 'Sex',
+    'Term Grade (EC/MK)', 'Effective Communication', 'Mabisang Komunikasyon',
+    'General Mathematics', 'General Science', 'Life and Career Skills',
+    'Pag-Aaral ng Kasaysayan at Lipunang Pilipino'
+  ].concat(electiveSubjects);
+
+  var rows = [header.map(function(h){ return '"' + h + '"'; }).join(',')];
+
+  // Male separator
+  rows.push('"--- MALE ---"');
+  males.forEach(function(s, i) {
+    var ec = getGrade(termKey, ec2Key || ecKey, s.lrn);
+    var mk = getGrade(termKey, mkKey || ecKey, s.lrn);
+    var ecmkAvg = (ec !== '' && mk !== '') ? Math.round((Number(ec)+Number(mk))/2) : (ec || mk || '');
+    var row = [
+      i + 1,
+      '"' + toLastFirst(s.name) + '"',
+      '', '', s.lrn, '',
+      s.birthdate || '',
+      s.age || '',
+      s.gender === 'Male' ? 'M' : 'F',
+      ecmkAvg,
+      ec, mk,
+      getGrade(termKey, gmKey, s.lrn),
+      getGrade(termKey, gsKey, s.lrn),
+      getGrade(termKey, lcKey, s.lrn),
+      getGrade(termKey, pkKey, s.lrn)
+    ];
+    electiveSubjects.forEach(function(subj){
+      row.push(getGrade(termKey, subj, s.lrn));
+    });
+    rows.push(row.join(','));
+  });
+
+  // Female separator
+  rows.push('"--- FEMALE ---"');
+  females.forEach(function(s, i) {
+    var ec = getGrade(termKey, ec2Key || ecKey, s.lrn);
+    var mk = getGrade(termKey, mkKey || ecKey, s.lrn);
+    var ecmkAvg = (ec !== '' && mk !== '') ? Math.round((Number(ec)+Number(mk))/2) : (ec || mk || '');
+    var row = [
+      males.length + i + 1,
+      '"' + toLastFirst(s.name) + '"',
+      '', '', s.lrn, '',
+      s.birthdate || '',
+      s.age || '',
+      'F',
+      ecmkAvg,
+      ec, mk,
+      getGrade(termKey, gmKey, s.lrn),
+      getGrade(termKey, gsKey, s.lrn),
+      getGrade(termKey, lcKey, s.lrn),
+      getGrade(termKey, pkKey, s.lrn)
+    ];
+    electiveSubjects.forEach(function(subj){
+      row.push(getGrade(termKey, subj, s.lrn));
+    });
+    rows.push(row.join(','));
+  });
+
+  var csv = '\uFEFF' + rows.join('\n'); // UTF-8 BOM for Excel
+  var blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'SF9_' + cls.replace(/\s/g,'_') + '_' + selectedTerm + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('SF9 CSV exported! I-import na sa Excel SF9 file.', 'su');
+}
+
 function printAllSF9() {
   var cls = document.getElementById('gradeClass').value;
   if (!cls) { toast('Please select a section first.', 'er'); return; }
@@ -3361,75 +3488,73 @@ function closeQuizResult() {
 // ============================================
 
 function updateTeacherStats() {
-  var keys = Object.keys(_cache);
-  var classCount = 0;
+  // Get advisory sections of logged-in teacher only
+  var advisorySections = [];
+  if (curUser && curUser.type === 'teacher') {
+    var teachers = loadData('teachers', []);
+    var teacher = teachers.find(function(t){ return t.eid === curUser.eid; });
+    if (teacher && teacher.sections && teacher.sections.length > 0) {
+      advisorySections = teacher.sections;
+    }
+  }
+
+  // If no advisory sections assigned, show 0
+  if (advisorySections.length === 0) {
+    var el1 = document.getElementById('tStatClasses');
+    var el2 = document.getElementById('tStatStudents');
+    var el3 = document.getElementById('tStatPending');
+    var el4 = document.getElementById('tStatAttendance');
+    if (el1) el1.textContent = '0';
+    if (el2) el2.textContent = '0';
+    if (el3) el3.textContent = '0';
+    if (el4) el4.textContent = '--';
+    return;
+  }
+
+  var term = getSelectedTerm ? getSelectedTerm() : 'Term_1';
   var totalStudents = 0;
-  var sectionsWithGrades = {};
-  var sectionsWithAttendance = {};
-  var allSections = {};
-  
-  // Count classes and students from grades data
-  keys.forEach(function(k) {
-    if (k.startsWith('grades_')) {
-      var section = k.replace('grades_', '').replace(/_/g, ' ');
-      var data = _cache[k];
-      if (data) {
-        var count = Object.keys(data).length;
-        if (count > 0) {
-          sectionsWithGrades[section] = true;
-          allSections[section] = true;
-          totalStudents += count;
-        }
-      }
-    }
-    if (k.startsWith('attendance_')) {
-      var section = k.replace('attendance_', '').replace(/_/g, ' ');
-      sectionsWithAttendance[section] = true;
-      allSections[section] = true;
-    }
-    if (k.startsWith('schedule_')) {
-      var section = k.replace('schedule_', '').replace(/_/g, ' ');
-      allSections[section] = true;
-    }
-  });
-  
-  classCount = Object.keys(allSections).length;
-  
-  // Count sections without grades (pending)
-  var settings = loadData('settings', {});
-  var sections = (settings.sections && settings.sections.length > 0) ? settings.sections : [];
-  var pendingCount = 0;
-  sections.forEach(function(s) {
-    var name = typeof s === 'object' ? s.name : s;
-    if (!sectionsWithGrades[name]) pendingCount++;
-  });
-  
-  // Calculate average attendance
+  var sectionsWithGrades = 0;
   var totalRate = 0;
   var attCount = 0;
-  keys.forEach(function(k) {
-    if (k.startsWith('attendance_')) {
-      var data = _cache[k];
-      if (data) {
-        Object.keys(data).forEach(function(lrn) {
-          if (data[lrn].rate) {
-            totalRate += parseFloat(data[lrn].rate);
-            attCount++;
-          }
-        });
-      }
+
+  advisorySections.forEach(function(sec) {
+    var secKey = sec.replace(/\s/g, '_');
+
+    // Count students with grades in this section for current term
+    var gradeKey = 'grades_' + secKey + '_' + term;
+    var gradeData = _cache[gradeKey] || {};
+    var studentCount = Object.keys(gradeData).length;
+    if (studentCount > 0) {
+      totalStudents += studentCount;
+      sectionsWithGrades++;
+    } else {
+      // Try counting from students directory
+      var students = loadData('students', []);
+      var secStudents = students.filter(function(s){ return s.grade === sec && s.status === 'Active'; });
+      totalStudents += secStudents.length;
     }
+
+    // Count attendance rates
+    var attKey = 'attendance_' + secKey;
+    var attData = _cache[attKey] || {};
+    Object.keys(attData).forEach(function(lrn) {
+      if (attData[lrn] && attData[lrn].rate) {
+        totalRate += parseFloat(attData[lrn].rate);
+        attCount++;
+      }
+    });
   });
+
+  var pendingCount = advisorySections.length - sectionsWithGrades;
   var avgAtt = attCount > 0 ? Math.round(totalRate / attCount) + '%' : '--';
-  
-  // Update UI
+
   var el1 = document.getElementById('tStatClasses');
   var el2 = document.getElementById('tStatStudents');
   var el3 = document.getElementById('tStatPending');
   var el4 = document.getElementById('tStatAttendance');
-  if (el1) el1.textContent = classCount;
+  if (el1) el1.textContent = advisorySections.length;
   if (el2) el2.textContent = totalStudents;
-  if (el3) el3.textContent = pendingCount;
+  if (el3) el3.textContent = pendingCount > 0 ? pendingCount : 0;
   if (el4) el4.textContent = avgAtt;
 }
 
