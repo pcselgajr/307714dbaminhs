@@ -649,7 +649,7 @@ function handleCSVUpload(event) {
       var row = parseCSVLine(lines[i]);
       if (!row[0] || !row[0].trim()) continue;
       
-      var lrn = row[0].trim();
+      var lrn = row[0].trim().replace(/^="?|"?=?"$/g, '').replace(/^"+|"+$/g, '').trim();
       if (lrn.indexOf('---') === 0) continue; // skip gender separator rows
       var name = row[1] ? fromLastFirst(row[1].trim()) : '';
       var grades = {};
@@ -1136,7 +1136,7 @@ function handleAttUpload(event) {
       var row = parseCSVLine(lines[i]);
       if (!row[0] || !row[0].trim()) continue;
       
-      var lrn = row[0].trim();
+      var lrn = row[0].trim().replace(/^="?|"?=?"$/g, '').replace(/^"+|"+$/g, '').trim();
       if (lrn.indexOf('---') === 0) continue; // skip gender separator rows
       var name = row[1] ? fromLastFirst(row[1].trim()) : '';
       var present = parseInt(row[2]) || 0;
