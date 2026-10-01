@@ -3488,28 +3488,15 @@ function closeQuizResult() {
 // ============================================
 
 function updateTeacherStats() {
-  // Get advisory sections of logged-in teacher only
-  var advisorySections = [];
-  if (curUser && curUser.type === 'teacher') {
-    var teachers = loadData('teachers', []);
-    var teacher = teachers.find(function(t){ return t.eid === curUser.eid; });
-    if (teacher && teacher.sections && teacher.sections.length > 0) {
-      advisorySections = teacher.sections;
-    }
-  }
+  var teachers = loadData('teachers', []);
+  var teacher = curUser ? teachers.find(function(t){ return t.eid === curUser.eid; }) : null;
+  var advisorySections = (teacher && teacher.sections && teacher.sections.length > 0) ? teacher.sections : [];
+  var isAdviser = advisorySections.length > 0;
 
-  // If no advisory sections assigned, show 0
-  if (advisorySections.length === 0) {
-    var el1 = document.getElementById('tStatClasses');
-    var el2 = document.getElementById('tStatStudents');
-    var el3 = document.getElementById('tStatPending');
-    var el4 = document.getElementById('tStatAttendance');
-    if (el1) el1.textContent = '0';
-    if (el2) el2.textContent = '0';
-    if (el3) el3.textContent = '0';
-    if (el4) el4.textContent = '--';
-    return;
-  }
+  // If no advisory sections, use all sections from settings
+  var allSettings = loadData('settings', DEFAULT_SETTINGS);
+  var allSections = (allSettings.sections && allSettings.sections.length > 0) ? allSettings.sections.map(function(s){ return typeof s === 'object' ? s.name : s; }) : [];
+  var targetSections = isAdviser ? advisorySections : allSections;
 
   var term = getSelectedTerm ? getSelectedTerm() : 'Term_1';
   var totalStudents = 0;
@@ -3517,24 +3504,21 @@ function updateTeacherStats() {
   var totalRate = 0;
   var attCount = 0;
 
-  advisorySections.forEach(function(sec) {
+  targetSections.forEach(function(sec) {
     var secKey = sec.replace(/\s/g, '_');
-
-    // Count students with grades in this section for current term
     var gradeKey = 'grades_' + secKey + '_' + term;
     var gradeData = _cache[gradeKey] || {};
     var studentCount = Object.keys(gradeData).length;
+
     if (studentCount > 0) {
       totalStudents += studentCount;
       sectionsWithGrades++;
     } else {
-      // Try counting from students directory
       var students = loadData('students', []);
       var secStudents = students.filter(function(s){ return s.grade === sec && s.status === 'Active'; });
       totalStudents += secStudents.length;
     }
 
-    // Count attendance rates
     var attKey = 'attendance_' + secKey;
     var attData = _cache[attKey] || {};
     Object.keys(attData).forEach(function(lrn) {
@@ -3545,16 +3529,22 @@ function updateTeacherStats() {
     });
   });
 
-  var pendingCount = advisorySections.length - sectionsWithGrades;
+  var pendingCount = targetSections.length - sectionsWithGrades;
   var avgAtt = attCount > 0 ? Math.round(totalRate / attCount) + '%' : '--';
+
+  // Update labels based on role
+  var lbl1 = document.getElementById('tStatClassesLabel');
+  var lbl3 = document.getElementById('tStatPendingLabel');
+  if (lbl1) lbl1.textContent = isAdviser ? 'CLASSES' : 'SECTIONS';
+  if (lbl3) lbl3.textContent = isAdviser ? 'PENDING GRADES' : 'SECTIONS W/ GRADES';
 
   var el1 = document.getElementById('tStatClasses');
   var el2 = document.getElementById('tStatStudents');
   var el3 = document.getElementById('tStatPending');
   var el4 = document.getElementById('tStatAttendance');
-  if (el1) el1.textContent = advisorySections.length;
+  if (el1) el1.textContent = targetSections.length;
   if (el2) el2.textContent = totalStudents;
-  if (el3) el3.textContent = pendingCount > 0 ? pendingCount : 0;
+  if (el3) el3.textContent = isAdviser ? (pendingCount > 0 ? pendingCount : 0) : sectionsWithGrades;
   if (el4) el4.textContent = avgAtt;
 }
 
