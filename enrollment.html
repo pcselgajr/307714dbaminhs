@@ -335,24 +335,14 @@ body{font-family:Arial,sans-serif;background:#f0f2f8;min-height:100vh}
               </select>
             </div>
             <div class="fg" id="semesterGroup" style="display:none">
-              <label>Semester</label>
+              <label>Track <span class="req">*</span></label>
               <div class="radio-group" style="margin-top:10px">
-                <label><input type="radio" name="sem" value="1st Sem" checked> 1st Sem</label>
-                <label><input type="radio" name="sem" value="2nd Sem"> 2nd Sem</label>
+                <label><input type="radio" name="sem" value="Academic" checked> Academic</label>
+                <label><input type="radio" name="sem" value="TechPro"> TechPro</label>
               </div>
             </div>
           </div>
           <div class="fg-row c2" id="trackStrandGroup" style="display:none">
-            <div class="fg">
-              <label>Track <span class="req">*</span></label>
-              <select id="track" onchange="updateStrands()">
-                <option value="">— Piliin ang Track —</option>
-                <option value="Academic">Academic</option>
-                <option value="TVL">TVL (Technical-Vocational-Livelihood)</option>
-                <option value="Arts and Design">Arts and Design</option>
-                <option value="Sports">Sports</option>
-              </select>
-            </div>
             <div class="fg">
               <label>Strand (if any)</label>
               <select id="strand">
@@ -515,17 +505,16 @@ document.getElementById('gradeLevel').addEventListener('change', function() {
 
 // Track/Strand
 function updateStrands() {
-  var track = document.getElementById('track').value;
+  var trackVal = document.querySelector('input[name="sem"]:checked') ? document.querySelector('input[name="sem"]:checked').value : '';
   var strands = {
     'Academic': ['ABM (Accountancy, Business and Management)', 'HUMSS (Humanities and Social Sciences)', 'STEM (Science, Technology, Engineering and Mathematics)', 'GAS (General Academic Strand)'],
-    'TVL': ['ICT (Information and Communications Technology)', 'Industrial Arts', 'Agri-Fishery Arts', 'Home Economics'],
-    'Arts and Design': ['Arts and Design'],
-    'Sports': ['Sports']
+    'TechPro': ['ICT (Information and Communications Technology)', 'Industrial Arts', 'Agri-Fishery Arts', 'Home Economics', 'TVL']
   };
   var sel = document.getElementById('strand');
+  if (!sel) return;
   sel.innerHTML = '<option value="">— Piliin ang Strand —</option>';
-  if (strands[track]) {
-    strands[track].forEach(function(s){
+  if (strands[trackVal]) {
+    strands[trackVal].forEach(function(s){
       sel.innerHTML += '<option value="' + s + '">' + s + '</option>';
     });
   }
@@ -539,6 +528,11 @@ document.getElementById('birthdate').addEventListener('change', function() {
   var m = today.getMonth() - bd.getMonth();
   if (m < 0 || (m === 0 && today.getDate() < bd.getDate())) age--;
   document.getElementById('age').value = age > 0 ? age : '';
+});
+
+// Track radio change updates strands
+document.querySelectorAll('input[name="sem"]').forEach(function(r) {
+  r.addEventListener('change', updateStrands);
 });
 
 // IP Community
@@ -632,9 +626,9 @@ function submitEnrollment() {
     email: document.getElementById('email').value.trim(),
     // Grade/Track
     gradeLevel: gradeLevel,
-    track: isSHS ? document.getElementById('track').value : '',
+    track: isSHS ? (document.querySelector('input[name="sem"]:checked') ? document.querySelector('input[name="sem"]:checked').value : '') : '',
     strand: isSHS ? document.getElementById('strand').value : '',
-    semester: isSHS ? document.querySelector('input[name=sem]:checked').value : '',
+    semester: '',
     // Previous school (for returning/transferee)
     lastGrade: document.getElementById('lastGrade') ? document.getElementById('lastGrade').value.trim() : '',
     lastSY: document.getElementById('lastSY') ? document.getElementById('lastSY').value.trim() : '',
