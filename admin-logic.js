@@ -94,6 +94,7 @@ function rEnrollments(){
         '<button class="abtn apv" title="View" onclick="viewEnrollment('+i+')">&#128065;</button>'+
         (e.status==='Pending'?'<button class="abtn apv" title="Approve" onclick="approveEnrollment('+i+')">&#10003;</button>':'')+
         (e.status==='Pending'?'<button class="abtn del" title="Reject" onclick="rejectEnrollment('+i+')">&#10005;</button>':'')+
+        '<button class="abtn del" title="Delete" onclick="deleteEnrollment('+i+')">&#128465;</button>'+
         '</div></td></tr>';
     }).join('');
   }).catch(function(err){ tbody.innerHTML='<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--da)">Error: '+err.message+'</td></tr>'; });
@@ -146,6 +147,16 @@ function rejectEnrollment(idx){
     enrollments[idx].status='Rejected';
     return db.collection('portal_data').doc('enrollments').set({data:JSON.stringify(enrollments),updated:firebase.firestore.FieldValue.serverTimestamp()});
   }).then(function(){rEnrollments();toast('Enrollment rejected.','su');});
+}
+
+function deleteEnrollment(idx){
+  if(!confirm('Delete this enrollment application? This cannot be undone.')) return;
+  db.collection('portal_data').doc('enrollments').get().then(function(doc){
+    var parsed=JSON.parse(doc.data().data);
+    var enrollments=Array.isArray(parsed)?parsed:Object.values(parsed);
+    enrollments.splice(idx,1);
+    return db.collection('portal_data').doc('enrollments').set({data:JSON.stringify(enrollments),updated:firebase.firestore.FieldValue.serverTimestamp()});
+  }).then(function(){rEnrollments();toast('Enrollment deleted.','su');});
 }
 
 function exportEnrollments(){
