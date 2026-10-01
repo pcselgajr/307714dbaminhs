@@ -584,7 +584,7 @@ function downloadTemplate() {
   if (males.length > 0) {
     csv += '"--- MALE ---","",'; subjects.forEach(function(){ csv += ','; }); csv = csv.slice(0,-1) + '\n';
     males.forEach(function(s) {
-      csv += s.lrn + ',"' + toLastFirst(s.name) + '"';
+      csv += '"=""' + s.lrn + '"""' + ',"' + toLastFirst(s.name) + '"';
       subjects.forEach(function() { csv += ','; });
       csv += '\n';
     });
@@ -594,7 +594,7 @@ function downloadTemplate() {
   if (females.length > 0) {
     csv += '"--- FEMALE ---","",'; subjects.forEach(function(){ csv += ','; }); csv = csv.slice(0,-1) + '\n';
     females.forEach(function(s) {
-      csv += s.lrn + ',"' + toLastFirst(s.name) + '"';
+      csv += '"=""' + s.lrn + '"""' + ',"' + toLastFirst(s.name) + '"';
       subjects.forEach(function() { csv += ','; });
       csv += '\n';
     });
@@ -606,7 +606,7 @@ function downloadTemplate() {
       csv += '"--- OTHER/UNSET ---","",'; subjects.forEach(function(){ csv += ','; }); csv = csv.slice(0,-1) + '\n';
     }
     others.forEach(function(s) {
-      csv += s.lrn + ',"' + toLastFirst(s.name) + '"';
+      csv += '"=""' + s.lrn + '"""' + ',"' + toLastFirst(s.name) + '"';
       subjects.forEach(function() { csv += ','; });
       csv += '\n';
     });
@@ -1095,15 +1095,15 @@ function downloadAttTemplate() {
 
   if (males.length > 0) {
     csv += '"--- MALE ---","",,,, \n';
-    males.forEach(function(s){ csv += s.lrn + ',"' + toLastFirst(s.name) + '",,,,\n'; });
+    males.forEach(function(s){ csv += '"=""' + s.lrn + '"""' + ',"' + toLastFirst(s.name) + '",,,,\n'; });
   }
   if (females.length > 0) {
     csv += '"--- FEMALE ---","",,,, \n';
-    females.forEach(function(s){ csv += s.lrn + ',"' + toLastFirst(s.name) + '",,,,\n'; });
+    females.forEach(function(s){ csv += '"=""' + s.lrn + '"""' + ',"' + toLastFirst(s.name) + '",,,,\n'; });
   }
   if (others.length > 0) {
     if (males.length > 0 || females.length > 0) csv += '"--- OTHER/UNSET ---","",,,, \n';
-    others.forEach(function(s){ csv += s.lrn + ',"' + toLastFirst(s.name) + '",,,,\n'; });
+    others.forEach(function(s){ csv += '"=""' + s.lrn + '"""' + ',"' + toLastFirst(s.name) + '",,,,\n'; });
   }
   
   var blob = new Blob(['\uFEFF' + csv], {type: 'text/csv;charset=utf-8'});
