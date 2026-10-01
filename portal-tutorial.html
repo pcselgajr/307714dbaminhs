@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DBAMINHS School Portal — Interactive Tutorial</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --navy: #1B2A4A;
+  --navy2: #263875;
+  --orange: #E85D1A;
+  --white: #FFFFFF;
+  --light: #F4F7FE;
+  --slate: #4A5578;
+  --green: #2D8B46;
+  --red: #D32F2F;
+  --ice: #CADCFC;
+  --gold: #F5A623;
+}
+
+body {
+  font-family: 'Segoe UI', sans-serif;
+  background: #0F1E35;
+  color: var(--white);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* ── TOP NAV ── */
+.top-nav {
+  width: 100%;
+  background: var(--navy);
+  padding: 14px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 2px solid var(--orange);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.top-nav .brand { font-size: 18px; font-weight: 700; color: var(--white); }
+.top-nav .brand span { color: var(--orange); }
+.top-nav .progress-bar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.step-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--navy2);
+  border: 2px solid var(--ice);
+  cursor: pointer;
+  transition: all 0.3s;
+}
+.step-dot.active { background: var(--orange); border-color: var(--orange); transform: scale(1.3); }
+.step-dot.done { background: var(--green); border-color: var(--green); }
+
+/* ── MAIN LAYOUT ── */
+.demo-wrapper {
+  display: flex;
+  width: 100%;
+  max-width: 1200px;
+  gap: 0;
+  padding: 32px 24px;
+  flex: 1;
+}
+
+/* ── SIDEBAR ── */
+.sidebar {
+  width: 260px;
+  flex-shrink: 0;
+  background: var(--navy);
+  border-radius: 16px;
+  padding: 20px;
+  margin-right: 24px;
+  height: fit-content;
+  position: sticky;
+  top: 80px;
+}
+.sidebar h3 { font-size: 13px; color: var(--ice); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 14px; }
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  margin-bottom: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+  color: var(--ice);
+}
+.sidebar-item:hover { background: var(--navy2); }
+.sidebar-item.active { background: var(--orange); color: var(--white); font-weight: 600; }
+.sidebar-item.done { color: var(--green); }
+.sidebar-item .num {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.1);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700;
+  flex-shrink: 0;
+}
+.sidebar-item.active .num { background: rgba(255,255,255,0.25); }
+.sidebar-item.done .num { background: var(--green); color: var(--white); }
+
+/* ── MAIN CONTENT ── */
+.main-content { flex: 1; }
+
+.screen {
+  display: none;
+  animation: fadeIn 0.4s ease;
+}
+.screen.active { display: block; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.screen-header {
+  margin-bottom: 24px;
+}
+.step-label {
+  font-size: 12px;
+  color: var(--orange);
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.screen-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--white);
+  margin-bottom: 8px;
+}
+.screen-desc {
+  font-size: 15px;
+  color: var(--ice);
+  line-height: 1.6;
+}
+
+/* ── MOCKUP CONTAINER ── */
+.mockup {
+  background: var(--white);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+  margin-bottom: 24px;
+  position: relative;
+}
+.mockup-bar {
+  background: #E8EAF0;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.mockup-dot { width: 12px; height: 12px; border-radius: 50%; }
+.mockup-url {
+  flex: 1;
+  background: var(--white);
+  border-radius: 6px;
+  padding: 5px 12px;
+  font-size: 12px;
+  color: #555;
+  margin: 0 8px;
+}
+
+/* ── PORTAL SCREENS ── */
+.portal-screen {
+  padding: 0;
+  min-height: 400px;
+  position: relative;
+}
+
+/* Login */
+.login-bg {
+  background: linear-gradient(135deg, #1B2A4A 0%, #263875 100%);
+  padding: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 420px;
+}
+.login-card {
+  background: var(--white);
+  border-radius: 16px;
+  padding: 32px;
+  width: 360px;
+  color: #333;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+}
+.login-card .logo {
+  text-align: center;
+  margin-bottom: 16px;
+}
+.login-card .logo-circle {
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  background: var(--orange);
+  margin: 0 auto 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px;
+}
+.login-card h2 { text-align: center; font-size: 18px; color: var(--navy); margin-bottom: 4px; }
+.login-card p { text-align: center; font-size: 13px; color: var(--slate); margin-bottom: 20px; }
+.tabs { display: flex; background: #F0F2F8; border-radius: 8px; padding: 3px; margin-bottom: 18px; }
+.tab-btn {
+  flex: 1; padding: 7px; border: none; background: none;
+  border-radius: 6px; font-size: 13px; cursor: pointer; color: var(--slate);
+}
+.tab-btn.act { background: var(--white); color: var(--navy); font-weight: 600; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+.field { margin-bottom: 14px; }
+.field label { display: block; font-size: 12px; font-weight: 600; color: #555; margin-bottom: 5px; }
+.field input {
+  width: 100%; padding: 9px 12px;
+  border: 1.5px solid #E0E4EF; border-radius: 8px;
+  font-size: 14px; color: #333;
+  background: #F8F9FC;
+}
+.btn-login {
+  width: 100%; padding: 11px;
+  background: var(--orange); color: var(--white);
+  border: none; border-radius: 8px;
+  font-size: 14px; font-weight: 600; cursor: pointer;
+  margin-bottom: 10px;
+}
+.btn-fp {
+  width: 100%; padding: 10px;
+  background: var(--white); color: var(--navy);
+  border: 1.5px solid #E0E4EF; border-radius: 8px;
+  font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.forgot { text-align: right; font-size: 12px; color: var(--orange); margin-bottom: 14px; cursor: pointer; }
+
+/* Dashboard */
+.dash-layout { display: flex; min-height: 420px; }
+.dash-sidebar {
+  width: 200px; background: var(--navy);
+  padding: 20px 0; flex-shrink: 0;
+}
+.dash-brand { padding: 0 18px 16px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+.dash-brand-name { font-size: 13px; font-weight: 700; color: var(--white); }
+.dash-brand-sub { font-size: 10px; color: var(--ice); opacity: 0.6; }
+.dash-nav { padding: 12px 0; }
+.dash-nav-item {
+  padding: 10px 18px; font-size: 13px; color: var(--ice);
+  cursor: pointer; display: flex; align-items: center; gap: 8px;
+  border-left: 3px solid transparent;
+  transition: all 0.2s;
+}
+.dash-nav-item:hover, .dash-nav-item.act {
+  background: rgba(255,255,255,0.08);
+  border-left-color: var(--orange);
+  color: var(--white);
+}
+.dash-main { flex: 1; background: var(--light); padding: 20px; overflow-y: auto; }
+.dash-topbar {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 20px;
+}
+.dash-welcome { font-size: 18px; font-weight: 700; color: var(--navy); }
+.dash-user-badge {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--white); border-radius: 30px; padding: 6px 14px 6px 8px;
+}
+.dash-avatar {
+  width: 30px; height: 30px; border-radius: 50%;
+  background: var(--orange); color: var(--white);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700;
+}
+.class-card {
+  background: var(--white); border-radius: 12px; padding: 16px;
+  margin-bottom: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.class-card-title { font-size: 14px; font-weight: 700; color: var(--navy); margin-bottom: 8px; }
+.class-badges { display: flex; gap: 8px; flex-wrap: wrap; }
+.badge {
+  font-size: 11px; padding: 3px 10px; border-radius: 20px;
+  font-weight: 600;
+}
+.badge-g { background: #E8F5EC; color: var(--green); }
+.badge-o { background: #FFF3E0; color: #E65100; }
+.badge-b { background: #E8F0FE; color: #1565C0; }
+
+/* Grade Input */
+.grade-panel { background: var(--white); padding: 20px; color: #333; }
+.grade-panel h3 { font-size: 16px; font-weight: 700; color: var(--navy); margin-bottom: 14px; }
+.selects-row { display: flex; gap: 12px; margin-bottom: 18px; }
+.sel-group { flex: 1; }
+.sel-group label { font-size: 11px; font-weight: 600; color: var(--slate); display: block; margin-bottom: 4px; }
+.sel-group select, .sel-group input {
+  width: 100%; padding: 8px 10px;
+  border: 1.5px solid #E0E4EF; border-radius: 7px;
+  font-size: 13px; color: #333; background: #F8F9FC;
+}
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+.btn-sm {
+  padding: 7px 13px; border-radius: 7px; font-size: 12px; font-weight: 600;
+  border: none; cursor: pointer;
+}
+.btn-primary { background: var(--orange); color: var(--white); }
+.btn-secondary { background: #F0F2F8; color: var(--navy); border: 1px solid #D0D4E8; }
+.btn-green { background: #E8F5EC; color: var(--green); border: 1px solid #A5D6B7; }
+.btn-red { background: #FDECEA; color: var(--red); border: 1px solid #FFCDD2; }
+
+.grade-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.grade-table th {
+  background: var(--navy); color: var(--white);
+  padding: 8px 10px; text-align: left;
+}
+.grade-table td { padding: 7px 10px; border-bottom: 1px solid #F0F2F8; color: #333; }
+.grade-table tr:hover td { background: var(--light); }
+.passed { color: var(--green); font-weight: 700; }
+.failed { color: var(--red); font-weight: 700; }
+
+/* Attendance panel */
+.att-panel { background: var(--white); padding: 20px; color: #333; }
+.att-panel h3 { font-size: 16px; font-weight: 700; color: var(--navy); margin-bottom: 14px; }
+.att-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.att-table th { background: var(--navy); color: var(--white); padding: 8px 10px; text-align: left; }
+.att-table td { padding: 7px 10px; border-bottom: 1px solid #F0F2F8; color: #333; }
+
+/* Forgot Password */
+.fp-overlay {
+  background: linear-gradient(135deg, #1B2A4A 0%, #263875 100%);
+  padding: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 420px;
+}
+.fp-card {
+  background: var(--white);
+  border-radius: 16px;
+  padding: 32px;
+  width: 380px;
+  color: #333;
+}
+.fp-card h3 { font-size: 18px; font-weight: 700; color: var(--navy); margin-bottom: 8px; }
+.fp-card p { font-size: 13px; color: var(--slate); margin-bottom: 20px; line-height: 1.6; }
+.success-banner {
+  background: #E8F5EC;
+  border: 1px solid #A5D6B7;
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 13px;
+  color: var(--green);
+  margin-top: 14px;
+  display: none;
+}
+
+/* ── HOTSPOT HIGHLIGHTS ── */
+.highlight-box {
+  position: absolute;
+  border: 3px solid var(--orange);
+  border-radius: 8px;
+  background: rgba(232,93,26,0.08);
+  animation: pulse 1.5s infinite;
+  pointer-events: none;
+  transition: all 0.4s;
+}
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(232,93,26,0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(232,93,26,0); }
+}
+.tooltip {
+  position: absolute;
+  background: var(--navy);
+  color: var(--white);
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  white-space: nowrap;
+  z-index: 10;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+}
+.tooltip::before {
+  content: '';
+  position: absolute;
+  border: 6px solid transparent;
+}
+.tooltip.top::before { border-top-color: var(--navy); top: 100%; left: 50%; transform: translateX(-50%); }
+.tooltip.bottom::before { border-bottom-color: var(--navy); bottom: 100%; left: 50%; transform: translateX(-50%); }
+.tooltip.left::before { border-left-color: var(--navy); left: 100%; top: 50%; transform: translateY(-50%); }
+
+/* ── STEP INSTRUCTIONS ── */
+.instructions {
+  background: var(--navy);
+  border-radius: 16px;
+  padding: 20px 24px;
+  margin-bottom: 24px;
+}
+.instructions h4 { font-size: 14px; color: var(--orange); font-weight: 700; margin-bottom: 14px; letter-spacing: 0.5px; }
+.inst-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.inst-num {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: var(--orange);
+  color: var(--white);
+  font-size: 12px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.inst-text { font-size: 14px; color: var(--ice); line-height: 1.5; }
+.inst-text strong { color: var(--white); }
+.inst-note {
+  background: rgba(245,166,35,0.12);
+  border-left: 3px solid var(--gold);
+  padding: 10px 14px;
+  border-radius: 0 8px 8px 0;
+  font-size: 13px;
+  color: var(--gold);
+  margin-top: 14px;
+}
+
+/* ── NAVIGATION BUTTONS ── */
+.nav-btns {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+}
+.btn-nav {
+  padding: 12px 28px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.btn-prev {
+  background: var(--navy);
+  color: var(--ice);
+  border: 1px solid var(--navy2);
+}
+.btn-prev:hover { background: var(--navy2); }
+.btn-next {
+  background: var(--orange);
+  color: var(--white);
+}
+.btn-next:hover { background: #C94D10; }
+.btn-next:disabled { background: #555; cursor: not-allowed; }
+.step-counter { font-size: 13px; color: var(--ice); }
+
+/* ── COMPLETION ── */
+.completion {
+  text-align: center;
+  padding: 48px 24px;
+}
+.completion .big-check {
+  width: 80px; height: 80px;
+  border-radius: 50%;
+  background: var(--green);
+  margin: 0 auto 20px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 36px;
+}
+.completion h2 { font-size: 28px; font-weight: 700; margin-bottom: 10px; }
+.completion p { font-size: 16px; color: var(--ice); margin-bottom: 28px; line-height: 1.6; }
+.completion .url-box {
+  background: var(--navy);
+  border-radius: 10px;
+  padding: 14px 20px;
+  font-family: monospace;
+  font-size: 15px;
+  color: var(--orange);
+  margin-bottom: 20px;
+  border: 1px solid var(--navy2);
+}
+.btn-restart {
+  padding: 13px 32px;
+  background: var(--orange);
+  color: var(--white);
+  border: none;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+</style>
+</head>
+<body>
+
+<!-- TOP NAV -->
+<div class="top-nav">
+  <div class="brand">DBAMINHS <span>School Portal</span> — Interactive Tutorial</div>
+  <div class="progress-bar" id="progressBar"></div>
+</div>
+
+<div class="demo-wrapper">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <h3>Sections</h3>
+    <div id="sidebarNav"></div>
+  </div>
+
+  <!-- MAIN CONTENT -->
+  <div class="main-content">
+
+    <!-- SCREEN 0: WELCOME -->
+    <div class="screen active" id="screen-0">
+      <div class="screen-header">
+        <div class="step-label">Simula</div>
+        <div class="screen-title">Maligayang pagdating sa Interactive Tutorial</div>
+        <div class="screen-desc">Matututunan mo rito kung paano gamitin ang DBAMINHS School Portal — hakbang-hakbang. I-click ang <strong>Next</strong> para magsimula.</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:28px">
+        <div style="background:var(--navy);border-radius:12px;padding:20px;text-align:center">
+          <div style="font-size:32px;margin-bottom:10px">🔐</div>
+          <div style="font-weight:700;margin-bottom:6px">Pag-login</div>
+          <div style="font-size:13px;color:var(--ice)">Password at Fingerprint Login</div>
+        </div>
+        <div style="background:var(--navy);border-radius:12px;padding:20px;text-align:center">
+          <div style="font-size:32px;margin-bottom:10px">📊</div>
+          <div style="font-weight:700;margin-bottom:6px">Grade Upload</div>
+          <div style="font-size:13px;color:var(--ice)">CSV template, pag-encode, at pag-upload bawat Term</div>
+        </div>
+        <div style="background:var(--navy);border-radius:12px;padding:20px;text-align:center">
+          <div style="font-size:32px;margin-bottom:10px">🖨️</div>
+          <div style="font-weight:700;margin-bottom:6px">Print Reports</div>
+          <div style="font-size:13px;color:var(--ice)">Per-term at consolidated na grade reports</div>
+        </div>
+        <div style="background:var(--navy);border-radius:12px;padding:20px;text-align:center">
+          <div style="font-size:32px;margin-bottom:10px">📋</div>
+          <div style="font-weight:700;margin-bottom:6px">Attendance</div>
+          <div style="font-size:13px;color:var(--ice)">Pag-upload ng rekord ng presensya</div>
+        </div>
+        <div style="background:var(--navy);border-radius:12px;padding:20px;text-align:center">
+          <div style="font-size:32px;margin-bottom:10px">🔑</div>
+          <div style="font-weight:700;margin-bottom:6px">Forgot Password</div>
+          <div style="font-size:13px;color:var(--ice)">Paano mag-request ng password reset</div>
+        </div>
+        <div style="background:var(--navy);border-radius:12px;padding:20px;text-align:center">
+          <div style="font-size:32px;margin-bottom:10px">💡</div>
+          <div style="font-weight:700;margin-bottom:6px">Mga Tips</div>
+          <div style="font-size:13px;color:var(--ice)">Mahahalagang paalala at maiiwasang pagkakamali</div>
+        </div>
+      </div>
+      <div style="background:var(--navy);border-radius:12px;padding:16px 20px;margin-bottom:20px;border-left:4px solid var(--orange)">
+        <strong>Portal URL:</strong>
+        <span style="font-family:monospace;color:var(--orange);margin-left:10px">https://pcselgajr.github.io/307714dbaminhs/</span>
+      </div>
+    </div>
+
+    <!-- SCREEN 1: LOGIN -->
+    <div class="screen" id="screen-1">
+      <div class="screen-header">
+        <div class="step-label">Hakbang 1 ng 7</div>
+        <div class="screen-title">🔐 Pag-login sa Portal</div>
+        <div class="screen-desc">Ganito ang hitsura ng login screen ng DBAMINHS School Portal. Gamitin ang iyong Employee ID at password para makapasok bilang Teacher.</div>
+      </div>
+      <div class="instructions">
+        <h4>📋 MGA HAKBANG</h4>
+        <div class="inst-step"><div class="inst-num">1</div><div class="inst-text">Buksan ang portal URL sa <strong>Chrome o Safari</strong> — huwag gumamit ng Facebook Messenger browser</div></div>
+        <div class="inst-step"><div class="inst-num">2</div><div class="inst-text">I-click ang <strong>"Teacher"</strong> tab sa itaas ng login form</div></div>
+        <div class="inst-step"><div class="inst-num">3</div><div class="inst-text">I-type ang iyong <strong>Employee ID</strong> at <strong>Password</strong></div></div>
+        <div class="inst-step"><div class="inst-num">4</div><div class="inst-text">I-click ang <strong>"Log In →"</strong> button</div></div>
+        <div class="inst-note">💡 Opsyonal: Kapag na-setup na ang Fingerprint Login, pwede kang gumamit ng "🔒 Login with Fingerprint" button para mas mabilis na pag-login sa susunod.</div>
+      </div>
+      <div class="mockup">
+        <div class="mockup-bar">
+          <div class="mockup-dot" style="background:#FF5F57"></div>
+          <div class="mockup-dot" style="background:#FFBD2E"></div>
+          <div class="mockup-dot" style="background:#28C840"></div>
+          <div class="mockup-url">pcselgajr.github.io/307714dbaminhs/</div>
+        </div>
+        <div class="login-bg">
+          <div class="login-card" style="position:relative">
+            <div class="logo">
+              <div class="logo-circle">🏫</div>
+              <h2>Create Account / Log In</h2>
+              <p>Register for a DBAMINHS portal account</p>
+            </div>
+            <div class="tabs">
+              <button class="tab-btn">Student</button>
+              <button class="tab-btn act">Teacher</button>
+              <button class="tab-btn">Parent</button>
+            </div>
+            <div class="field"><label>Employee ID / Email</label><input type="text" value="T-2024-001" /></div>
+            <div class="field"><label>Password</label><input type="password" value="password123" /></div>
+            <div class="forgot">Forgot Password?</div>
+            <button class="btn-login">Log In →</button>
+            <button class="btn-fp">🔒 Login with Fingerprint</button>
+            <!-- Highlights -->
+            <div class="highlight-box" style="top:97px;left:0;right:0;height:46px;border-radius:8px"></div>
+            <div class="tooltip bottom" style="top:58px;left:50%;transform:translateX(-50%)">① I-click ang Teacher tab</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCREEN 2: DASHBOARD -->
+    <div class="screen" id="screen-2">
+      <div class="screen-header">
+        <div class="step-label">Hakbang 2 ng 7</div>
+        <div class="screen-title">📚 Teacher Dashboard</div>
+        <div class="screen-desc">Pagkatapos mag-login, makikita mo ang iyong Teacher Dashboard. Narito ang lahat ng iyong assigned na sections at mga tabs ng features.</div>
+      </div>
+      <div class="instructions">
+        <h4>📋 MGA TABS NG DASHBOARD</h4>
+        <div class="inst-step"><div class="inst-num">📚</div><div class="inst-text"><strong>My Classes</strong> — Lahat ng iyong assigned na sections, bilang ng students, at status ng data (Grades, Attendance)</div></div>
+        <div class="inst-step"><div class="inst-num">📊</div><div class="inst-text"><strong>Grade Input</strong> — Dito mag-u-upload ng grades gamit ang CSV file, bawat Term</div></div>
+        <div class="inst-step"><div class="inst-num">📋</div><div class="inst-text"><strong>Attendance</strong> — Pag-upload ng attendance records ng iyong klase</div></div>
+        <div class="inst-step"><div class="inst-num">📢</div><div class="inst-text"><strong>Announcements</strong> — Mag-post ng announcements para sa iyong mga students at magulang</div></div>
+        <div class="inst-note">💡 Ang mga section na may ✓ Grades ay naka-upload na ang grades. Ang ✗ ay hindi pa.</div>
+      </div>
+      <div class="mockup">
+        <div class="mockup-bar">
+          <div class="mockup-dot" style="background:#FF5F57"></div>
+          <div class="mockup-dot" style="background:#FFBD2E"></div>
+          <div class="mockup-dot" style="background:#28C840"></div>
+          <div class="mockup-url">pcselgajr.github.io/307714dbaminhs/ — Teacher Dashboard</div>
+        </div>
+        <div class="dash-layout">
+          <div class="dash-sidebar">
+            <div class="dash-brand">
+              <div class="dash-brand-name">DBAMINHS Portal</div>
+              <div class="dash-brand-sub">Teacher Dashboard</div>
+            </div>
+            <div class="dash-nav">
+              <div class="dash-nav-item act">📚 My Classes</div>
+              <div class="dash-nav-item">📊 Grade Input</div>
+              <div class="dash-nav-item">📋 Attendance</div>
+              <div class="dash-nav-item">📅 Schedule</div>
+              <div class="dash-nav-item">📢 Announcements</div>
+              <div class="dash-nav-item">📁 Resources</div>
+            </div>
+          </div>
+          <div class="dash-main">
+            <div class="dash-topbar">
+              <div class="dash-welcome">Hello, Prosphy! 👋</div>
+              <div class="dash-user-badge">
+                <div class="dash-avatar">P</div>
+                <span style="font-size:13px;color:var(--navy)">Prosphy C. Selga</span>
+                <span style="font-size:11px;color:var(--slate)">🔒 Fingerprint Login</span>
+              </div>
+            </div>
+            <div class="class-card">
+              <div class="class-card-title">Grade 12 ABM Apollo</div>
+              <div style="font-size:12px;color:var(--slate);margin-bottom:8px">👥 29 students</div>
+              <div class="class-badges">
+                <span class="badge badge-g">✓ Grades</span>
+                <span class="badge badge-o">✗ Attendance</span>
+                <span class="badge badge-o">✗ Schedule</span>
+              </div>
+            </div>
+            <div class="class-card">
+              <div class="class-card-title">Grade 12 HUMSS Athena</div>
+              <div style="font-size:12px;color:var(--slate);margin-bottom:8px">👥 21 students</div>
+              <div class="class-badges">
+                <span class="badge badge-g">✓ Grades</span>
+                <span class="badge badge-g">✓ Attendance</span>
+                <span class="badge badge-o">✗ Schedule</span>
+              </div>
+            </div>
+            <div class="class-card">
+              <div class="class-card-title">Grade 12 STEM Zeus</div>
+              <div style="font-size:12px;color:var(--slate);margin-bottom:8px">👥 1 student</div>
+              <div class="class-badges">
+                <span class="badge badge-o">✗ Grades</span>
+                <span class="badge badge-o">✗ Attendance</span>
+                <span class="badge badge-o">✗ Schedule</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCREEN 3: GRADE INPUT -->
+    <div class="screen" id="screen-3">
+      <div class="screen-header">
+        <div class="step-label">Hakbang 3 ng 7</div>
+        <div class="screen-title">📊 Grade Input — Pag-upload ng Grades</div>
+        <div class="screen-desc">Ito ang pinakamahalagang feature. Sundin ang mga hakbang para ma-upload ang grades ng iyong section bawat term.</div>
+      </div>
+      <div class="instructions">
+        <h4>📋 MGA HAKBANG SA PAG-UPLOAD NG GRADES</h4>
+        <div class="inst-step"><div class="inst-num">1</div><div class="inst-text">Pumunta sa <strong>Grade Input</strong> tab</div></div>
+        <div class="inst-step"><div class="inst-num">2</div><div class="inst-text">Piliin ang iyong <strong>Class / Section</strong> at ang tamang <strong>Term</strong> (Term 1, 2, o 3)</div></div>
+        <div class="inst-step"><div class="inst-num">3</div><div class="inst-text">I-click ang <strong>"📥 Download CSV Template"</strong> — mag-do-download ng file na may pre-filled na pangalan ng students</div></div>
+        <div class="inst-step"><div class="inst-num">4</div><div class="inst-text">Buksan sa <strong>Excel</strong>, i-encode ang grades (60–100), at i-save bilang <strong>CSV format</strong> (hindi .xlsx)</div></div>
+        <div class="inst-step"><div class="inst-num">5</div><div class="inst-text">I-click ang <strong>"📤 Upload CSV File"</strong> at piliin ang na-save na file</div></div>
+        <div class="inst-step"><div class="inst-num">6</div><div class="inst-text">Tingnan ang grade table sa ibaba para i-verify na tama ang lahat</div></div>
+        <div class="inst-note">⚠️ HUWAG i-delete ang "--- MALE ---" at "--- FEMALE ---" rows sa CSV — awtomatiko silang nalilipat ng sistema.</div>
+      </div>
+      <div class="mockup">
+        <div class="mockup-bar">
+          <div class="mockup-dot" style="background:#FF5F57"></div>
+          <div class="mockup-dot" style="background:#FFBD2E"></div>
+          <div class="mockup-dot" style="background:#28C840"></div>
+          <div class="mockup-url">pcselgajr.github.io/307714dbaminhs/ — Grade Input</div>
+        </div>
+        <div class="grade-panel">
+          <h3>📊 Grade Upload System</h3>
+          <div class="selects-row">
+            <div class="sel-group">
+              <label>Class / Section</label>
+              <select><option>Grade 12 ABM Apollo</option></select>
+            </div>
+            <div class="sel-group">
+              <label>Term</label>
+              <select><option>Term 1</option><option selected>Term 2</option><option>Term 3</option></select>
+            </div>
+            <div class="sel-group">
+              <label>School Year</label>
+              <select><option>SY 2025-2026</option></select>
+            </div>
+          </div>
+          <div class="btn-row">
+            <button class="btn-sm btn-primary">📥 Download CSV Template</button>
+            <button class="btn-sm btn-secondary">📤 Upload CSV File</button>
+            <button class="btn-sm btn-secondary">🔄 Refresh</button>
+            <button class="btn-sm btn-green">🖨️ Term 1</button>
+            <button class="btn-sm btn-green">🖨️ Term 2</button>
+            <button class="btn-sm btn-green">🖨️ All Terms Summary</button>
+            <button class="btn-sm btn-green">🖨️ All Terms Per Learner</button>
+            <button class="btn-sm btn-red">🗑️ Clear Grades</button>
+          </div>
+          <div style="font-size:13px;font-weight:600;color:var(--navy);margin-bottom:8px">📊 Grades — Grade 12 ABM Apollo &nbsp;<span style="color:var(--orange)">[Term 2]</span></div>
+          <table class="grade-table">
+            <thead>
+              <tr>
+                <th>LRN</th><th>Name</th><th>Math</th><th>English</th><th>Filipino</th><th>Science</th><th>Gen. Avg</th><th>Remarks</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td colspan="8" style="background:#1B2A4A;color:#fff;font-weight:700;padding:6px 10px">MALE</td></tr>
+              <tr><td style="font-size:11px">107591140094</td><td>Morales, Dulce Amor</td><td>88</td><td>90</td><td>87</td><td>85</td><td class="passed">87.5</td><td class="passed">PASSED</td></tr>
+              <tr><td style="font-size:11px">107599140051</td><td>Villaester, Franz Aivan</td><td>82</td><td>79</td><td>84</td><td>81</td><td class="passed">81.5</td><td class="passed">PASSED</td></tr>
+              <tr><td colspan="8" style="background:#1B2A4A;color:#fff;font-weight:700;padding:6px 10px">FEMALE</td></tr>
+              <tr><td style="font-size:11px">107588140036</td><td>Vera, Bea</td><td>91</td><td>93</td><td>90</td><td>88</td><td class="passed">90.5</td><td class="passed">PASSED</td></tr>
+              <tr><td style="font-size:11px">107599140128</td><td>Hernandez, Princess Jhairel</td><td>72</td><td>70</td><td>74</td><td>69</td><td class="failed">71.3</td><td class="failed">FAILED</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCREEN 4: ATTENDANCE -->
+    <div class="screen" id="screen-4">
+      <div class="screen-header">
+        <div class="step-label">Hakbang 4 ng 7</div>
+        <div class="screen-title">📋 Attendance — Pag-upload ng Presensya</div>
+        <div class="screen-desc">Katulad ng grades, maaari ka ring mag-upload ng attendance records ng iyong klase gamit ang CSV template.</div>
+      </div>
+      <div class="instructions">
+        <h4>📋 MGA HAKBANG SA PAG-UPLOAD NG ATTENDANCE</h4>
+        <div class="inst-step"><div class="inst-num">1</div><div class="inst-text">Pumunta sa <strong>Attendance</strong> tab</div></div>
+        <div class="inst-step"><div class="inst-num">2</div><div class="inst-text">Piliin ang iyong <strong>Class / Section</strong></div></div>
+        <div class="inst-step"><div class="inst-num">3</div><div class="inst-text">I-click ang <strong>"📥 Download Attendance Template"</strong></div></div>
+        <div class="inst-step"><div class="inst-num">4</div><div class="inst-text">Punan ang <strong>Days Present, Days Absent, Days Late, at Total School Days</strong> sa Excel</div></div>
+        <div class="inst-step"><div class="inst-num">5</div><div class="inst-text">I-save bilang <strong>CSV</strong> at i-click ang <strong>"📤 Upload CSV"</strong></div></div>
+        <div class="inst-note">💡 Ang mga student ay nakaayos na Male (A-Z) tapos Female (A-Z) sa template — katulad ng grade template.</div>
+      </div>
+      <div class="mockup">
+        <div class="mockup-bar">
+          <div class="mockup-dot" style="background:#FF5F57"></div>
+          <div class="mockup-dot" style="background:#FFBD2E"></div>
+          <div class="mockup-dot" style="background:#28C840"></div>
+          <div class="mockup-url">pcselgajr.github.io/307714dbaminhs/ — Attendance</div>
+        </div>
+        <div class="att-panel">
+          <h3>📋 Attendance</h3>
+          <div class="selects-row">
+            <div class="sel-group">
+              <label>Class / Section</label>
+              <select><option>Grade 12 ABM Apollo</option></select>
+            </div>
+            <div class="sel-group">
+              <label>School Year</label>
+              <select><option>SY 2025-2026</option></select>
+            </div>
+          </div>
+          <div class="btn-row">
+            <button class="btn-sm btn-primary">📥 Download Attendance Template</button>
+            <button class="btn-sm btn-secondary">📤 Upload CSV</button>
+            <button class="btn-sm btn-green">🖨️ Print Attendance</button>
+          </div>
+          <table class="att-table">
+            <thead>
+              <tr><th>LRN</th><th>Name</th><th>Present</th><th>Absent</th><th>Late</th><th>Total Days</th><th>Rate</th></tr>
+            </thead>
+            <tbody>
+              <tr><td colspan="7" style="background:#1B2A4A;color:#fff;font-weight:700;padding:6px 10px">MALE</td></tr>
+              <tr><td style="font-size:11px">107591140094</td><td>Morales, Dulce Amor</td><td>88</td><td>2</td><td>1</td><td>90</td><td class="passed">97.8%</td></tr>
+              <tr><td style="font-size:11px">107599140051</td><td>Villaester, Franz Aivan</td><td>85</td><td>5</td><td>2</td><td>90</td><td class="passed">94.4%</td></tr>
+              <tr><td colspan="7" style="background:#1B2A4A;color:#fff;font-weight:700;padding:6px 10px">FEMALE</td></tr>
+              <tr><td style="font-size:11px">107588140036</td><td>Vera, Bea</td><td>90</td><td>0</td><td>0</td><td>90</td><td class="passed">100%</td></tr>
+              <tr><td style="font-size:11px">107599140128</td><td>Hernandez, Princess Jhairel</td><td>70</td><td>20</td><td>3</td><td>90</td><td class="failed">77.8%</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCREEN 5: FORGOT PASSWORD -->
+    <div class="screen" id="screen-5">
+      <div class="screen-header">
+        <div class="step-label">Hakbang 5 ng 7</div>
+        <div class="screen-title">🔑 Forgot Password</div>
+        <div class="screen-desc">Nakalimutan ang password? Maaari kang mag-submit ng reset request sa pamamagitan ng portal — ang Admin ang mag-a-approve ng pagbabago.</div>
+      </div>
+      <div class="instructions">
+        <h4>📋 MGA HAKBANG SA PASSWORD RESET</h4>
+        <div class="inst-step"><div class="inst-num">1</div><div class="inst-text">Sa Login screen, i-click ang <strong>"Forgot Password?"</strong> link</div></div>
+        <div class="inst-step"><div class="inst-num">2</div><div class="inst-text">I-type ang iyong <strong>Employee ID o Email</strong></div></div>
+        <div class="inst-step"><div class="inst-num">3</div><div class="inst-text">I-type ang iyong <strong>bagong password</strong> (minimum 8 characters) at kumpirmahin</div></div>
+        <div class="inst-step"><div class="inst-num">4</div><div class="inst-text">I-click ang <strong>"Submit Request"</strong> — ipapadala ang request sa Admin para sa pag-review</div></div>
+        <div class="inst-step"><div class="inst-num">5</div><div class="inst-text">Hintayin ang approval ng Admin — kapag na-approve, maaari kang mag-login gamit ang bagong password</div></div>
+        <div class="inst-note">⚠️ Maaaring kausapin ka ng Admin nang personal para i-verify ang iyong pagkakakilanlan bago i-approve ang request — ito ay para sa seguridad ng iyong account.</div>
+      </div>
+      <div class="mockup">
+        <div class="mockup-bar">
+          <div class="mockup-dot" style="background:#FF5F57"></div>
+          <div class="mockup-dot" style="background:#FFBD2E"></div>
+          <div class="mockup-dot" style="background:#28C840"></div>
+          <div class="mockup-url">pcselgajr.github.io/307714dbaminhs/ — Forgot Password</div>
+        </div>
+        <div class="fp-overlay">
+          <div class="fp-card">
+            <h3>🔑 Forgot Password</h3>
+            <p>Walang automatic na email reset sa portal na ito. Mag-submit ng iyong ID at bagong password — ang Admin ang mag-a-approve ng pagbabago pagkatapos i-verify ang iyong pagkakakilanlan.</p>
+            <div class="field"><label>LRN / Employee ID / Email</label><input type="text" placeholder="I-type ang iyong ID o email" /></div>
+            <div class="field"><label>Bagong Password (min. 8 characters)</label><input type="password" placeholder="I-type ang bagong password" /></div>
+            <div class="field"><label>Kumpirmahin ang Bagong Password</label><input type="password" placeholder="Ulitin ang bagong password" /></div>
+            <button class="btn-login" onclick="document.getElementById('fpSuccess').style.display='block'">Submit Request</button>
+            <div class="success-banner" id="fpSuccess">✅ Na-submit ang iyong request! Hintayin ang Admin na mag-approve. Maaari kang mag-login gamit ang bagong password kapag na-approve na.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCREEN 6: STUDENT LOGIN & DASHBOARD -->
+    <div class="screen" id="screen-6">
+      <div class="screen-header">
+        <div class="step-label">Hakbang 6 ng 7</div>
+        <div class="screen-title">🎓 Student Login at Dashboard</div>
+        <div class="screen-desc">Ganito ang paraan para mag-login ang isang student at makita ang kanyang grades at attendance sa portal.</div>
+      </div>
+      <div class="instructions">
+        <h4>📋 PAANO MAG-LOGIN BILANG STUDENT</h4>
+        <div class="inst-step"><div class="inst-num">1</div><div class="inst-text">Buksan ang portal URL sa <strong>Chrome o Safari</strong></div></div>
+        <div class="inst-step"><div class="inst-num">2</div><div class="inst-text">I-click ang <strong>"Student"</strong> tab sa login form</div></div>
+        <div class="inst-step"><div class="inst-num">3</div><div class="inst-text">I-type ang <strong>LRN</strong> at <strong>Password</strong></div></div>
+        <div class="inst-step"><div class="inst-num">4</div><div class="inst-text">I-click ang <strong>"Log In →"</strong> button</div></div>
+        <div class="inst-step"><div class="inst-num">5</div><div class="inst-text">Makikita ang <strong>Student Dashboard</strong> — pumunta sa <strong>📊 My Grades</strong> tab para makita ang grades</div></div>
+        <div class="inst-note">⚠️ Hindi makikita ng student ang grades kung hindi pa i-release ng adviser. Lalabas ang mensaheng "🔒 Grades have not been released yet by your adviser."</div>
+      </div>
+      <div class="mockup">
+        <div class="mockup-bar">
+          <div class="mockup-dot" style="background:#FF5F57"></div>
+          <div class="mockup-dot" style="background:#FFBD2E"></div>
+          <div class="mockup-dot" style="background:#28C840"></div>
+          <div class="mockup-url">pcselgajr.github.io/307714dbaminhs/ — Student Dashboard</div>
+        </div>
+        <div class="dash-layout">
+          <div class="dash-sidebar">
+            <div class="dash-brand">
+              <div class="dash-brand-name">DBAMINHS Portal</div>
+              <div class="dash-brand-sub">Student Dashboard</div>
+            </div>
+            <div class="dash-nav">
+              <div class="dash-nav-item">🏠 Home</div>
+              <div class="dash-nav-item act">📊 My Grades</div>
+              <div class="dash-nav-item">📋 My Attendance</div>
+              <div class="dash-nav-item">📅 Schedule</div>
+              <div class="dash-nav-item">📢 Announcements</div>
+            </div>
+          </div>
+          <div class="dash-main">
+            <div class="dash-topbar">
+              <div class="dash-welcome">Hello, Juan! 👋</div>
+              <div class="dash-user-badge">
+                <div class="dash-avatar">J</div>
+                <span style="font-size:13px;color:var(--navy)">Juan Dela Cruz</span>
+              </div>
+            </div>
+            <div style="background:#fff;border-radius:12px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,.06);margin-bottom:14px">
+              <div style="font-size:14px;font-weight:700;color:var(--navy);margin-bottom:12px">📊 My Grades — Term 1</div>
+              <table style="width:100%;border-collapse:collapse;font-size:12px">
+                <thead><tr style="background:var(--navy);color:#fff"><th style="padding:7px 10px;text-align:left">Subject</th><th style="padding:7px 10px;text-align:center">Grade</th><th style="padding:7px 10px;text-align:center">Remarks</th></tr></thead>
+                <tbody>
+                  <tr><td style="padding:7px 10px;border-bottom:1px solid #f0f0f0">Mathematics</td><td style="padding:7px 10px;text-align:center;font-weight:700">88</td><td style="padding:7px 10px;text-align:center"><span class="badge b-g">Passed</span></td></tr>
+                  <tr><td style="padding:7px 10px;border-bottom:1px solid #f0f0f0">English</td><td style="padding:7px 10px;text-align:center;font-weight:700">90</td><td style="padding:7px 10px;text-align:center"><span class="badge b-g">Passed</span></td></tr>
+                  <tr><td style="padding:7px 10px;border-bottom:1px solid #f0f0f0">Science</td><td style="padding:7px 10px;text-align:center;font-weight:700">85</td><td style="padding:7px 10px;text-align:center"><span class="badge b-g">Passed</span></td></tr>
+                  <tr style="background:#f9f9f9"><td style="padding:7px 10px;font-weight:700">General Average</td><td style="padding:7px 10px;text-align:center;font-weight:700;font-size:15px;color:#22c55e">87.7</td><td style="padding:7px 10px;text-align:center"><span class="badge b-g">Passed</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div style="background:#e8f5ec;border-radius:10px;padding:12px 16px;font-size:13px;color:var(--green)">
+              ✅ Grades released by your adviser. Contact your adviser for concerns.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCREEN 7: PARENT LOGIN & DASHBOARD -->
+    <div class="screen" id="screen-7">
+      <div class="screen-header">
+        <div class="step-label">Hakbang 7 ng 7</div>
+        <div class="screen-title">👨‍👩‍👧 Parent Login at Dashboard</div>
+        <div class="screen-desc">Maaari ring mag-login ang magulang para makita ang grades at attendance ng kanilang anak — kahit wala silang hawak na report card.</div>
+      </div>
+      <div class="instructions">
+        <h4>📋 PAANO MAG-LOGIN BILANG PARENT</h4>
+        <div class="inst-step"><div class="inst-num">1</div><div class="inst-text">Buksan ang portal URL sa <strong>Chrome o Safari</strong></div></div>
+        <div class="inst-step"><div class="inst-num">2</div><div class="inst-text">I-click ang <strong>"Parent"</strong> tab sa login form</div></div>
+        <div class="inst-step"><div class="inst-num">3</div><div class="inst-text">I-type ang <strong>Email</strong> at <strong>Password</strong></div></div>
+        <div class="inst-step"><div class="inst-num">4</div><div class="inst-text">I-click ang <strong>"Log In →"</strong> button</div></div>
+        <div class="inst-step"><div class="inst-num">5</div><div class="inst-text">Makikita ang <strong>Parent Dashboard</strong> — pumunta sa <strong>📊 Child's Grades</strong> tab para makita ang grades ng anak</div></div>
+        <div class="inst-note">💡 Para mag-sign up bilang Parent: i-click ang "Sign Up" → "Parent" tab → punan ang pangalan, email, password, at ang LRN ng anak. Hintayin ang approval ng Admin bago makapag-login.</div>
+      </div>
+      <div class="mockup">
+        <div class="mockup-bar">
+          <div class="mockup-dot" style="background:#FF5F57"></div>
+          <div class="mockup-dot" style="background:#FFBD2E"></div>
+          <div class="mockup-dot" style="background:#28C840"></div>
+          <div class="mockup-url">pcselgajr.github.io/307714dbaminhs/ — Parent Dashboard</div>
+        </div>
+        <div class="dash-layout">
+          <div class="dash-sidebar">
+            <div class="dash-brand">
+              <div class="dash-brand-name">DBAMINHS Portal</div>
+              <div class="dash-brand-sub">Parent Dashboard</div>
+            </div>
+            <div class="dash-nav">
+              <div class="dash-nav-item">🏠 Home</div>
+              <div class="dash-nav-item act">📊 Child's Grades</div>
+              <div class="dash-nav-item">📋 Child's Attendance</div>
+              <div class="dash-nav-item">📢 Announcements</div>
+            </div>
+          </div>
+          <div class="dash-main">
+            <div class="dash-topbar">
+              <div class="dash-welcome">Hello, Maria! 👋</div>
+              <div class="dash-user-badge">
+                <div class="dash-avatar" style="background:#2D8B46">M</div>
+                <span style="font-size:13px;color:var(--navy)">Maria Dela Cruz</span>
+              </div>
+            </div>
+            <div style="background:#fff;border-radius:12px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,.06);margin-bottom:14px">
+              <div style="font-size:14px;font-weight:700;color:var(--navy);margin-bottom:4px">📊 Child's Grades — Juan Dela Cruz</div>
+              <div style="font-size:12px;color:var(--slate);margin-bottom:12px">Grade 10 Diamond | LRN: 136789012345</div>
+              <table style="width:100%;border-collapse:collapse;font-size:12px">
+                <thead><tr style="background:var(--navy);color:#fff"><th style="padding:7px 10px;text-align:left">Subject</th><th style="padding:7px 10px;text-align:center">Term 1</th><th style="padding:7px 10px;text-align:center">Term 2</th><th style="padding:7px 10px;text-align:center">Remarks</th></tr></thead>
+                <tbody>
+                  <tr><td style="padding:7px 10px;border-bottom:1px solid #f0f0f0">Mathematics</td><td style="padding:7px 10px;text-align:center">88</td><td style="padding:7px 10px;text-align:center">90</td><td style="padding:7px 10px;text-align:center"><span class="badge b-g">Passed</span></td></tr>
+                  <tr><td style="padding:7px 10px;border-bottom:1px solid #f0f0f0">English</td><td style="padding:7px 10px;text-align:center">90</td><td style="padding:7px 10px;text-align:center">87</td><td style="padding:7px 10px;text-align:center"><span class="badge b-g">Passed</span></td></tr>
+                  <tr><td style="padding:7px 10px;border-bottom:1px solid #f0f0f0">Science</td><td style="padding:7px 10px;text-align:center">85</td><td style="padding:7px 10px;text-align:center">88</td><td style="padding:7px 10px;text-align:center"><span class="badge b-g">Passed</span></td></tr>
+                  <tr style="background:#f9f9f9"><td style="padding:7px 10px;font-weight:700">General Average</td><td style="padding:7px 10px;text-align:center;font-weight:700;color:#22c55e">87.7</td><td style="padding:7px 10px;text-align:center;font-weight:700;color:#22c55e">88.3</td><td style="padding:7px 10px;text-align:center"><span class="badge b-g">Passed</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div style="background:#e8f0fe;border-radius:10px;padding:12px 16px;font-size:13px;color:#1565C0">
+              📩 Para sa mga katanungan tungkol sa grades, makipag-ugnayan sa class adviser ng inyong anak.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCREEN 8: COMPLETION -->
+    <div class="screen" id="screen-8">
+      <div class="completion">
+        <div class="big-check">✅</div>
+        <h2>Tapos na ang Tutorial!</h2>
+        <p>Natutunan mo na ang mga pangunahing features ng DBAMINHS School Portal.<br>Handa ka nang gamitin ang sistema!</p>
+
+        <div style="display:flex;gap:24px;align-items:center;justify-content:center;margin-bottom:20px;flex-wrap:wrap">
+          <div style="text-align:center">
+            <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAigAAAKHCAIAAAAkJSTpAAAWfmNhQlgAABZ+anVtYgAAAB5qdW1kYzJwYQARABCAAACqADibcQNjMnBhAAAAFlhqdW1iAAAAR2p1bWRjMm1hABEAEIAAAKoAOJtxA3VybjpjMnBhOmUxNTM2NzVkLTk0MGQtNDJhOS05MTYxLWNmMzcyZWNkZWQyOAAAAAOTanVtYgAAAClqdW1kYzJhcwARABCAAACqADibcQNjMnBhLmFzc2VydGlvbnMAAAAAuGp1bWIAAABEanVtZGNib3IAEQAQgAAAqgA4m3ETYzJwYS5pbmdyZWRpZW50LnYzAAAAABhjMnNoJu2y3wcA373um7Z86b51VQAAAGxjYm9yo2lkYzpmb3JtYXRpaW1hZ2UvcG5namluc3RhbmNlSUR4LHhtcDppaWQ6NzAyMjYyMGMtN2E0NS00NWY5LTlhNmUtMzIzZjExMzdkMDQzbHJlbGF0aW9uc2hpcGhwYXJlbnRPZgAAAeJqdW1iAAAAQWp1bWRjYm9yABEAEIAAAKoAOJtxE2MycGEuYWN0aW9ucy52MgAAAAAYYzJzaDVoVl8C/RpIKLqGVvP5+1sAAAGZY2JvcqJnYWN0aW9uc4KiZmFjdGlvbmtjMnBhLm9wZW5lZGpwYXJhbWV0ZXJzoWtpbmdyZWRpZW50c4GiY3VybHgtc2VsZiNqdW1iZj1jMnBhLmFzc2VydGlvbnMvYzJwYS5pbmdyZWRpZW50LnYzZGhhc2hYIGn6D7UXX4GI97DcgjLxucHxslwCM9R4ZDd/GouQQCBYpGZhY3Rpb254HWNvbS5hbnRocm9waWMuY2xhdWRlLnByb3ZpZGVkanBhcmFtZXRlcnOheB9jb20uYW50aHJvcGljLm9yaWdpbi1jb25maWRlbmNlZ3Vua25vd25rZGVzY3JpcHRpb254ZkNsYXVkZSBwcm92aWRlZCB0aGlzIGZpbGUgYXQgdGhlIHJlcXVlc3Qgb2YgYSB1c2VyIGFuZCBtYXkgaGF2ZSBjcmVhdGVkIG9yIG1vZGlmaWVkIHRoZSBmaWxlIGNvbnRlbnRzLm1zb2Z0d2FyZUFnZW50oWRuYW1lZkNsYXVkZXJhbGxBY3Rpb25zSW5jbHVkZWT1AAAAyGp1bWIAAABAanVtZGNib3IAEQAQgAAAqgA4m3ETYzJwYS5oYXNoLmRhdGEAAAAAGGMyc2gEhZIRlxQmIlNtXU/IIx+8AAAAgGNib3KlY2FsZ2ZzaGEyNTZjcGFkTQAAAAAAAAAAAAAAAABkaGFzaFggLE7P+vW4OhIYnUaJJcanIpSgew3mFWW1DR0cQJd3lFtkbmFtZW5qdW1iZiBtYW5pZmVzdGpleGNsdXNpb25zgaJlc3RhcnQYIWZsZW5ndGgZFooAAAI+anVtYgAAACdqdW1kYzJjbAARABCAAACqADibcQNjMnBhLmNsYWltLnYyAAAAAg9jYm9ypWNhbGdmc2hhMjU2aXNpZ25hdHVyZXhNc2VsZiNqdW1iZj0vYzJwYS91cm46YzJwYTplMTUzNjc1ZC05NDBkLTQyYTktOTE2MS1jZjM3MmVjZGVkMjgvYzJwYS5zaWduYXR1cmVqaW5zdGFuY2VJRHgseG1wOmlpZDo2MzEyYjEyMi02NmJiLTRhZjMtYWFmNC0yZGY3YTVlMzBmYjlyY3JlYXRlZF9hc3NlcnRpb25zg6JjdXJseC1zZWxmI2p1bWJmPWMycGEuYXNzZXJ0aW9ucy9jMnBhLmluZ3JlZGllbnQudjNkaGFzaFggafoPtRdfgYj3sNyCMvG5wfGyXAIz1HhkN38ai5BAIFiiY3VybHgqc2VsZiNqdW1iZj1jMnBhLmFzc2VydGlvbnMvYzJwYS5hY3Rpb25zLnYyZGhhc2hYIL+upjDSLBK0a1XJ+omjNbJBF0yDSrnL1RrWNa6mKc/domN1cmx4KXNlbGYjanVtYmY9YzJwYS5hc3NlcnRpb25zL2MycGEuaGFzaC5kYXRhZGhhc2hYINiFhnr7tVxkc3RVk0EZJ9YTKh7hfmnZL/N71WdEbbOBdGNsYWltX2dlbmVyYXRvcl9pbmZvo2RuYW1lb0FudGhyb3BpYyBGaWxlc2d2ZXJzaW9uZTEuMC4wa3NwZWNWZXJzaW9uZTIuNC4wAAAQOGp1bWIAAAAoanVtZGMyY3MAEQAQgAAAqgA4m3EDYzJwYS5zaWduYXR1cmUAAAAQCGNib3LShFkCEqIBJhghWQIKMIICBjCCAY2gAwIBAgIUQOWgCu7COdC+uIP6BkIFPWdVEwAwCgYIKoZIzj0EAwMwSTEXMBUGA1UEChMOQW50aHJvcGljLCBQQkMxLjAsBgNVBAMTJUFudGhyb3BpYyBDb250ZW50IENyZWRlbnRpYWxzIFJvb3QgQ0EwHhcNMjYwODA3MTg0MzU2WhcNMjgwODA2MTk0MzU2WjBEMRcwFQYDVQQKEw5BbnRocm9waWMsIFBCQzEpMCcGA1UEAxMgQW50aHJvcGljIENsYXVkZSBDb250ZW50IFNpZ25pbmcwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAASYegpry1AYBRTVNL1CpTlbROnY3dey+UrsF9C3phYrATN3ZHf93Mo8RQN0KOUuOn19P4oWNFWe5n2/She9N7eTo1gwVjAOBgNVHQ8BAf8EBAMCB4AwFQYDVR0lBA4wDAYKKwYBBAGD6F4CATAMBgNVHRMBAf8EAjAAMB8GA1UdIwQYMBaAFM5R4gSBTmRbI/jjxM+aPpzB11zCMAoGCCqGSM49BAMDA2cAMGQCMDFzHRSeAXrSy1WOzkbhPZ6Km2wGTmZ/2gK18k8BQGXyqz88Rdrz6CTX9flAnYNVxgIwcF9c3fVhqmJKpi+UhasNUMko69cyX6STPfta3Q8EjyzDjzoyrol46FP6VFHhvUcJoWNwYWRZDZ4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA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9fa2+KpL/+ftNU0r3mDx0b7YPgOK4EFxTZo0GTt2bImFdevWrVu3brdu3b766qsdO3Z06dLFZDIdOXIkMTGx+GY2my03N7dDhw7eGzunTp2q2NvNyZMnfY9PnDgRHR0dHh4eeOMX1Q2/x1JKWa1Wh8PhW5WVlVV8ZpCYmNi9e/dp06YZDIbin22UGKiePXte4phUbPf4+Hij0XjixAnvRzKapp0+fToqKirwETAajd4WEhISfKv8znGVUmFhYcWDLViXAao2PuNBmY4fP7548eKMjAy3252RkWGz2eLj481mc4cOHVatWrVv3z6n03ny5MklS5YopaKioqxW6/bt210u1+nTpxcuXFixg544cWL9+vWFhYVHjhxZt26d97PuwBu/qG74PZZSqk6dOjt37szMzCwsLFy7dm1GRkaJHRMTE++4445du3Z5/4TF70Bd+phUbHez2dymTZu0tLSMjAyHw/Hjjz/m5uZe1AiYTKb27dunpaWdOHGisLBwzZo1Z86cad++vd8W4uLiTp065XQ6L6XPuNIw40GZUlJSMjIyFixYkJWVFRUV1bZt27Zt2yqlunXrFh4evnz58ry8vBo1avTs2VMpFRYWdssttyxfvnzjxo1RUVHt27dftWpVBQ7aunXrkydPfvrppx6Pp3Xr1t63wsAbv6hu+D2WUqpTp045OTlTpkyxWCxNmjRp3Lhx6X0TExNHjhw5bdo0pVSvXr38DtQljkmFd+/Ro4fT6fz666+9X6du0KBBWTfHyhqBrl27apo2a9Ys79ephw8f7vtKWwnt27f/7rvvPvroI5fL5f06dVAuA1Rthku//wsES2pqakpKSvfu3Su7I1XKxIkTvX9aVGI5o43KwowHqGoOHTqUlZV19dVXa5q2fv363NzcZs2aVXangN8QPEBVU7t27b17906aNMnpdNaoUcP7l6SV3SngN9xqAwCI4lttAABRBA8AQBTBAwAQRfAAAEQRPAAAUQQPAEAUwQMAEEXwAABEETwAAFEEDwBAFMEDABBF8AAARBE8AABRBA8AQBTBAwAQRfAAAET9PxQ8udNKXBzoAAAAAElFTkSuQmCC" alt="QR Code" style="width:180px;height:180px;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,0.3)">
+            <div style="font-size:12px;color:var(--ice);margin-top:8px">I-scan para buksan ang portal</div>
+          </div>
+          <div style="text-align:left">
+            <div style="font-size:13px;color:var(--ice);margin-bottom:6px">O buksan ang URL:</div>
+            <div style="background:var(--navy);border-radius:10px;padding:14px 20px;font-family:monospace;font-size:14px;color:var(--orange);border:1px solid rgba(255,255,255,0.1)">https://pcselgajr.github.io/307714dbaminhs/</div>
+          </div>
+        </div>
+        <div style="background:var(--navy);border-radius:12px;padding:20px;margin-bottom:24px;text-align:left">
+          <div style="font-weight:700;color:var(--orange);margin-bottom:12px">🔔 Mahahalagang Paalala:</div>
+          <div style="font-size:14px;color:var(--ice);line-height:1.8">
+            ✅ Laging piliin ang tamang <strong>Term</strong> bago mag-upload o mag-print ng grades<br>
+            ✅ I-save ang CSV bilang <strong>CSV format</strong>, hindi .xlsx<br>
+            ✅ Grades: <strong>60–100</strong> lang ang tanggap<br>
+            ✅ Buksan sa <strong>Chrome o Safari</strong> — huwag gumamit ng Facebook Messenger browser<br>
+            ✅ Huwag i-delete ang <strong>--- MALE ---</strong> at <strong>--- FEMALE ---</strong> rows sa CSV
+          </div>
+        </div>
+        <button class="btn-restart" onclick="goToScreen(0)">🔄 Ulitin ang Tutorial</button>
+      </div>
+    </div>
+
+    <!-- NAV BUTTONS -->
+    <div class="nav-btns">
+      <button class="btn-nav btn-prev" id="btnPrev" onclick="prevScreen()" disabled>← Nakaraan</button>
+      <div class="step-counter" id="stepCounter">Hakbang 0 ng 8</div>
+      <button class="btn-nav btn-next" id="btnNext" onclick="nextScreen()">Susunod →</button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const steps = [
+  { label: "Simula", icon: "🏠" },
+  { label: "Pag-login", icon: "🔐" },
+  { label: "Dashboard", icon: "📚" },
+  { label: "Grade Upload", icon: "📊" },
+  { label: "Attendance", icon: "📋" },
+  { label: "Forgot Password", icon: "🔑" },
+  { label: "Student Login", icon: "🎓" },
+  { label: "Parent Login", icon: "👨‍👩‍👧" },
+  { label: "Tapos!", icon: "✅" },
+];
+
+let current = 0;
+const total = steps.length - 1;
+
+// Build sidebar and progress bar
+function buildNav() {
+  const sb = document.getElementById('sidebarNav');
+  const pb = document.getElementById('progressBar');
+  sb.innerHTML = '';
+  pb.innerHTML = '';
+  steps.forEach((s, i) => {
+    // Sidebar
+    const div = document.createElement('div');
+    div.className = 'sidebar-item' + (i === current ? ' active' : '') + (i < current ? ' done' : '');
+    div.innerHTML = `<div class="num">${i < current ? '✓' : i + 1}</div>${s.icon} ${s.label}`;
+    div.onclick = () => goToScreen(i);
+    sb.appendChild(div);
+    // Progress dots
+    const dot = document.createElement('div');
+    dot.className = 'step-dot' + (i === current ? ' active' : '') + (i < current ? ' done' : '');
+    dot.onclick = () => goToScreen(i);
+    pb.appendChild(dot);
+  });
+}
+
+function goToScreen(n) {
+  document.getElementById('screen-' + current).classList.remove('active');
+  current = n;
+  document.getElementById('screen-' + current).classList.add('active');
+  document.getElementById('btnPrev').disabled = current === 0;
+  document.getElementById('btnNext').disabled = current === total;
+  document.getElementById('btnNext').textContent = current === total - 1 ? 'Tapusin ✓' : 'Susunod →';
+  document.getElementById('stepCounter').textContent = current === 0
+    ? 'Simula' : current === total
+    ? 'Tapos na!' : `Hakbang ${current} ng ${total - 1}`;
+  buildNav();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function nextScreen() { if (current < total) goToScreen(current + 1); }
+function prevScreen() { if (current > 0) goToScreen(current - 1); }
+
+// Keyboard navigation
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') nextScreen();
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') prevScreen();
+});
+
+buildNav();
+</script>
+</body>
+</html>

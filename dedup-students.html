@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DBAMINHS — De-duplicate Students Tool</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--o:#E85D1A;--od:#C44A10;--n:#1B2A4A;--w:#FFF;--g1:#F7F5F2;--g2:#EDE9E3;--g5:#8A8477;--g7:#4A4640;--g9:#1A1815;--su:#2D8B46;--sub:#E8F5EC;--da:#D32F2F;--dab:#FDECEA;--fb:'Segoe UI',sans-serif}
+body{font-family:var(--fb);color:var(--g9);background:var(--g1);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+.wrap{max-width:600px;width:100%}
+.card{background:var(--w);border-radius:16px;padding:28px;box-shadow:0 4px 20px rgba(0,0,0,.08);margin-bottom:18px}
+h1{font-size:18px;color:var(--n);margin-bottom:4px}
+.sub{font-size:13px;color:var(--g5);margin-bottom:20px;line-height:1.6}
+label{display:block;font-size:13px;font-weight:600;color:var(--g7);margin-bottom:6px}
+input{width:100%;padding:10px 13px;border:1.5px solid var(--g2);border-radius:8px;font-size:14px;font-family:var(--fb);background:var(--g1);margin-bottom:14px}
+input:focus{outline:none;border-color:var(--o);background:var(--w)}
+button{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:600;border:none;cursor:pointer;font-family:var(--fb);width:100%;margin-bottom:8px}
+.btn-p{background:var(--o);color:var(--w)}.btn-p:hover{background:var(--od)}
+.btn-su{background:var(--sub);color:var(--su)}
+.result{margin-top:16px;padding:14px 16px;border-radius:10px;font-size:13px;display:none;line-height:1.7}
+.result.show{display:block}
+.result.info{background:var(--g1);border:1px solid var(--g2)}
+.result.success{background:var(--sub);color:var(--su)}
+.result.error{background:var(--dab);color:var(--da)}
+.step{margin-bottom:8px;padding:10px 14px;background:var(--g1);border-radius:8px;border-left:4px solid var(--g2);font-size:13px}
+.step.done{border-left-color:var(--su);background:var(--sub);color:var(--su)}
+.step.running{border-left-color:var(--o)}
+.step.error{border-left-color:var(--da);background:var(--dab);color:var(--da)}
+.hidden{display:none}
+.warn-banner{background:#fff8e1;color:#92660b;padding:10px 14px;border-radius:8px;font-size:12px;margin-bottom:18px;line-height:1.5;border:1px solid #ffe082}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="card" id="lockCard">
+    <h1>🔧 De-duplicate Students Tool</h1>
+    <p class="sub">This tool finds and removes duplicate student records (same LRN) from the Students Directory, keeping only the first occurrence of each. Enter the admin password to continue.</p>
+    <label>Admin Password</label>
+    <input type="password" id="gatePw" placeholder="Admin password" onkeydown="if(event.key==='Enter')checkGate()">
+    <button class="btn-p" onclick="checkGate()">🔓 Unlock</button>
+    <p id="gateError" style="color:var(--da);font-size:12px;margin-top:10px;display:none">Incorrect password.</p>
+  </div>
+
+  <div class="card hidden" id="toolCard">
+    <h1>🔧 De-duplicate Students Tool</h1>
+    <div class="warn-banner">⚠️ This will remove duplicate student records with the same LRN, keeping only the first (earliest) record for each LRN. Make sure you have a backup before proceeding.</div>
+
+    <div id="stepsArea" style="margin-bottom:16px;display:none">
+      <div id="step1" class="step">⏳ Step 1: Loading students from Firestore...</div>
+      <div id="step2" class="step">⏳ Step 2: Finding duplicates...</div>
+      <div id="step3" class="step">⏳ Step 3: Removing duplicates...</div>
+      <div id="step4" class="step">⏳ Step 4: Saving clean list to Firestore...</div>
+    </div>
+
+    <button class="btn-p" id="scanBtn" onclick="runDedup()">🔍 Scan & Remove Duplicates</button>
+    <div class="result" id="resultBox"></div>
+  </div>
+
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+var firebaseConfig = {
+  apiKey: "AIzaSyBV3UhpZNgn19cvgAHqckNniGTu8fX8gXw",
+  authDomain: "dbaminhs-bd727.firebaseapp.com",
+  projectId: "dbaminhs-bd727",
+  storageBucket: "dbaminhs-bd727.firebasestorage.app",
+  messagingSenderId: "459830769786",
+  appId: "1:459830769786:web:8f537cc381e242222a63c3"
+};
+firebase.initializeApp(firebaseConfig);
+var db = firebase.firestore();
+
+var GATE_PASSWORD = 'dbaminhs-admin-2026';
+
+function checkGate() {
+  if (document.getElementById('gatePw').value === GATE_PASSWORD) {
+    document.getElementById('lockCard').classList.add('hidden');
+    document.getElementById('toolCard').classList.remove('hidden');
+  } else {
+    document.getElementById('gateError').style.display = 'block';
+  }
+}
+
+function setStep(id, status, text) {
+  var el = document.getElementById(id);
+  el.className = 'step ' + status;
+  el.textContent = text;
+}
+
+function showResult(type, html) {
+  var el = document.getElementById('resultBox');
+  el.className = 'result show ' + type;
+  el.innerHTML = html;
+}
+
+function runDedup() {
+  document.getElementById('scanBtn').disabled = true;
+  document.getElementById('scanBtn').textContent = '⏳ Running...';
+  document.getElementById('stepsArea').style.display = 'block';
+
+  // Step 1: Load students
+  setStep('step1', 'running', '🔄 Step 1: Loading students from Firestore...');
+
+  db.collection('portal_data').doc('students').get().then(function(doc) {
+    if (!doc.exists || !doc.data().data) {
+      setStep('step1', 'error', '❌ Step 1: Could not read students document.');
+      showResult('error', 'Failed to read students. Check your internet connection.');
+      document.getElementById('scanBtn').disabled = false;
+      document.getElementById('scanBtn').textContent = '🔍 Scan & Remove Duplicates';
+      return;
+    }
+
+    var students = JSON.parse(doc.data().data);
+    setStep('step1', 'done', '✅ Step 1: Loaded ' + students.length + ' student records.');
+
+    // Step 2: Find duplicates
+    setStep('step2', 'running', '🔄 Step 2: Finding duplicates by LRN...');
+
+    var seen = {};
+    var unique = [];
+    var duplicates = [];
+
+    students.forEach(function(s) {
+      var key = s.lrn || s.name; // use LRN as key, fallback to name
+      if (!seen[key]) {
+        seen[key] = true;
+        unique.push(s);
+      } else {
+        duplicates.push(s);
+      }
+    });
+
+    if (duplicates.length === 0) {
+      setStep('step2', 'done', '✅ Step 2: No duplicates found!');
+      setStep('step3', 'done', '✅ Step 3: Nothing to remove.');
+      setStep('step4', 'done', '✅ Step 4: No changes needed.');
+      showResult('success', '🎉 <strong>No duplicates found!</strong><br>All ' + students.length + ' student records are unique. No changes were made.');
+      document.getElementById('scanBtn').disabled = false;
+      document.getElementById('scanBtn').textContent = '🔍 Scan & Remove Duplicates';
+      return;
+    }
+
+    setStep('step2', 'done', '✅ Step 2: Found ' + duplicates.length + ' duplicate(s). Keeping ' + unique.length + ' unique records.');
+
+    // Step 3: Remove duplicates
+    setStep('step3', 'running', '🔄 Step 3: Preparing clean list (' + unique.length + ' students)...');
+
+    // Re-assign sequential IDs to avoid gaps
+    unique = unique.map(function(s, i) {
+      s.id = i + 1;
+      return s;
+    });
+
+    setStep('step3', 'done', '✅ Step 3: Removed ' + duplicates.length + ' duplicate(s). ' + unique.length + ' unique students remaining.');
+
+    // Step 4: Save to Firestore
+    setStep('step4', 'running', '🔄 Step 4: Saving clean student list to Firestore...');
+
+    db.collection('portal_data').doc('students').set({
+      data: JSON.stringify(unique),
+      updated: firebase.firestore.FieldValue.serverTimestamp()
+    }).then(function() {
+      setStep('step4', 'done', '✅ Step 4: Saved successfully!');
+      showResult('success',
+        '🎉 <strong>De-duplication complete!</strong><br><br>' +
+        '✅ ' + duplicates.length + ' duplicate record(s) removed<br>' +
+        '✅ ' + unique.length + ' unique students kept<br><br>' +
+        'Go back to Admin → Student Management and refresh the page to see the clean list.'
+      );
+      document.getElementById('scanBtn').textContent = '✅ Done';
+    }).catch(function(err) {
+      setStep('step4', 'error', '❌ Step 4: Error saving — ' + err.message);
+      showResult('error', 'Error saving: ' + err.message);
+      document.getElementById('scanBtn').disabled = false;
+      document.getElementById('scanBtn').textContent = '🔍 Scan & Remove Duplicates';
+    });
+
+  }).catch(function(err) {
+    setStep('step1', 'error', '❌ Step 1: Error — ' + err.message);
+    showResult('error', 'Error reading Firestore: ' + err.message);
+    document.getElementById('scanBtn').disabled = false;
+    document.getElementById('scanBtn').textContent = '🔍 Scan & Remove Duplicates';
+  });
+}
+</script>
+</body>
+</html>

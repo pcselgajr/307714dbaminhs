@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DBAMINHS — Data Recovery Tool</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --o:#E85D1A;--od:#C44A10;
+  --n:#1B2A4A;--w:#FFF;
+  --g1:#F7F5F2;--g2:#EDE9E3;--g5:#8A8477;--g7:#4A4640;--g9:#1A1815;
+  --su:#2D8B46;--sub:#E8F5EC;--da:#D32F2F;--dab:#FDECEA;--wa:#E6A817;--wab:#FFF8E1;
+  --fb:'Segoe UI',sans-serif;
+}
+body{font-family:var(--fb);color:var(--g9);background:var(--g1);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+.wrap{max-width:620px;width:100%}
+.card{background:var(--w);border-radius:16px;padding:28px;box-shadow:0 4px 20px rgba(0,0,0,.08);margin-bottom:18px}
+h1{font-size:18px;color:var(--n);margin-bottom:4px}
+.sub{font-size:13px;color:var(--g5);margin-bottom:20px;line-height:1.6}
+label{display:block;font-size:13px;font-weight:600;color:var(--g7);margin-bottom:6px}
+input{width:100%;padding:10px 13px;border:1.5px solid var(--g2);border-radius:8px;font-size:14px;font-family:var(--fb);background:var(--g1);margin-bottom:14px}
+input:focus{outline:none;border-color:var(--o);background:var(--w)}
+button{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:600;border:none;cursor:pointer;font-family:var(--fb);width:100%;margin-bottom:8px}
+.btn-p{background:var(--o);color:var(--w)}.btn-p:hover{background:var(--od)}
+.btn-su{background:var(--sub);color:var(--su)}
+.btn-d{background:var(--dab);color:var(--da)}
+.result{margin-top:16px;padding:14px 16px;border-radius:10px;font-size:13px;display:none;line-height:1.7}
+.result.show{display:block}
+.result.info{background:var(--g1);border:1px solid var(--g2)}
+.result.success{background:var(--sub);color:var(--su)}
+.result.error{background:var(--dab);color:var(--da)}
+.result.warning{background:var(--wab);color:#92660b}
+.warn-banner{background:var(--dab);color:var(--da);padding:10px 14px;border-radius:8px;font-size:12px;margin-bottom:18px;line-height:1.5}
+.hidden{display:none}
+.step{margin-bottom:12px;padding:12px 14px;background:var(--g1);border-radius:8px;border-left:4px solid var(--g2)}
+.step.done{border-left-color:var(--su)}
+.step.running{border-left-color:var(--o)}
+.step.error{border-left-color:var(--da)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- GATE -->
+  <div class="card" id="lockCard">
+    <h1>🛠️ DBAMINHS Data Recovery Tool</h1>
+    <p class="sub">This tool rebuilds the Students and Teachers Directory from the accounts data in Firestore. Enter the admin password to continue.</p>
+    <label>Admin Password</label>
+    <input type="password" id="gatePw" placeholder="Admin password" onkeydown="if(event.key==='Enter')checkGate()">
+    <button class="btn-p" onclick="checkGate()">🔓 Unlock</button>
+    <p id="gateError" style="color:var(--da);font-size:12px;margin-top:10px;display:none">Incorrect password.</p>
+  </div>
+
+  <!-- TOOL -->
+  <div class="card hidden" id="toolCard">
+    <h1>🛠️ Data Recovery Tool</h1>
+    <p class="sub">This tool will read the <strong>accounts</strong> document from Firestore (which contains all signed-up students and teachers), then rebuild the <strong>students</strong> and <strong>teachers</strong> directory documents from that data.</p>
+
+    <div class="warn-banner">⚠️ This will <strong>overwrite</strong> the current students and teachers documents in Firestore. Only run this if those documents contain wrong/default data.</div>
+
+    <div id="step1" class="step">⏳ Step 1: Read accounts from Firestore</div>
+    <div id="step2" class="step">⏳ Step 2: Identify students and teachers</div>
+    <div id="step3" class="step">⏳ Step 3: Rebuild students directory</div>
+    <div id="step4" class="step">⏳ Step 4: Rebuild teachers directory</div>
+    <div id="step5" class="step">⏳ Step 5: Save to Firestore</div>
+
+    <br>
+    <button class="btn-p" id="runBtn" onclick="runRecovery()">🛠️ Run Recovery Now</button>
+
+    <div class="result" id="resultBox"></div>
+  </div>
+
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+var firebaseConfig = {
+  apiKey: "AIzaSyBV3UhpZNgn19cvgAHqckNniGTu8fX8gXw",
+  authDomain: "dbaminhs-bd727.firebaseapp.com",
+  projectId: "dbaminhs-bd727",
+  storageBucket: "dbaminhs-bd727.firebasestorage.app",
+  messagingSenderId: "459830769786",
+  appId: "1:459830769786:web:8f537cc381e242222a63c3"
+};
+firebase.initializeApp(firebaseConfig);
+var db = firebase.firestore();
+
+var GATE_PASSWORD = 'dbaminhs-admin-2026';
+
+function checkGate() {
+  if (document.getElementById('gatePw').value === GATE_PASSWORD) {
+    document.getElementById('lockCard').classList.add('hidden');
+    document.getElementById('toolCard').classList.remove('hidden');
+  } else {
+    document.getElementById('gateError').style.display = 'block';
+  }
+}
+
+function setStep(id, status, text) {
+  var el = document.getElementById(id);
+  el.className = 'step ' + status;
+  el.textContent = text;
+}
+
+function showResult(type, html) {
+  var el = document.getElementById('resultBox');
+  el.className = 'result show ' + type;
+  el.innerHTML = html;
+}
+
+function runRecovery() {
+  document.getElementById('runBtn').disabled = true;
+  document.getElementById('runBtn').textContent = '⏳ Running...';
+
+  // Reset steps
+  ['step1','step2','step3','step4','step5'].forEach(function(id) {
+    document.getElementById(id).className = 'step';
+  });
+
+  // Step 1: Read accounts
+  setStep('step1', 'running', '🔄 Step 1: Reading accounts from Firestore...');
+
+  db.collection('portal_data').doc('accounts').get().then(function(doc) {
+    if (!doc.exists || !doc.data().data) {
+      setStep('step1', 'error', '❌ Step 1: Could not read accounts document.');
+      showResult('error', 'Failed to read accounts. Make sure you are connected to the internet.');
+      document.getElementById('runBtn').disabled = false;
+      document.getElementById('runBtn').textContent = '🛠️ Run Recovery Now';
+      return;
+    }
+
+    var accounts = JSON.parse(doc.data().data);
+    setStep('step1', 'done', '✅ Step 1: Found ' + accounts.length + ' accounts.');
+
+    // Step 2: Identify students and teachers
+    setStep('step2', 'running', '🔄 Step 2: Identifying students and teachers...');
+
+    var students = [];
+    var teachers = [];
+    var studentId = 1;
+    var teacherId = 1;
+
+    accounts.forEach(function(a) {
+      if (a.type === 'student' && a.lrn) {
+        students.push({
+          id: studentId++,
+          lrn: a.lrn,
+          name: (a.fname || '') + ' ' + (a.lname || ''),
+          grade: a.grade || 'TBA',
+          contact: a.email || '',
+          status: 'Active'
+        });
+      } else if (a.type === 'teacher' && a.eid) {
+        teachers.push({
+          id: teacherId++,
+          eid: a.eid,
+          name: (a.fname || '') + ' ' + (a.lname || ''),
+          dept: a.dept || 'TBA',
+          pos: a.pos || 'Teacher I',
+          contact: a.email || '',
+          sections: a.sections || []
+        });
+      }
+    });
+
+    setStep('step2', 'done', '✅ Step 2: Found ' + students.length + ' students and ' + teachers.length + ' teachers.');
+
+    if (students.length === 0 && teachers.length === 0) {
+      showResult('warning', '⚠️ No students or teachers found in accounts. Make sure the accounts document has the correct data.');
+      document.getElementById('runBtn').disabled = false;
+      document.getElementById('runBtn').textContent = '🛠️ Run Recovery Now';
+      return;
+    }
+
+    // Step 3: Rebuild students
+    setStep('step3', 'running', '🔄 Step 3: Rebuilding students directory (' + students.length + ' students)...');
+
+    var saves = [];
+
+    saves.push(
+      db.collection('portal_data').doc('students').set({
+        data: JSON.stringify(students),
+        updated: firebase.firestore.FieldValue.serverTimestamp()
+      }).then(function() {
+        setStep('step3', 'done', '✅ Step 3: Students directory rebuilt (' + students.length + ' students).');
+      })
+    );
+
+    // Step 4: Rebuild teachers
+    setStep('step4', 'running', '🔄 Step 4: Rebuilding teachers directory (' + teachers.length + ' teachers)...');
+
+    saves.push(
+      db.collection('portal_data').doc('teachers').set({
+        data: JSON.stringify(teachers),
+        updated: firebase.firestore.FieldValue.serverTimestamp()
+      }).then(function() {
+        setStep('step4', 'done', '✅ Step 4: Teachers directory rebuilt (' + teachers.length + ' teachers).');
+      })
+    );
+
+    // Step 5: Confirm saves
+    setStep('step5', 'running', '🔄 Step 5: Saving to Firestore...');
+
+    Promise.all(saves).then(function() {
+      setStep('step5', 'done', '✅ Step 5: All data saved to Firestore successfully!');
+      showResult('success',
+        '🎉 <strong>Recovery complete!</strong><br><br>' +
+        '✅ ' + students.length + ' students restored<br>' +
+        '✅ ' + teachers.length + ' teachers restored<br><br>' +
+        'You can now go back to the Admin panel and refresh the page — your Students and Teachers directories should be back to normal.'
+      );
+      document.getElementById('runBtn').textContent = '✅ Recovery Complete';
+    }).catch(function(err) {
+      setStep('step5', 'error', '❌ Step 5: Error saving — ' + err.message);
+      showResult('error', 'Error saving data: ' + err.message);
+      document.getElementById('runBtn').disabled = false;
+      document.getElementById('runBtn').textContent = '🛠️ Run Recovery Now';
+    });
+
+  }).catch(function(err) {
+    setStep('step1', 'error', '❌ Step 1: Error — ' + err.message);
+    showResult('error', 'Error reading Firestore: ' + err.message + '<br>Check your internet connection and try again.');
+    document.getElementById('runBtn').disabled = false;
+    document.getElementById('runBtn').textContent = '🛠️ Run Recovery Now';
+  });
+}
+</script>
+</body>
+</html>

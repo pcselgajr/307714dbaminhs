@@ -568,50 +568,41 @@ function downloadTemplate() {
   var settings = loadData('settings', DEFAULT_SETTINGS);
   var secs = (settings.sections && settings.sections.length > 0) ? settings.sections : DEFAULT_SECTIONS;
   var subjects = getSubjectsForSection(cls, secs);
-  
+
   var students = loadData('students', DEFAULT_STUDENTS);
-  var classStudents = students.filter(function(s) { return s.grade === cls && s.status === 'Active'; });
-  
-  // Sort: Male first (A-Z by last name), then Female (A-Z by last name), then no gender (A-Z)
+  var classStudents = students.filter(function(s){ return s.grade === cls && s.status === 'Active'; });
+
   var males = sortByLastName(classStudents.filter(function(s){ return s.gender === 'Male'; }));
   var females = sortByLastName(classStudents.filter(function(s){ return s.gender === 'Female'; }));
   var others = sortByLastName(classStudents.filter(function(s){ return !s.gender || (s.gender !== 'Male' && s.gender !== 'Female'); }));
-  var sorted = males.concat(females).concat(others);
 
   var csv = 'LRN,"Name (Last Name, First Name)",' + subjects.join(',') + '\n';
 
-  // Male section
   if (males.length > 0) {
     csv += '"--- MALE ---","",'; subjects.forEach(function(){ csv += ','; }); csv = csv.slice(0,-1) + '\n';
-    males.forEach(function(s) {
+    males.forEach(function(s){
       csv += '"=""' + s.lrn + '"""' + ',"' + toLastFirst(s.name) + '"';
-      subjects.forEach(function() { csv += ','; });
+      subjects.forEach(function(){ csv += ','; });
       csv += '\n';
     });
   }
-
-  // Female section
   if (females.length > 0) {
     csv += '"--- FEMALE ---","",'; subjects.forEach(function(){ csv += ','; }); csv = csv.slice(0,-1) + '\n';
-    females.forEach(function(s) {
+    females.forEach(function(s){
       csv += '"=""' + s.lrn + '"""' + ',"' + toLastFirst(s.name) + '"';
-      subjects.forEach(function() { csv += ','; });
+      subjects.forEach(function(){ csv += ','; });
+      csv += '\n';
+    });
+  }
+  if (others.length > 0) {
+    csv += '"--- OTHER/UNSET ---","",'; subjects.forEach(function(){ csv += ','; }); csv = csv.slice(0,-1) + '\n';
+    others.forEach(function(s){
+      csv += '"=""' + s.lrn + '"""' + ',"' + toLastFirst(s.name) + '"';
+      subjects.forEach(function(){ csv += ','; });
       csv += '\n';
     });
   }
 
-  // No gender assigned
-  if (others.length > 0) {
-    if (males.length > 0 || females.length > 0) {
-      csv += '"--- OTHER/UNSET ---","",'; subjects.forEach(function(){ csv += ','; }); csv = csv.slice(0,-1) + '\n';
-    }
-    others.forEach(function(s) {
-      csv += '"=""' + s.lrn + '"""' + ',"' + toLastFirst(s.name) + '"';
-      subjects.forEach(function() { csv += ','; });
-      csv += '\n';
-    });
-  }
-  
   var blob = new Blob(['\uFEFF' + csv], {type: 'text/csv;charset=utf-8'});
   var url = URL.createObjectURL(blob);
   var a = document.createElement('a');
@@ -619,10 +610,8 @@ function downloadTemplate() {
   a.download = 'grades_' + cls.replace(/\s/g,'_') + '_' + getSelectedTerm() + '.csv';
   a.click();
   URL.revokeObjectURL(url);
-  
-  showUploadStatus('Template downloaded! Open in Excel, fill in grades for all subjects, save as CSV, then upload.', 'success');
+  showUploadStatus('Template downloaded! Fill in grades in Excel, save as CSV, then upload.', 'success');
 }
-
 function handleCSVUpload(event) {
   var file = event.target.files[0];
   if (!file) return;
@@ -650,10 +639,8 @@ function handleCSVUpload(event) {
       if (!row[0] || !row[0].trim()) continue;
       
       var lrn = row[0].trim().replace(/^="?|"?=?"$/g, '').replace(/^"+|"+$/g, '').trim();
+      if (/\d+\.?\d*[Ee][+\-]\d+/.test(lrn)) { lrn = Math.round(parseFloat(lrn)).toString(); }
       if (lrn.indexOf('---') === 0) continue; // skip gender separator rows
-      var name = row[1] ? fromLastFirst(row[1].trim()) : '';
-      var grades = {};
-      var hasError = false;
       
       for (var j = 2; j < header.length && j < row.length; j++) {
         var val = row[j] ? row[j].trim() : '';
@@ -1137,9 +1124,8 @@ function handleAttUpload(event) {
       if (!row[0] || !row[0].trim()) continue;
       
       var lrn = row[0].trim().replace(/^="?|"?=?"$/g, '').replace(/^"+|"+$/g, '').trim();
+      if (/\d+\.?\d*[Ee][+\-]\d+/.test(lrn)) { lrn = Math.round(parseFloat(lrn)).toString(); }
       if (lrn.indexOf('---') === 0) continue; // skip gender separator rows
-      var name = row[1] ? fromLastFirst(row[1].trim()) : '';
-      var present = parseInt(row[2]) || 0;
       var absent = parseInt(row[3]) || 0;
       var late = parseInt(row[4]) || 0;
       var totalDays = parseInt(row[5]) || 0;

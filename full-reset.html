@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DBAMINHS — Full Reset Tool</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --o:#E85D1A;--od:#C44A10;
+  --n:#1B2A4A;--w:#FFF;
+  --g1:#F7F5F2;--g2:#EDE9E3;--g5:#8A8477;--g7:#4A4640;--g9:#1A1815;
+  --su:#2D8B46;--sub:#E8F5EC;--da:#D32F2F;--dab:#FDECEA;--wa:#E6A817;--wab:#FFF8E1;
+  --fb:'Segoe UI',sans-serif;
+}
+body{font-family:var(--fb);color:var(--g9);background:var(--g1);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+.wrap{max-width:620px;width:100%}
+.card{background:var(--w);border-radius:16px;padding:28px;box-shadow:0 4px 20px rgba(0,0,0,.08);margin-bottom:18px}
+h1{font-size:18px;color:var(--n);margin-bottom:4px}
+.sub{font-size:13px;color:var(--g5);margin-bottom:20px;line-height:1.6}
+label{display:block;font-size:13px;font-weight:600;color:var(--g7);margin-bottom:6px}
+input{width:100%;padding:10px 13px;border:1.5px solid var(--g2);border-radius:8px;font-size:14px;font-family:var(--fb);background:var(--g1);margin-bottom:14px}
+input:focus{outline:none;border-color:var(--o);background:var(--w)}
+button{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:600;border:none;cursor:pointer;font-family:var(--fb);width:100%;margin-bottom:8px}
+.btn-p{background:var(--o);color:var(--w)}.btn-p:hover{background:var(--od)}
+.btn-d{background:var(--da);color:var(--w)}.btn-d:hover{background:#b71c1c}
+.result{margin-top:16px;padding:14px 16px;border-radius:10px;font-size:13px;display:none;line-height:1.7}
+.result.show{display:block}
+.result.success{background:var(--sub);color:var(--su)}
+.result.error{background:var(--dab);color:var(--da)}
+.warn-banner{background:var(--dab);color:var(--da);padding:14px 16px;border-radius:8px;font-size:13px;margin-bottom:18px;line-height:1.6;border:1px solid #ffcdd2}
+.hidden{display:none}
+.step{margin-bottom:8px;padding:10px 14px;background:var(--g1);border-radius:8px;border-left:4px solid var(--g2);font-size:13px}
+.step.done{border-left-color:var(--su);background:var(--sub);color:var(--su)}
+.step.running{border-left-color:var(--o)}
+.step.error{border-left-color:var(--da);background:var(--dab);color:var(--da)}
+.list{font-size:13px;color:var(--g7);margin-bottom:16px;padding-left:16px}
+.list li{margin-bottom:4px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- GATE -->
+  <div class="card" id="lockCard">
+    <h1>🔄 DBAMINHS Full Reset Tool</h1>
+    <p class="sub">This tool clears all student, teacher, account, and grade data so you can start fresh. Enter the admin password to continue.</p>
+    <label>Admin Password</label>
+    <input type="password" id="gatePw" placeholder="Admin password" onkeydown="if(event.key==='Enter')checkGate()">
+    <button class="btn-p" onclick="checkGate()">🔓 Unlock</button>
+    <p id="gateError" style="color:var(--da);font-size:12px;margin-top:10px;display:none">Incorrect password.</p>
+  </div>
+
+  <!-- TOOL -->
+  <div class="card hidden" id="toolCard">
+    <h1>🔄 Full Reset Tool</h1>
+
+    <div class="warn-banner">
+      ⚠️ <strong>WARNING: This is PERMANENT and cannot be undone.</strong><br><br>
+      The following will be completely erased from Firestore:<br>
+      • All student accounts and login credentials<br>
+      • All teacher accounts and login credentials<br>
+      • All student and teacher directory records<br>
+      • All uploaded grades and attendance data<br>
+      • All pending signups and password reset requests<br><br>
+      <strong>The following will NOT be erased:</strong><br>
+      • Class sections and settings<br>
+      • DTR data<br>
+      • News, events, and resources
+    </div>
+
+    <div id="stepsArea" style="margin-bottom:16px;display:none">
+      <div id="step1" class="step">⏳ Clearing accounts...</div>
+      <div id="step2" class="step">⏳ Clearing students...</div>
+      <div id="step3" class="step">⏳ Clearing teachers...</div>
+      <div id="step4" class="step">⏳ Clearing pending signups...</div>
+      <div id="step5" class="step">⏳ Clearing password reset requests...</div>
+      <div id="step6" class="step">⏳ Clearing grades and attendance...</div>
+    </div>
+
+    <button class="btn-d" id="runBtn" onclick="confirmAndReset()">🗑️ Reset Everything Now</button>
+
+    <div class="result" id="resultBox"></div>
+  </div>
+
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+var firebaseConfig = {
+  apiKey: "AIzaSyBV3UhpZNgn19cvgAHqckNniGTu8fX8gXw",
+  authDomain: "dbaminhs-bd727.firebaseapp.com",
+  projectId: "dbaminhs-bd727",
+  storageBucket: "dbaminhs-bd727.firebasestorage.app",
+  messagingSenderId: "459830769786",
+  appId: "1:459830769786:web:8f537cc381e242222a63c3"
+};
+firebase.initializeApp(firebaseConfig);
+var db = firebase.firestore();
+
+var GATE_PASSWORD = 'dbaminhs-admin-2026';
+
+function checkGate() {
+  if (document.getElementById('gatePw').value === GATE_PASSWORD) {
+    document.getElementById('lockCard').classList.add('hidden');
+    document.getElementById('toolCard').classList.remove('hidden');
+  } else {
+    document.getElementById('gateError').style.display = 'block';
+  }
+}
+
+function setStep(id, status, text) {
+  var el = document.getElementById(id);
+  el.className = 'step ' + status;
+  el.textContent = text;
+}
+
+function showResult(type, html) {
+  var el = document.getElementById('resultBox');
+  el.className = 'result show ' + type;
+  el.innerHTML = html;
+}
+
+function saveEmpty(key) {
+  return db.collection('portal_data').doc(key).set({
+    data: JSON.stringify([]),
+    updated: firebase.firestore.FieldValue.serverTimestamp()
+  });
+}
+
+function confirmAndReset() {
+  if (!confirm('⚠️ Are you absolutely sure?\n\nThis will permanently delete ALL student accounts, teacher accounts, grades, and attendance data.\n\nThis CANNOT be undone!')) return;
+  if (!confirm('FINAL WARNING: Type "YES" is not required here, but please confirm one more time that you want to erase everything.')) return;
+  runReset();
+}
+
+function runReset() {
+  document.getElementById('runBtn').disabled = true;
+  document.getElementById('runBtn').textContent = '⏳ Resetting...';
+  document.getElementById('stepsArea').style.display = 'block';
+
+  // Step 1: Clear accounts
+  setStep('step1', 'running', '🔄 Clearing accounts...');
+  saveEmpty('accounts').then(function() {
+    setStep('step1', 'done', '✅ Accounts cleared.');
+
+    // Step 2: Clear students
+    setStep('step2', 'running', '🔄 Clearing students...');
+    return saveEmpty('students');
+  }).then(function() {
+    setStep('step2', 'done', '✅ Students cleared.');
+
+    // Step 3: Clear teachers
+    setStep('step3', 'running', '🔄 Clearing teachers...');
+    return saveEmpty('teachers');
+  }).then(function() {
+    setStep('step3', 'done', '✅ Teachers cleared.');
+
+    // Step 4: Clear pending
+    setStep('step4', 'running', '🔄 Clearing pending signups...');
+    return saveEmpty('pending');
+  }).then(function() {
+    setStep('step4', 'done', '✅ Pending signups cleared.');
+
+    // Step 5: Clear password reset requests
+    setStep('step5', 'running', '🔄 Clearing password reset requests...');
+    return saveEmpty('passwordResetRequests');
+  }).then(function() {
+    setStep('step5', 'done', '✅ Password reset requests cleared.');
+
+    // Step 6: Clear grades and attendance
+    setStep('step6', 'running', '🔄 Finding and clearing grades and attendance...');
+    return db.collection('portal_data').get();
+  }).then(function(snapshot) {
+    var deletePromises = [];
+    snapshot.forEach(function(doc) {
+      var key = doc.id;
+      if (key.startsWith('grades_') || key.startsWith('attendance_') || key.startsWith('schedule_')) {
+        deletePromises.push(db.collection('portal_data').doc(key).delete());
+      }
+    });
+    return Promise.all(deletePromises).then(function() {
+      setStep('step6', 'done', '✅ Cleared ' + deletePromises.length + ' grade/attendance/schedule documents.');
+    });
+  }).then(function() {
+    showResult('success',
+      '🎉 <strong>Reset complete!</strong><br><br>' +
+      'All student accounts, teacher accounts, grades, and attendance data have been erased.<br><br>' +
+      'You can now:<br>' +
+      '1. Go back to the Admin panel<br>' +
+      '2. Add students and teachers manually or wait for them to sign up again<br>' +
+      '3. Upload grades fresh from CSV templates'
+    );
+    document.getElementById('runBtn').textContent = '✅ Reset Complete';
+  }).catch(function(err) {
+    showResult('error', '❌ Error during reset: ' + err.message + '<br>Please try again.');
+    document.getElementById('runBtn').disabled = false;
+    document.getElementById('runBtn').textContent = '🗑️ Reset Everything Now';
+  });
+}
+</script>
+</body>
+</html>
