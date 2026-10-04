@@ -1786,15 +1786,58 @@ function loadParentAttendance() {
 // SCHEDULE UPLOAD SYSTEM
 // ============================================
 
+// ============================================
+// SCHEDULE CSV — dalawang format ang tinatanggap:
+// (A) Grid:  Time,MON,TUE,WED,THU,FRI   (bawat row = oras, bawat column = araw)
+//            cell = "Subject / Teacher / Room" (puwedeng Subject lang)
+// (B) List:  Day,Time,Subject,Teacher,Room
+// ============================================
+var SCHED_DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+
+function normalizeSchedDay(v) {
+  var x = String(v || '').trim().toLowerCase().replace(/\./g, '');
+  if (!x) return '';
+  var map = {
+    monday:'Monday', mon:'Monday', m:'Monday', lunes:'Monday',
+    tuesday:'Tuesday', tue:'Tuesday', tues:'Tuesday', t:'Tuesday', martes:'Tuesday',
+    wednesday:'Wednesday', wed:'Wednesday', w:'Wednesday', miyerkules:'Wednesday', miyerkoles:'Wednesday',
+    thursday:'Thursday', thu:'Thursday', thur:'Thursday', thurs:'Thursday', th:'Thursday', huwebes:'Thursday',
+    friday:'Friday', fri:'Friday', f:'Friday', biyernes:'Friday', byernes:'Friday',
+    saturday:'Saturday', sat:'Saturday', sabado:'Saturday'
+  };
+  return map[x] || '';
+}
+
+// Buong CSV parser: kaya ang quotes, comma sa loob ng quotes, at Enter sa loob ng cell
+function parseCSVText(text) {
+  text = String(text || '').replace(/^\uFEFF/, '');
+  var rows = [], row = [], cur = '', q = false;
+  for (var i = 0; i < text.length; i++) {
+    var c = text[i];
+    if (q) {
+      if (c === '"') { if (text[i + 1] === '"') { cur += '"'; i++; } else q = false; }
+      else cur += c;
+    } else if (c === '"') q = true;
+    else if (c === ',') { row.push(cur); cur = ''; }
+    else if (c === '\n' || c === '\r') {
+      if (c === '\r' && text[i + 1] === '\n') i++;
+      row.push(cur); rows.push(row); row = []; cur = '';
+    } else cur += c;
+  }
+  if (cur !== '' || row.length) { row.push(cur); rows.push(row); }
+  return rows;
+}
+
+function schedEsc(v) {
+  return String(v == null ? '' : v).replace(/[&<>"']/g, function(c) {
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+
 function downloadSchedTemplate() {
   var cls = document.getElementById('schedClass').value;
-  
-  var csv = 'Day,Time,Subject,Teacher,Room\n';
-  var days = ['Monday','Tuesday','Wednesday','Thursday','Friday'];
-  days.forEach(function(d) {
-    csv += d + ',,,,\n';
-  });
-  
+  var csv = 'Time,MON,TUE,WED,THU,FRI\n';
+  for (var i = 0; i < 9; i++) csv += ',,,,,\n';
   var blob = new Blob(['\uFEFF' + csv], {type: 'text/csv;charset=utf-8'});
   var url = URL.createObjectURL(blob);
   var a = document.createElement('a');
@@ -1802,74 +1845,99 @@ function downloadSchedTemplate() {
   a.download = 'schedule_' + cls.replace(/\s/g,'_') + '.csv';
   a.click();
   URL.revokeObjectURL(url);
-  
-  showSchedStatus('Template downloaded! Fill in the schedule, save as CSV, then upload.', 'success');
+  showSchedStatus('Template downloaded! Ilagay ang oras sa unang column, at ang subject sa ilalim ng bawat araw. Puwedeng "Subject / Teacher / Room".', 'success');
+}
+
+function parseScheduleRows(rows) {
+  rows = rows.filter(function(r) { return r.some(function(c) { return String(c).trim() !== ''; }); });
+  if (rows.length < 2) return {error: 'CSV is empty.'};
+  var header = rows[0];
+  var dayCols = [];
+  for (var c = 1; c < header.length; c++) {
+    var d = normalizeSchedDay(header[c]);
+    if (d) dayCols.push({col: c, day: d});
+  }
+  var records = [], skipped = 0;
+
+  if (dayCols.length >= 2) {
+    // (A) GRID format
+    dayCols.forEach(function(dc) {
+      for (var i = 1; i < rows.length; i++) {
+        var r = rows[i];
+        var time = String(r[0] || '').trim().replace(/\s+/g, ' ');
+        var cell = String(r[dc.col] || '').trim();
+        if (!cell) continue;
+        // Laktawan ang natirang row na pangalan ng araw ang nasa Time column (galing sa lumang template)
+        if (normalizeSchedDay(time) && time.length > 2) { skipped++; continue; }
+        var parts = cell.split(/\s*(?:\/|\||\n)\s*/).filter(function(x) { return x !== ''; });
+        records.push({day: dc.day, time: time, subject: parts[0] || '', teacher: parts[1] || '', room: parts.slice(2).join(' ')});
+      }
+    });
+    return {records: records, format: 'grid'};
+  }
+
+  // (B) LIST format
+  for (var i = 1; i < rows.length; i++) {
+    var row = rows[i];
+    var day = normalizeSchedDay(row[0]) || String(row[0] || '').trim();
+    var time = String(row[1] || '').trim();
+    var subject = String(row[2] || '').trim();
+    if (!day || (!time && !subject)) continue;
+    records.push({day: day, time: time, subject: subject, teacher: String(row[3] || '').trim(), room: String(row[4] || '').trim()});
+  }
+  return {records: records, format: 'list'};
 }
 
 function handleSchedUpload(event) {
   var file = event.target.files[0];
   if (!file) return;
-  
   var reader = new FileReader();
   reader.onload = function(e) {
-    var text = e.target.result;
-    var lines = text.trim().split('\n');
-    
-    if (lines.length < 2) {
-      showSchedStatus('Error: CSV is empty.', 'error');
-      return;
-    }
-    
-    var records = [];
-    for (var i = 1; i < lines.length; i++) {
-      var row = lines[i].split(',');
-      if (!row[0] || !row[0].trim()) continue;
-      
-      var day = row[0].trim();
-      var time = row[1] ? row[1].trim() : '';
-      var subject = row[2] ? row[2].trim() : '';
-      var teacher = row[3] ? row[3].trim() : '';
-      var room = row[4] ? row[4].trim() : '';
-      
-      if (!time && !subject) continue;
-      
-      records.push({day: day, time: time, subject: subject, teacher: teacher, room: room});
-    }
-    
+    var res = parseScheduleRows(parseCSVText(e.target.result));
+    if (res.error) { showSchedStatus('Error: ' + res.error, 'error'); return; }
+    var records = res.records;
     if (records.length === 0) {
-      showSchedStatus('Error: No valid records found.', 'error');
+      showSchedStatus('Error: Walang nakitang subject. Grid format: unang row = Time,MON,TUE,WED,THU,FRI; unang column = oras; ilagay ang subject sa ilalim ng bawat araw.', 'error');
       return;
     }
-    
     var cls = document.getElementById('schedClass').value;
-    
-    var html = '<div style="margin-bottom:12px"><strong>' + records.length + ' entries</strong> parsed</div>';
-    html += '<div style="overflow-x:auto"><table><thead><tr><th>Day</th><th>Time</th><th>Subject</th><th>Teacher</th><th>Room</th></tr></thead><tbody>';
-    
-    var dayColors = {Monday:'#e8733a',Tuesday:'#0891b2',Wednesday:'#7c3aed',Thursday:'#059669',Friday:'#dc2626'};
-    records.forEach(function(r) {
-      var color = dayColors[r.day] || '#666';
-      html += '<tr><td style="font-weight:600;color:' + color + '">' + r.day + '</td>';
-      html += '<td>' + r.time + '</td>';
-      html += '<td style="font-weight:600">' + r.subject + '</td>';
-      html += '<td>' + r.teacher + '</td>';
-      html += '<td>' + r.room + '</td></tr>';
-    });
-    
-    html += '</tbody></table></div>';
+    var html = '<div style="margin-bottom:12px"><strong>' + records.length + ' entries</strong> parsed (' + (res.format === 'grid' ? 'grid format' : 'list format') + ')</div>';
+    html += renderSchedGrid(records);
     html += '<div style="display:flex;gap:10px;margin-top:16px">';
     html += '<button class="btn btn-p btn-sm" onclick="saveSchedule()">&#128190; Save Schedule</button>';
     html += '<button class="btn btn-s btn-sm" onclick="cancelSched()">Cancel</button>';
     html += '</div>';
-    
     document.getElementById('schedPreview').innerHTML = html;
     window._pendingSched = records;
     window._pendingSchedClass = cls;
-    
-    showSchedStatus('CSV parsed! Review and click Save.', 'success');
+    showSchedStatus('CSV parsed! I-check ang preview at i-click ang Save.', 'success');
   };
   reader.readAsText(file, 'UTF-8');
   event.target.value = '';
+}
+
+// Ipinapakita ang schedule bilang grid (oras x araw)
+function renderSchedGrid(records) {
+  var days = SCHED_DAYS.filter(function(d) { return records.some(function(r) { return r.day === d; }); });
+  var times = [];
+  records.forEach(function(r) { if (times.indexOf(r.time) === -1) times.push(r.time); });
+  var dayColors = {Monday:'#e8733a',Tuesday:'#0891b2',Wednesday:'#7c3aed',Thursday:'#059669',Friday:'#dc2626',Saturday:'#6b7280'};
+  var h = '<div style="overflow-x:auto"><table style="min-width:560px"><thead><tr><th>Time</th>';
+  days.forEach(function(d) { h += '<th style="color:' + dayColors[d] + '">' + d + '</th>'; });
+  h += '</tr></thead><tbody>';
+  times.forEach(function(t) {
+    h += '<tr><td style="font-family:monospace;font-size:12px;white-space:nowrap">' + schedEsc(t) + '</td>';
+    days.forEach(function(d) {
+      var e = records.filter(function(r) { return r.day === d && r.time === t; });
+      h += '<td>' + e.map(function(r) {
+        return '<div style="font-weight:600">' + schedEsc(r.subject) + '</div>' +
+          (r.teacher ? '<div style="font-size:12px;color:var(--g5)">' + schedEsc(r.teacher) + '</div>' : '') +
+          (r.room ? '<div style="font-size:11px;color:var(--g5)">' + schedEsc(r.room) + '</div>' : '');
+      }).join('') + '</td>';
+    });
+    h += '</tr>';
+  });
+  return h + '</tbody></table></div>';
 }
 
 function saveSchedule() {
@@ -1905,29 +1973,13 @@ function updateSchedView() {
   var cls = document.getElementById('schedClass').value;
   var key = 'schedule_' + cls.replace(/\s/g, '_');
   var data = loadData(key, []);
-  
   var el = document.getElementById('savedSchedule');
   if (!el) return;
   if (!data || data.length === 0) {
     el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--g5);font-size:14px">No schedule uploaded yet.</div>';
     return;
   }
-  
-  var dayColors = {Monday:'#e8733a',Tuesday:'#0891b2',Wednesday:'#7c3aed',Thursday:'#059669',Friday:'#dc2626'};
-  var html = '<h4 style="font-size:15px;margin-bottom:12px">&#128197; Saved Schedule &mdash; ' + cls + '</h4>';
-  html += '<div style="overflow-x:auto"><table><thead><tr><th>Day</th><th>Time</th><th>Subject</th><th>Teacher</th><th>Room</th></tr></thead><tbody>';
-  
-  data.forEach(function(r) {
-    var color = dayColors[r.day] || '#666';
-    html += '<tr><td style="font-weight:600;color:' + color + '">' + r.day + '</td>';
-    html += '<td>' + r.time + '</td>';
-    html += '<td style="font-weight:600">' + r.subject + '</td>';
-    html += '<td>' + r.teacher + '</td>';
-    html += '<td>' + r.room + '</td></tr>';
-  });
-  
-  html += '</tbody></table></div>';
-  el.innerHTML = html;
+  el.innerHTML = '<h4 style="font-size:15px;margin-bottom:12px">&#128197; Saved Schedule &mdash; ' + schedEsc(cls) + '</h4>' + renderSchedGrid(data);
 }
 
 function showSchedStatus(msg, type) {
@@ -1959,8 +2011,8 @@ function loadStudentSchedule() {
     return;
   }
   
-  var days = ['Monday','Tuesday','Wednesday','Thursday','Friday'];
-  var dayColors = {Monday:'#e8733a',Tuesday:'#0891b2',Wednesday:'#7c3aed',Thursday:'#059669',Friday:'#dc2626'};
+  var days = SCHED_DAYS;
+  var dayColors = {Monday:'#e8733a',Tuesday:'#0891b2',Wednesday:'#7c3aed',Thursday:'#059669',Friday:'#dc2626',Saturday:'#6b7280'};
   
   var html = '<h3>&#128197; Class Schedule</h3>';
   
@@ -1975,10 +2027,10 @@ function loadStudentSchedule() {
     
     entries.forEach(function(r) {
       html += '<div style="display:flex;gap:12px;padding:8px 12px;background:var(--g1);border-radius:8px;border-left:3px solid ' + color + ';align-items:center;flex-wrap:wrap">';
-      html += '<span style="font-family:monospace;font-size:13px;color:var(--g5);min-width:90px">' + r.time + '</span>';
-      html += '<span style="font-weight:600;flex:1;min-width:120px">' + r.subject + '</span>';
-      html += '<span style="font-size:13px;color:var(--g5)">' + r.teacher + '</span>';
-      if (r.room) html += '<span style="font-size:12px;padding:2px 8px;background:' + color + '15;color:' + color + ';border-radius:12px">' + r.room + '</span>';
+      html += '<span style="font-family:monospace;font-size:13px;color:var(--g5);min-width:90px">' + schedEsc(r.time) + '</span>';
+      html += '<span style="font-weight:600;flex:1;min-width:120px">' + schedEsc(r.subject) + '</span>';
+      html += '<span style="font-size:13px;color:var(--g5)">' + schedEsc(r.teacher) + '</span>';
+      if (r.room) html += '<span style="font-size:12px;padding:2px 8px;background:' + color + '15;color:' + color + ';border-radius:12px">' + schedEsc(r.room) + '</span>';
       html += '</div>';
     });
     

@@ -492,8 +492,10 @@ Attendance Rate is auto-computed: (Days Present &divide; Total School Days) &tim
 <div style="background:var(--g1);border:1.5px dashed var(--g3);border-radius:12px;padding:20px;margin-bottom:18px">
 <h4 style="font-size:14px;margin-bottom:8px">&#128196; CSV Format:</h4>
 <p style="font-size:13px;color:var(--g5);line-height:1.8">
-<code style="background:var(--w);padding:2px 6px;border-radius:4px;font-size:12px">Day,Time,Subject,Teacher,Room</code><br>
-Example: <code style="background:var(--w);padding:2px 6px;border-radius:4px;font-size:12px">Monday,7:30-8:30,Filipino,Mrs. Bautista,Room 1</code>
+<strong>Grid format (recommended):</strong> unang row ay <code style="background:var(--w);padding:2px 6px;border-radius:4px;font-size:12px">Time,MON,TUE,WED,THU,FRI</code>, unang column ay ang oras, at ang subject ay nasa ilalim ng bawat araw.<br>
+Example row: <code style="background:var(--w);padding:2px 6px;border-radius:4px;font-size:12px">7:30 - 8:30,Filipino / Mrs. Bautista / Room 1,Math,...</code><br>
+Sa cell: <code style="background:var(--w);padding:2px 6px;border-radius:4px;font-size:12px">Subject / Teacher / Room</code> (puwedeng Subject lang). Blangkong cell = walang klase.<br>
+<span style="font-size:12px">Tinatanggap pa rin ang lumang format: <code style="background:var(--w);padding:2px 6px;border-radius:4px">Day,Time,Subject,Teacher,Room</code></span>
 </p>
 </div>
 
