@@ -147,6 +147,7 @@ setTimeout(function() {
   try { loadMyClasses(); } catch(e) { console.error('loadMyClasses error:', e); }
   try { loadTeacherQuizzes(); } catch(e) { console.error('loadTeacherQuizzes error:', e); }
   try { updateTeacherStats(); } catch(e) { console.error('updateTeacherStats error:', e); }
+  try { populateAnnounceClass(); loadAnnouncements(); } catch(e) { console.error('announcements error:', e); }
 }, 200);
 document.getElementById('tdAv').textContent=user.fname[0];
 document.getElementById('tdName').textContent=user.fname+' '+user.lname;
@@ -431,7 +432,7 @@ document.getElementById('liId').value=newAcc.id;
 document.getElementById('liPw').value='';
 }
 
-function sdTab(el,id){el.parentElement.querySelectorAll('button').forEach(function(b){b.className=''});el.className='act';['sdGrades','sdSched','sdTasks','sdAtt'].forEach(function(x){document.getElementById(x).style.display=x===id?'block':'none'})}
+function sdTab(el,id){el.parentElement.querySelectorAll('button').forEach(function(b){b.className=''});el.className='act';['sdGrades','sdSched','sdTasks','sdAtt','sdAnn'].forEach(function(x){var e=document.getElementById(x);if(e)e.style.display=x===id?'block':'none'})}
 function tdTab(el,id){el.parentElement.querySelectorAll('button').forEach(function(b){b.className=''});el.className='act';['tdClasses','tdGrade','tdAttendance','tdQuiz','tdSchedule','tdAnnounce'].forEach(function(x){var e=document.getElementById(x);if(e)e.style.display=x===id?'block':'none'})}
 function pdTab(el,id){el.parentElement.querySelectorAll('button').forEach(function(b){b.className=''});el.className='act';['pdGrades','pdAtt','pdMsg'].forEach(function(x){document.getElementById(x).style.display=x===id?'block':'none'})}
 
@@ -3472,6 +3473,106 @@ function closeQuizResult() {
 // ============================================
 // TEACHER DASHBOARD DYNAMIC STATS
 // ============================================
+
+// ============================================
+// ANNOUNCEMENTS
+// ============================================
+
+function postAnnouncement() {
+  var title = document.getElementById('annTitle').value.trim();
+  var message = document.getElementById('annMessage').value.trim();
+  var cls = document.getElementById('annClass').value;
+  if (!title || !message) { toast('Please enter title and message.', 'er'); return; }
+
+  var announcements = loadData('announcements', []);
+  var teacherName = curUser ? (curUser.fname + ' ' + curUser.lname) : 'Teacher';
+
+  announcements.unshift({
+    id: Date.now(),
+    title: title,
+    message: message,
+    section: cls,
+    author: teacherName,
+    date: new Date().toISOString()
+  });
+
+  saveData('announcements', announcements);
+  document.getElementById('annTitle').value = '';
+  document.getElementById('annMessage').value = '';
+  loadAnnouncements();
+  toast('Announcement posted!', 'su');
+}
+
+function loadAnnouncements() {
+  var announcements = loadData('announcements', []);
+  var el = document.getElementById('annList');
+  if (!el) return;
+
+  if (announcements.length === 0) {
+    el.innerHTML = '<div style="text-align:center;padding:16px;color:var(--g5);font-size:13px">No announcements yet.</div>';
+    return;
+  }
+
+  el.innerHTML = announcements.slice(0, 20).map(function(a) {
+    var date = a.date ? new Date(a.date).toLocaleDateString('en-PH', {year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
+    return '<div style="background:#fff;border:1px solid #e0e4ef;border-radius:10px;padding:14px;margin-bottom:10px">' +
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start">' +
+      '<div><div style="font-size:14px;font-weight:700;color:#1B2A4A">' + a.title + '</div>' +
+      '<div style="font-size:11px;color:#888;margin-top:2px">' + (a.author || 'Teacher') + ' &bull; ' + date + ' &bull; ' +
+      '<span style="background:#e8f0fe;color:#1B2A4A;padding:1px 8px;border-radius:10px;font-size:10px;font-weight:600">' + (a.section || 'All') + '</span></div></div>' +
+      '<button onclick="deleteAnnouncement(' + a.id + ')" title="Delete" style="background:none;border:none;color:#ccc;font-size:16px;cursor:pointer;padding:0 4px">&times;</button>' +
+      '</div>' +
+      '<div style="font-size:13px;color:#555;margin-top:8px;line-height:1.6;white-space:pre-wrap">' + a.message + '</div>' +
+      '</div>';
+  }).join('');
+}
+
+function deleteAnnouncement(id) {
+  if (!confirm('Delete this announcement?')) return;
+  var announcements = loadData('announcements', []);
+  announcements = announcements.filter(function(a) { return a.id !== id; });
+  saveData('announcements', announcements);
+  loadAnnouncements();
+  toast('Announcement deleted.', 'su');
+}
+
+function loadStudentAnnouncements() {
+  var announcements = loadData('announcements', []);
+  var el = document.getElementById('sdAnnContent');
+  if (!el) return;
+  var grade = curUser ? curUser.grade : '';
+
+  // Filter: show announcements for student's section or "All Sections"
+  var filtered = announcements.filter(function(a) {
+    return a.section === 'All Sections' || a.section === grade;
+  });
+
+  if (filtered.length === 0) {
+    el.innerHTML = '<div style="text-align:center;padding:16px;color:var(--g5);font-size:13px">No announcements yet.</div>';
+    return;
+  }
+
+  el.innerHTML = filtered.slice(0, 15).map(function(a) {
+    var date = a.date ? new Date(a.date).toLocaleDateString('en-PH', {year:'numeric',month:'short',day:'numeric'}) : '';
+    return '<div style="background:#f8f9fc;border:1px solid #e0e4ef;border-radius:10px;padding:14px;margin-bottom:10px">' +
+      '<div style="font-size:14px;font-weight:700;color:#1B2A4A">' + a.title + '</div>' +
+      '<div style="font-size:11px;color:#888;margin-top:2px">' + (a.author || 'Teacher') + ' &bull; ' + date + '</div>' +
+      '<div style="font-size:13px;color:#555;margin-top:8px;line-height:1.6;white-space:pre-wrap">' + a.message + '</div>' +
+      '</div>';
+  }).join('');
+}
+
+function populateAnnounceClass() {
+  var sel = document.getElementById('annClass');
+  if (!sel) return;
+  var settings = loadData('settings', DEFAULT_SETTINGS);
+  var secs = (settings.sections && settings.sections.length > 0) ? settings.sections : DEFAULT_SECTIONS;
+  sel.innerHTML = '<option value="All Sections">All Sections</option>';
+  secs.forEach(function(s) {
+    var name = typeof s === 'object' ? s.name : s;
+    sel.innerHTML += '<option value="' + name + '">' + name + '</option>';
+  });
+}
 
 function updateTeacherStats() {
   var teachers = loadData('teachers', []);
