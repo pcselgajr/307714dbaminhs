@@ -92,6 +92,7 @@ function renderPortalContent() {
 loadAllFromFirebase(function() {
   try {
     renderPortalContent();
+    if (typeof updateSYLabels === 'function') updateSYLabels();
     populateSectionDropdowns();
     renderCalendar();
     renderCommunity();
@@ -103,6 +104,7 @@ loadAllFromFirebase(function() {
 // Listen for real-time changes from admin
 listenForChanges(function() {
   renderPortalContent();
+  if (typeof updateSYLabels === 'function') updateSYLabels();
     populateSectionDropdowns();
     renderCalendar();
     renderCommunity();
@@ -127,6 +129,16 @@ if(!user){toast('Invalid credentials. Please check your ID and password.','er');
 completeLogin(user);
 }
 
+// School Year label sa Student Dashboard - kinukuha sa Admin > Portal Settings > School Year
+function updateSYLabels(){
+  try{
+    var st=loadData('settings', DEFAULT_SETTINGS)||{};
+    var sy=String(st.schoolYear||'').trim().replace(/^S\.?Y\.?\s*/i,'');
+    var el=document.getElementById('sdSY');
+    if(el&&sy) el.textContent='SY '+sy;
+  }catch(e){console.warn('updateSYLabels:',e);}
+}
+
 function completeLogin(user){
 curUser=user;closeM();
 document.getElementById('publicSite').style.display='none';
@@ -135,6 +147,7 @@ document.getElementById('studentDash').classList.add('act');
 document.getElementById('sdAv').textContent=user.fname[0];
 document.getElementById('sdName').textContent=user.fname+' '+user.lname;
 document.getElementById('sdWelcome').textContent=user.fname;
+updateSYLabels();
 }else if(user.type==='teacher'){
 document.getElementById('teacherDash').classList.add('act');
 // Look up advisory sections from the Teachers Directory (matched by Employee ID)
