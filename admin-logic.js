@@ -1407,12 +1407,20 @@ function loadDTRRecords() {
 }
 
 
+// DTR QR content: URL para kapag na-scan gamit ang phone camera, diretso sa DTR page na may code na
+function dtrQRText(code) {
+  var base = (location.protocol.indexOf('http') === 0)
+    ? location.origin + location.pathname.replace(/[^\/]*$/, '')
+    : 'https://dbaminhs.org/';
+  return base + 'dtr.html?code=' + encodeURIComponent(code);
+}
+
 function renderQRImage(code) {
   var el = document.getElementById('todayQRImage');
   if (!el) return;
   el.innerHTML = '';
   new QRCode(el, {
-    text: 'DBAMINHS-DTR:' + code,
+    text: dtrQRText(code),
     width: 180,
     height: 180,
     colorDark: '#1B2A4A',
@@ -1780,7 +1788,7 @@ function generateWeeklyCodes() {
   w.document.write('<script>');
   w.document.write('window.onload=function(){');
   codes.forEach(function(c, i) {
-    w.document.write('new QRCode(document.getElementById("qr' + i + '"),{text:"DBAMINHS-DTR:' + c.code + '",width:150,height:150,colorDark:"#1B2A4A",colorLight:"#ffffff",correctLevel:QRCode.CorrectLevel.H});');
+    w.document.write('new QRCode(document.getElementById("qr' + i + '"),{text:"' + dtrQRText(c.code) + '",width:150,height:150,colorDark:"#1B2A4A",colorLight:"#ffffff",correctLevel:QRCode.CorrectLevel.H});');
   });
   w.document.write('setTimeout(function(){window.print();},1000);');
   w.document.write('};');

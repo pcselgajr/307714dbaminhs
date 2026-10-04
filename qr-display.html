@@ -105,7 +105,7 @@ function displayQR(code, today) {
   container.innerHTML = '<div class="qr-box"><div id="qrImage"></div><div class="code">' + code + '</div><div class="date-label">' + today + '</div></div>';
   
   new QRCode(document.getElementById('qrImage'), {
-    text: 'DBAMINHS-DTR:' + code,
+    text: ((location.protocol.indexOf('http') === 0) ? location.origin + location.pathname.replace(/[^\/]*$/, '') : 'https://dbaminhs.org/') + 'dtr.html?code=' + encodeURIComponent(code),
     width: 220, height: 220,
     colorDark: '#1B2A4A', colorLight: '#ffffff',
     correctLevel: QRCode.CorrectLevel.H

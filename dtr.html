@@ -200,6 +200,48 @@ function dtrLogin() {
   });
 }
 
+// Tumatanggap ng lumang format (DBAMINHS-DTR:XXXXXX) at bagong URL format (.../dtr.html?code=XXXXXX)
+function extractDTRCode(data) {
+  if (!data) return '';
+  data = String(data).trim();
+  if (data.indexOf('DBAMINHS-DTR:') === 0) return data.replace('DBAMINHS-DTR:', '').trim();
+  var m = data.match(/[?&]code=([A-Za-z0-9]+)/);
+  return m ? decodeURIComponent(m[1]).trim() : '';
+}
+
+// Code na galing sa URL (kapag na-scan gamit ang phone camera)
+var pendingQRCode = (function() {
+  var m = location.search.match(/[?&]code=([A-Za-z0-9]+)/);
+  return m ? decodeURIComponent(m[1]).toUpperCase() : '';
+})();
+if (pendingQRCode && history.replaceState) {
+  // Tanggalin ang code sa address bar para hindi ma-reuse kapag ni-refresh o na-share ang link
+  history.replaceState(null, '', location.pathname);
+}
+
+function usePendingQRCode() {
+  if (!pendingQRCode) return;
+  var code = pendingQRCode;
+  pendingQRCode = '';
+  var inp = document.getElementById('manualCode');
+  if (inp) inp.value = code;
+  var mode = getDTRMode();
+  if (mode === 'none' || mode === 'gps') return; // hindi kailangan ng QR sa mode na ito
+  verifyCode(code);
+}
+
+function showPendingQRNotice() {
+  if (!pendingQRCode) return;
+  var login = document.getElementById('dtrLogin');
+  if (!login || document.getElementById('qrPendingNotice')) return;
+  var n = document.createElement('div');
+  n.id = 'qrPendingNotice';
+  n.style.cssText = 'background:#E8F5E9;color:#1B5E20;border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:14px;text-align:center';
+  n.innerHTML = '&#9989; QR code na-scan na! Mag-login lang para ma-record ang Time In/Out mo.';
+  login.insertBefore(n, login.firstChild);
+}
+showPendingQRNotice();
+
 function showDTR() {
   document.getElementById('dtrLogin').classList.add('hidden');
   document.getElementById('dtrMain').classList.remove('hidden');
@@ -207,6 +249,8 @@ function showDTR() {
   document.getElementById('dtrEmployeeName').textContent = currentEmployee.name + ' (' + currentEmployee.id + ')';
   loadTodayRecord();
   loadHistory();
+  var n = document.getElementById('qrPendingNotice'); if (n) n.remove();
+  setTimeout(usePendingQRCode, 300);
 }
 
 function dtrLogout() {
@@ -366,8 +410,8 @@ function scanQR() {
     var qrCode = jsQR(imageData.data, imageData.width, imageData.height, {inversionAttempts:'dontInvert'});
     if (qrCode) {
       var data = qrCode.data;
-      if (data.startsWith('DBAMINHS-DTR:')) {
-        var code = data.replace('DBAMINHS-DTR:', '');
+      var code = extractDTRCode(data);
+      if (code) {
         stopScan();
         document.getElementById('manualCode').value = code;
         verifyCode(code);
