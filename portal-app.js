@@ -104,6 +104,8 @@ loadAllFromFirebase(function() {
 // Listen for real-time changes from admin
 listenForChanges(function() {
   renderPortalContent();
+  if (typeof updateGradeLockPanel === 'function') updateGradeLockPanel();
+  if (typeof renderGradeRequestList === 'function') renderGradeRequestList();
   if (typeof updateSYLabels === 'function') updateSYLabels();
     populateSectionDropdowns();
     renderCalendar();
@@ -528,6 +530,189 @@ function getReleaseKey(cls, term) {
 }
 
 // ============================================
+// GRADE LOCK: kapag na-submit ng adviser, admin lang ang makakapag-unlock
+// ============================================
+function getGradeLock(cls, term) {
+  if (!cls) return null;
+  var locks = loadData('gradeLock', {}) || {};
+  var l = locks[getReleaseKey(cls, term)];
+  return (l && l.locked) ? l : null;
+}
+
+// Ibinabalik ang true (at nagpapakita ng mensahe) kapag naka-lock
+function blockIfGradesLocked(cls, term) {
+  var t = term || getSelectedTerm();
+  if (!getGradeLock(cls, t)) return false;
+  toast('Naka-lock na ang grades ng ' + cls + ' (' + t.replace('_',' ') + '). Makipag-ugnayan sa admin para ma-unlock.', 'er');
+  return true;
+}
+
+function updateGradeLockPanel() {
+  var cls = document.getElementById('gradeClass') ? document.getElementById('gradeClass').value : '';
+  var term = getSelectedTerm();
+  var label = document.getElementById('gradeLockLabel');
+  var text = document.getElementById('gradeLockText');
+  var btn = document.getElementById('gradeLockBtn');
+  var panel = document.getElementById('gradeLockPanel');
+  var up = document.getElementById('csvUploadLabel');
+  var clr = document.getElementById('clearGradesBtn');
+  if (!panel || !cls) return;
+  var l = getGradeLock(cls, term);
+  if (label) label.textContent = 'Grade Submission — ' + cls + ' (' + term.replace('_',' ') + ')';
+  if (l) {
+    var when = l.at ? new Date(l.at).toLocaleString('en-PH', {dateStyle:'medium', timeStyle:'short'}) : '';
+    if (text) text.innerHTML = '&#128274; <strong>Naka-lock</strong>' + (l.by ? ' &middot; isinumite ni ' + String(l.by).replace(/[<>&]/g,'') : '') + (when ? ' &middot; ' + when : '') + '. Kung may mali, i-click ang <strong>Request</strong> sa tabi ng learner.';
+    panel.style.background = '#FEF3C7'; panel.style.borderColor = '#F59E0B';
+    if (btn) btn.style.display = 'none';
+    if (up) { up.style.opacity = '0.45'; up.style.pointerEvents = 'none'; }
+    if (clr) { clr.style.opacity = '0.45'; clr.style.pointerEvents = 'none'; }
+  } else {
+    if (text) text.textContent = 'Puwede pang i-edit. Kapag tapos na, i-click ang "I-submit at I-lock" — hindi na ito mababago pagkatapos.';
+    panel.style.background = 'var(--g1)'; panel.style.borderColor = 'var(--g2)';
+    if (btn) btn.style.display = '';
+    if (up) { up.style.opacity = ''; up.style.pointerEvents = ''; }
+    if (clr) { clr.style.opacity = ''; clr.style.pointerEvents = ''; }
+  }
+}
+
+// ============================================
+// GRADE CORRECTION REQUESTS (kapag naka-lock na)
+// Bawat request ay hiwalay na document: gradeReq_<id>
+// ============================================
+function reqEsc(v) {
+  return String(v == null ? '' : v).replace(/[&<>"']/g, function(c) {
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+
+function getGradeRequests(sheetKey) {
+  var out = [];
+  Object.keys(_cache).forEach(function(k) {
+    if (k.indexOf('gradeReq_') !== 0) return;
+    var r = _cache[k];
+    if (r && (!sheetKey || r.sheetKey === sheetKey)) out.push(r);
+  });
+  out.sort(function(a, b) { return String(b.at).localeCompare(String(a.at)); });
+  return out;
+}
+
+function openGradeRequestModal(lrn) {
+  var cls = document.getElementById('gradeClass').value;
+  var term = getSelectedTerm();
+  var data = loadData(getGradeKey(cls, term), {});
+  var record = data[lrn] || {};
+  var g = record.grades || {};
+  var students = loadData('students', DEFAULT_STUDENTS);
+  var student = students.find(function(x){ return x.lrn === lrn; });
+  var name = record.name || (student ? student.name : lrn);
+
+  var settings = loadData('settings', DEFAULT_SETTINGS);
+  var secs = (settings.sections && settings.sections.length > 0) ? settings.sections : DEFAULT_SECTIONS;
+  var allSubjects = getSubjectsForSection(cls, secs).slice();
+  if (allSubjects.indexOf('Music & Arts') > -1) allSubjects.push('MAPEH');
+
+  var modal = document.getElementById('gradeEditModal');
+  modal.dataset.lrn = lrn;
+  window._reqGrades = g;
+  var opts = allSubjects.map(function(x) {
+    return '<option value="' + reqEsc(x) + '">' + reqEsc(x) + (g[x] !== undefined ? ' (' + g[x] + ')' : ' (wala)') + '</option>';
+  }).join('');
+  var inp = 'width:100%;padding:8px 10px;border:1.5px solid #E0E4EF;border-radius:7px;font-size:14px;background:#F8F9FC;box-sizing:border-box';
+  document.getElementById('gradeEditModalContent').innerHTML =
+    '<div style="margin-bottom:14px"><div style="font-size:15px;font-weight:700;color:#1B2A4A">&#9998; Request ng Pagtatama</div>' +
+    '<div style="font-size:13px;color:#555;margin-top:2px">' + reqEsc(name.toUpperCase()) + '</div>' +
+    '<div style="font-size:12px;color:#888">' + reqEsc(cls) + ' &mdash; ' + term.replace('_',' ') + ' &middot; Naka-lock</div></div>' +
+    '<div style="margin-bottom:12px"><label style="display:block;font-size:12px;font-weight:600;color:#555;margin-bottom:4px">Subject</label>' +
+    '<select id="reqSubject" onchange="updateReqCurrent()" style="' + inp + '">' + opts + '</select></div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">' +
+    '<div><label style="display:block;font-size:12px;font-weight:600;color:#555;margin-bottom:4px">Kasalukuyang grade</label><input id="reqOld" disabled style="' + inp + ';color:#888"></div>' +
+    '<div><label style="display:block;font-size:12px;font-weight:600;color:#555;margin-bottom:4px">Tamang grade</label><input id="reqNew" type="number" min="60" max="100" step="0.1" placeholder="60–100" style="' + inp + '"></div></div>' +
+    '<div style="margin-bottom:14px"><label style="display:block;font-size:12px;font-weight:600;color:#555;margin-bottom:4px">Dahilan</label>' +
+    '<textarea id="reqReason" rows="3" placeholder="Hal.: Mali ang na-encode, 88 ang nasa class record." style="' + inp + ';resize:vertical;font-family:inherit"></textarea></div>' +
+    '<div style="display:flex;gap:10px">' +
+    '<button onclick="submitGradeRequest()" style="flex:1;padding:11px;background:#E85D1A;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">&#128228; Ipadala sa Admin</button>' +
+    '<button onclick="closeGradeEditModal()" style="flex:1;padding:11px;background:#F0F2F8;color:#1B2A4A;border:1px solid #D0D4E8;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">Cancel</button></div>';
+  modal.style.display = 'flex';
+  updateReqCurrent();
+}
+
+function updateReqCurrent() {
+  var subj = document.getElementById('reqSubject').value;
+  var v = (window._reqGrades || {})[subj];
+  document.getElementById('reqOld').value = (v !== undefined ? v : 'wala');
+}
+
+function submitGradeRequest() {
+  var cls = document.getElementById('gradeClass').value;
+  var term = getSelectedTerm();
+  var lrn = document.getElementById('gradeEditModal').dataset.lrn;
+  var subj = document.getElementById('reqSubject').value;
+  var nv = parseFloat(document.getElementById('reqNew').value);
+  var reason = document.getElementById('reqReason').value.trim();
+  var oldV = (window._reqGrades || {})[subj];
+  if (isNaN(nv) || nv < 60 || nv > 100) { toast('Ang tamang grade ay dapat 60–100.', 'er'); return; }
+  nv = Math.round(nv * 10) / 10;
+  if (oldV !== undefined && Number(oldV) === nv) { toast('Pareho lang sa kasalukuyang grade.', 'er'); return; }
+  if (reason.length < 5) { toast('Ilagay ang dahilan ng pagtatama.', 'er'); return; }
+  var sheetKey = getReleaseKey(cls, term);
+  var dup = getGradeRequests(sheetKey).filter(function(r) { return r.status === 'pending' && r.lrn === lrn && r.subject === subj; });
+  if (dup.length) { toast('May pending request na para sa subject na ito.', 'er'); return; }
+  var data = loadData(getGradeKey(cls, term), {});
+  var id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  saveData('gradeReq_' + id, {
+    id: id, sheetKey: sheetKey, section: cls, term: term,
+    lrn: lrn, name: (data[lrn] && data[lrn].name) || lrn,
+    subject: subj, oldGrade: (oldV !== undefined ? oldV : null), newGrade: nv,
+    reason: reason, by: curUser ? (curUser.fname + ' ' + curUser.lname) : '',
+    at: new Date().toISOString(), status: 'pending'
+  });
+  closeGradeEditModal();
+  renderGradeRequestList();
+  toast('Naipadala ang request sa admin.', 'su');
+}
+
+function renderGradeRequestList() {
+  var el = document.getElementById('gradeReqList');
+  if (!el) return;
+  var cls = document.getElementById('gradeClass') ? document.getElementById('gradeClass').value : '';
+  if (!cls) { el.innerHTML = ''; return; }
+  var list = getGradeRequests(getReleaseKey(cls, getSelectedTerm()));
+  if (!list.length) { el.innerHTML = ''; return; }
+  var badge = {pending: ['#FEF3C7', '#92400E', 'Pending'], approved: ['#DCFCE7', '#166534', 'Approved'], rejected: ['#FEE2E2', '#991B1B', 'Rejected']};
+  var h = '<div style="background:#fff;border:1px solid var(--g2);border-radius:10px;padding:10px 14px"><div style="font-size:13px;font-weight:700;margin-bottom:6px">Mga request ng pagtatama</div>';
+  list.slice(0, 15).forEach(function(r) {
+    var b = badge[r.status] || badge.pending;
+    h += '<div style="display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-top:1px solid var(--g1);font-size:12px">' +
+      '<div><strong>' + reqEsc(r.name) + '</strong> &middot; ' + reqEsc(r.subject) + ': ' + (r.oldGrade !== null ? r.oldGrade : 'wala') + ' &rarr; <strong>' + r.newGrade + '</strong>' +
+      (r.status === 'rejected' && r.adminNote ? '<div style="color:#991B1B">Admin: ' + reqEsc(r.adminNote) + '</div>' : '') + '</div>' +
+      '<span style="background:' + b[0] + ';color:' + b[1] + ';padding:2px 8px;border-radius:10px;font-weight:700;white-space:nowrap;height:fit-content">' + b[2] + '</span></div>';
+  });
+  el.innerHTML = h + '</div>';
+}
+
+function submitAndLockGrades() {
+  var cls = document.getElementById('gradeClass') ? document.getElementById('gradeClass').value : '';
+  var term = getSelectedTerm();
+  if (!cls) { toast('Please select a section first.', 'er'); return; }
+  if (getGradeLock(cls, term)) { updateGradeLockPanel(); return; }
+  var data = loadData(getGradeKey(cls, term), {});
+  var n = Object.keys(data).length;
+  if (n === 0) { toast('Wala pang grades na naka-save para sa ' + term.replace('_',' ') + '.', 'er'); return; }
+  if (!confirm('I-submit at i-lock ang grades ng ' + cls + ' (' + term.replace('_',' ') + ')?\n\n' + n + ' learner(s) ang may grades.\n\nPagkatapos nito, HINDI MO NA ITO MABABAGO. Admin lang ang makakapag-unlock kung may kailangang itama.')) return;
+  var locks = loadData('gradeLock', {}) || {};
+  locks[getReleaseKey(cls, term)] = {
+    locked: true,
+    by: curUser ? (curUser.fname + ' ' + curUser.lname) : '',
+    at: new Date().toISOString(),
+    count: n
+  };
+  saveData('gradeLock', locks);
+  updateGradeLockPanel();
+  updateGradeView();
+  toast('Grades submitted at naka-lock na.', 'su');
+}
+
+// ============================================
 // GRADE RELEASE TOGGLE
 // ============================================
 
@@ -552,6 +737,8 @@ function updateReleaseToggle() {
 
   if (toggleWrap) toggleWrap.style.background = isReleased ? 'var(--su)' : 'var(--g3)';
   if (knob) knob.style.left = isReleased ? '25px' : '3px';
+  updateGradeLockPanel();
+  renderGradeRequestList();
 }
 
 function toggleGradeRelease() {
@@ -629,6 +816,8 @@ function downloadTemplate() {
 function handleCSVUpload(event) {
   var file = event.target.files[0];
   if (!file) return;
+  var _gc = document.getElementById('gradeClass') ? document.getElementById('gradeClass').value : '';
+  if (_gc && blockIfGradesLocked(_gc)) { event.target.value = ''; return; }
   
   var reader = new FileReader();
   reader.onload = function(e) {
@@ -745,6 +934,7 @@ function saveUploadedGrades() {
   
   var cls = window._pendingClass;
   var records = window._pendingRecords;
+  if (blockIfGradesLocked(cls)) return;
   var key = getGradeKey(cls);
   
   var existing = loadData(key, {});
@@ -844,6 +1034,7 @@ function updateGradeView() {
     html += '<td>' + (remarks ? '<span class="badge ' + badge + '">' + remarks + '</span>' : '') + '</td>';
     // Per-student visibility toggle
     html += '<td style="text-align:center"><button data-vis-lrn="' + lrn + '" onclick="toggleStudentGradeVisibility(\'' + lrn + '\')" title="' + (isVisible ? 'Hide from student/parent' : 'Show to student/parent') + '" style="padding:3px 8px;border-radius:6px;border:1px solid ' + (isVisible ? '#a5d6b7' : '#ffcdd2') + ';background:' + (isVisible ? '#e8f5ec' : '#fdecea') + ';color:' + (isVisible ? 'var(--su)' : 'var(--da)') + ';font-size:13px;cursor:pointer">' + (isVisible ? '&#128065;' : '&#128274;') + '</button></td>';
+    if (getGradeLock(document.getElementById('gradeClass').value, getSelectedTerm())) html += '<td><button onclick="openGradeRequestModal(\'' + lrn + '\')" style="padding:4px 10px;border-radius:6px;border:1px solid #F59E0B;background:#FEF3C7;color:#92400E;font-size:12px;font-weight:600;cursor:pointer">&#9998; Request</button></td>'; else
     html += '<td><button onclick="openGradeEditModal(\'' + lrn + '\')" style="padding:4px 10px;border-radius:6px;border:1px solid ' + (hasAnyGrade ? 'var(--g3)' : 'var(--o)') + ';background:' + (hasAnyGrade ? 'var(--g1)' : '#fff3ee') + ';color:' + (hasAnyGrade ? 'var(--g7)' : 'var(--o)') + ';font-size:12px;font-weight:600;cursor:pointer">' + (hasAnyGrade ? '&#9998; Edit' : '+ Add') + '</button></td>';
     html += '</tr>';
   });
@@ -898,6 +1089,7 @@ function closeGradeEditModal() {
 function openGradeEditModal(lrn) {
   var cls = document.getElementById('gradeClass').value;
   var term = getSelectedTerm();
+  if (blockIfGradesLocked(cls, term)) return;
   var key = getGradeKey(cls, term);
   var data = loadData(key, {});
   var record = data[lrn] || {};
@@ -950,6 +1142,7 @@ function saveGradeEdit() {
 
   var cls = document.getElementById('gradeClass').value;
   var term = getSelectedTerm();
+  if (blockIfGradesLocked(cls, term)) return;
   var key = getGradeKey(cls, term);
   var data = loadData(key, {});
 
@@ -1906,6 +2099,7 @@ function deleteClassData(sec) {
 function clearSectionGrades() {
   var cls = document.getElementById('gradeClass').value;
   if (!cls) { toast('Please select a section first.', 'er'); return; }
+  if (blockIfGradesLocked(cls)) return;
   if (!confirm('Clear ALL grades for "' + cls + '"?\n\nThis will permanently delete all uploaded grades for this section. You will need to re-upload the CSV to restore them.\n\nThis cannot be undone.')) return;
   var key = getGradeKey(cls);
   delete _cache[key];

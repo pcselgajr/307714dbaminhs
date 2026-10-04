@@ -157,6 +157,7 @@ tr:hover td{background:var(--cr)}
 <button class="sl" onclick="go('teachers',this)"><span class="i">&#128104;&#8205;&#127979;</span> Teachers &amp; Staff</button>
 <button class="sl" onclick="go('parents',this)"><span class="i">&#128106;</span> Parents <span class="sb-count" id="parentCount">0</span></button>
 <button class="sl" onclick="go('pending',this)"><span class="i">&#128203;</span> Pending Signups <span class="sb-count" id="pendCount">3</span></button>
+<button class="sl" onclick="go('gradelock',this)"><span class="i">&#128274;</span> Grade Lock <span class="sb-count" id="gradeLockCount">0</span></button>
 <button class="sl" onclick="go('enrollments',this)"><span class="i">&#128221;</span> Online Enrollments <span class="sb-count" id="enrollCount">0</span></button>
 <button class="sl" onclick="go('pwreset',this)"><span class="i">&#128273;</span> Password Reset Requests <span class="sb-count" id="pwResetCount">0</span></button>
 <button class="sl" onclick="go('backup',this)"><span class="i">&#128190;</span> Backup &amp; Restore</button>
@@ -261,6 +262,21 @@ tr:hover td{background:var(--cr)}
 </div></div>
 
 <!-- BACKUP & RESTORE -->
+<div class="pg" id="pg-gradelock"><div class="panel"><div class="ph"><h3>&#128274; Grade Lock</h3><div class="pa">
+<select id="glTermAll" style="padding:6px 10px;border-radius:8px;border:1px solid var(--g2)"><option value="Term_1">Term 1</option><option value="Term_2">Term 2</option><option value="Term_3">Term 3</option></select>
+<button class="btn btn-p btn-sm" onclick="lockAllGradesForTerm()">&#128274; I-lock lahat ng may grades</button>
+</div></div>
+<div style="padding:16px 20px">
+<p style="font-size:13px;color:var(--g5);margin-bottom:12px">Kapag naka-lock, hindi na makakapag-upload, mag-edit o mag-clear ng grades ang adviser para sa section at term na iyon. Ang adviser ay puwedeng mag-lock gamit ang <strong>I-submit at I-lock</strong>; admin lang ang makakapag-unlock.</p>
+<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+<input id="glSearch" placeholder="Hanapin ang section..." oninput="loadGradeLocks()" style="flex:1;min-width:180px;padding:8px 12px;border-radius:8px;border:1px solid var(--g2)">
+<select id="glFilter" onchange="loadGradeLocks()" style="padding:8px 12px;border-radius:8px;border:1px solid var(--g2)"><option value="">Lahat</option><option value="locked">Naka-lock</option><option value="open">Bukas pa</option></select>
+</div>
+<h4 style="font-size:15px;margin:4px 0 10px">&#9998; Mga Request ng Pagtatama</h4>
+<div id="gradeReqAdminList" style="margin-bottom:24px"></div>
+<h4 style="font-size:15px;margin:4px 0 10px">&#128203; Status ng Grades kada Section at Term</h4>
+<div id="gradeLockList"></div>
+</div></div></div>
 <div class="pg" id="pg-backup"><div class="panel"><div class="ph"><h3>&#128190; Backup &amp; Restore</h3></div>
 <div style="padding:22px">
 

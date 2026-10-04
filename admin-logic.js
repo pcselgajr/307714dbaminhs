@@ -55,8 +55,9 @@ function go(p,el){
   document.getElementById('pg-'+p).classList.add('act');
   document.querySelectorAll('.sl').forEach(function(x){x.classList.remove('act')});
   el.classList.add('act');
-  var t={dash:'Dashboard',news:'News & Announcements',events:'Events & Calendar',students:'Student Management',teachers:'Teachers & Staff',parents:'Parents Directory',pending:'Pending Signups',enrollments:'Online Enrollments',resources:'Teacher Resources',settings:'Portal Settings'};
+  var t={dash:'Dashboard',news:'News & Announcements',events:'Events & Calendar',students:'Student Management',teachers:'Teachers & Staff',parents:'Parents Directory',pending:'Pending Signups',enrollments:'Online Enrollments',gradelock:'Grade Lock',resources:'Teacher Resources',settings:'Portal Settings'};
   document.getElementById('pt').textContent=t[p]||p;
+  if(p==='gradelock'&&typeof loadGradeLocks==='function')loadGradeLocks();
   document.getElementById('sidebar').classList.remove('open');
   if(p==='parents') rParents();
   if(p==='enrollments') rEnrollments();
@@ -179,7 +180,7 @@ function exportEnrollments(){
   });
 }
 
-function renderAll(){rN();rE();rS();rT();rP();rPwReset();rParents();rEnrollments();uS();loadSettings();loadResources();loadGallery();loadAchievements();loadHistory();loadAlumni();loadDTRDashboard();setTimeout(updateDashChart,100)}
+function renderAll(){rN();rE();rS();rT();rP();rPwReset();rParents();rEnrollments();uS();loadSettings();loadResources();loadGallery();loadAchievements();loadHistory();loadAlumni();loadDTRDashboard();loadGradeLocks();setTimeout(updateDashChart,100)}
 function uS(){
   document.getElementById('sS').textContent=S.length.toLocaleString();
   document.getElementById('sT').textContent=T.length;
@@ -1174,12 +1175,12 @@ function exportBackup() {
   var backupKeys = [
     'students', 'teachers', 'accounts', 'pending', 'settings',
     'news', 'events', 'resources', 'quizzes', 'passwordResetRequests',
-    'dtr_employees', 'dtr_settings'
+    'dtr_employees', 'dtr_settings', 'dtr_staff', 'gradeLock', 'gradeRelease'
   ];
 
   // Also include all grades_, attendance_, schedule_ documents
   Object.keys(_cache).forEach(function(key) {
-    if (key.startsWith('grades_') || key.startsWith('attendance_') || key.startsWith('schedule_')) {
+    if (key.startsWith('grades_') || key.startsWith('attendance_') || key.startsWith('schedule_') || key.startsWith('gradeReq_')) {
       if (backupKeys.indexOf(key) === -1) backupKeys.push(key);
     }
   });
@@ -2167,4 +2168,172 @@ function removeDTRAccount(eid) {
   saveData('dtr_employees', employees);
   loadDTRAccess();
   toast('Account removed', 'su');
+}
+
+// ============================================
+// GRADE LOCK (Admin)
+// ============================================
+function glEsc(v) {
+  return String(v == null ? '' : v).replace(/[&<>"']/g, function(c) {
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+
+// Lahat ng section+term na may grades (galing sa grades_<SECTION>_Term_N)
+function getGradeSheets() {
+  var out = [];
+  Object.keys(_cache).forEach(function(k) {
+    var m = k.match(/^grades_(.+)_(Term_[123])$/);
+    if (!m) return;
+    var d = _cache[k] || {};
+    out.push({key: m[1] + '_' + m[2], section: m[1].replace(/_/g, ' '), term: m[2], count: Object.keys(d).length});
+  });
+  out.sort(function(a, b) { return a.section.localeCompare(b.section) || a.term.localeCompare(b.term); });
+  return out;
+}
+
+function loadGradeLocks() {
+  var el = document.getElementById('gradeLockList');
+  var locks = loadData('gradeLock', {}) || {};
+  var sheets = getGradeSheets();
+  var lockedCount = sheets.filter(function(x) { return locks[x.key] && locks[x.key].locked; }).length;
+  var badge = document.getElementById('gradeLockCount');
+  if (badge) badge.textContent = getAdminGradeRequests().filter(function(r) { return r.status === 'pending'; }).length;
+  renderAdminGradeRequests();
+  if (!el) return;
+  var q = (document.getElementById('glSearch') || {}).value || '';
+  q = q.trim().toLowerCase();
+  var f = (document.getElementById('glFilter') || {}).value || '';
+  var rows = sheets.filter(function(x) {
+    var isL = !!(locks[x.key] && locks[x.key].locked);
+    if (q && x.section.toLowerCase().indexOf(q) === -1) return false;
+    if (f === 'locked' && !isL) return false;
+    if (f === 'open' && isL) return false;
+    return true;
+  });
+  if (!sheets.length) { el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--g5)">Wala pang na-upload na grades.</div>'; return; }
+  if (!rows.length) { el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--g5)">Walang tugma.</div>'; return; }
+  var th = 'text-align:left;padding:8px;border-bottom:1px solid var(--g2);font-size:12px;color:var(--g5)';
+  var td = 'padding:8px;border-bottom:1px solid var(--g2);font-size:13px';
+  var h = '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr>' +
+    '<th style="' + th + '">Section</th><th style="' + th + '">Term</th><th style="' + th + '">Learners</th><th style="' + th + '">Status</th><th style="' + th + '">Detalye</th><th style="' + th + '"></th></tr></thead><tbody>';
+  rows.forEach(function(x) {
+    var l = locks[x.key];
+    var isL = !!(l && l.locked);
+    var detail = '';
+    if (isL) detail = (l.by ? 'ni ' + glEsc(l.by) : 'ni Admin') + (l.at ? ' &middot; ' + new Date(l.at).toLocaleString('en-PH', {dateStyle:'medium', timeStyle:'short'}) : '');
+    else if (l && l.unlockedAt) detail = 'Na-unlock ' + new Date(l.unlockedAt).toLocaleString('en-PH', {dateStyle:'medium', timeStyle:'short'});
+    h += '<tr><td style="' + td + ';font-weight:600">' + glEsc(x.section) + '</td>' +
+      '<td style="' + td + '">' + x.term.replace('_', ' ') + '</td>' +
+      '<td style="' + td + '">' + x.count + '</td>' +
+      '<td style="' + td + '">' + (isL ? '<span style="color:#b45309;font-weight:700">&#128274; Locked</span>' : '<span style="color:#15803d;font-weight:700">&#128275; Bukas</span>') + '</td>' +
+      '<td style="' + td + ';font-size:12px;color:var(--g5)">' + detail + '</td>' +
+      '<td style="' + td + ';text-align:right"><button class="btn btn-s btn-sm" data-k="' + glEsc(x.key) + '" onclick="toggleGradeLockAdmin(this.getAttribute(\'data-k\'))">' + (isL ? 'Unlock' : 'Lock') + '</button></td></tr>';
+  });
+  el.innerHTML = h + '</tbody></table></div>';
+}
+
+function toggleGradeLockAdmin(key) {
+  var locks = loadData('gradeLock', {}) || {};
+  var cur = locks[key] || {};
+  var label = key.replace(/_(Term_[123])$/, ' ($1)').replace(/_/g, ' ');
+  if (cur.locked) {
+    if (!confirm('I-unlock ang grades ng ' + label + '?\n\nMakakapag-edit ulit ang adviser hanggang i-lock ulit.')) return;
+    locks[key] = {locked: false, by: cur.by || '', at: cur.at || '', unlockedAt: new Date().toISOString()};
+    toast('Unlocked: ' + label, 'su');
+  } else {
+    if (!confirm('I-lock ang grades ng ' + label + '?')) return;
+    locks[key] = {locked: true, by: 'Admin', at: new Date().toISOString()};
+    toast('Locked: ' + label, 'su');
+  }
+  saveData('gradeLock', locks);
+  loadGradeLocks();
+}
+
+function lockAllGradesForTerm() {
+  var term = document.getElementById('glTermAll').value;
+  var locks = loadData('gradeLock', {}) || {};
+  var targets = getGradeSheets().filter(function(x) { return x.term === term && !(locks[x.key] && locks[x.key].locked); });
+  if (!targets.length) { toast('Walang bukas na grades para sa ' + term.replace('_', ' '), 'er'); return; }
+  if (!confirm('I-lock ang ' + targets.length + ' section para sa ' + term.replace('_', ' ') + '?')) return;
+  var now = new Date().toISOString();
+  targets.forEach(function(x) { locks[x.key] = {locked: true, by: 'Admin', at: now}; });
+  saveData('gradeLock', locks);
+  loadGradeLocks();
+  toast(targets.length + ' section ang naka-lock na.', 'su');
+}
+
+function getAdminGradeRequests() {
+  var out = [];
+  Object.keys(_cache).forEach(function(k) {
+    if (k.indexOf('gradeReq_') === 0 && _cache[k] && _cache[k].id) out.push(_cache[k]);
+  });
+  out.sort(function(a, b) { return String(b.at).localeCompare(String(a.at)); });
+  return out;
+}
+
+function renderAdminGradeRequests() {
+  var el = document.getElementById('gradeReqAdminList');
+  if (!el) return;
+  var all = getAdminGradeRequests();
+  var pending = all.filter(function(r) { return r.status === 'pending'; });
+  var done = all.filter(function(r) { return r.status !== 'pending'; }).slice(0, 10);
+  var fmt = function(d) { return d ? new Date(d).toLocaleString('en-PH', {dateStyle:'medium', timeStyle:'short'}) : ''; };
+  var h = '';
+  if (!pending.length) h += '<div style="padding:14px;text-align:center;color:var(--g5);background:var(--g1);border-radius:10px">Walang pending na request.</div>';
+  pending.forEach(function(r) {
+    var sheet = _cache['grades_' + r.sheetKey] || {};
+    var cur = ((sheet[r.lrn] || {}).grades || {})[r.subject];
+    var changed = (cur === undefined ? null : cur) !== r.oldGrade;
+    h += '<div style="border:1.5px solid #F59E0B;background:#FFFBEB;border-radius:10px;padding:12px 14px;margin-bottom:10px">' +
+      '<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap">' +
+      '<div><div style="font-weight:700">' + glEsc(r.name) + ' <span style="font-weight:400;color:var(--g5);font-size:12px">LRN ' + glEsc(r.lrn) + '</span></div>' +
+      '<div style="font-size:13px;color:var(--g5)">' + glEsc(r.section) + ' &middot; ' + glEsc(String(r.term).replace('_', ' ')) + '</div></div>' +
+      '<div style="font-size:12px;color:var(--g5);text-align:right">ni ' + glEsc(r.by || 'Adviser') + '<br>' + fmt(r.at) + '</div></div>' +
+      '<div style="margin:8px 0;font-size:15px"><strong>' + glEsc(r.subject) + ':</strong> ' + (r.oldGrade !== null ? r.oldGrade : 'wala') + ' &rarr; <strong style="color:#166534">' + r.newGrade + '</strong></div>' +
+      '<div style="font-size:13px;background:#fff;border-radius:8px;padding:8px 10px;margin-bottom:8px"><strong>Dahilan:</strong> ' + glEsc(r.reason) + '</div>' +
+      (changed ? '<div style="font-size:12px;color:#b91c1c;margin-bottom:8px">&#9888; Nagbago na ang grade mula nang i-request (ngayon: ' + (cur !== undefined ? cur : 'wala') + ').</div>' : '') +
+      '<div style="display:flex;gap:8px"><button class="btn btn-p btn-sm" data-id="' + glEsc(r.id) + '" onclick="decideGradeRequest(this.getAttribute(\'data-id\'), true)">&#10003; Approve</button>' +
+      '<button class="btn btn-s btn-sm" data-id="' + glEsc(r.id) + '" onclick="decideGradeRequest(this.getAttribute(\'data-id\'), false)">&#10007; Reject</button></div></div>';
+  });
+  if (done.length) {
+    h += '<details style="margin-top:6px"><summary style="cursor:pointer;font-size:13px;color:var(--g5)">Kasaysayan (huling ' + done.length + ')</summary><div style="margin-top:8px">';
+    done.forEach(function(r) {
+      h += '<div style="font-size:12px;padding:6px 0;border-bottom:1px solid var(--g2)">' + (r.status === 'approved' ? '&#9989;' : '&#10060;') + ' ' +
+        glEsc(r.name) + ' &middot; ' + glEsc(r.section) + ' ' + glEsc(String(r.term).replace('_', ' ')) + ' &middot; ' + glEsc(r.subject) + ': ' +
+        (r.oldGrade !== null ? r.oldGrade : 'wala') + ' &rarr; ' + r.newGrade + ' <span style="color:var(--g5)">(' + fmt(r.decidedAt) + ')</span></div>';
+    });
+    h += '</div></details>';
+  }
+  el.innerHTML = h;
+}
+
+function decideGradeRequest(id, approve) {
+  var key = 'gradeReq_' + id;
+  var r = _cache[key];
+  if (!r || r.status !== 'pending') return;
+  if (approve) {
+    var gkey = 'grades_' + r.sheetKey;
+    var sheet = _cache[gkey] || {};
+    var cur = ((sheet[r.lrn] || {}).grades || {})[r.subject];
+    var msg = 'I-approve? Papalitan ang ' + r.subject + ' ni ' + r.name + ' (' + r.section + ', ' + String(r.term).replace('_', ' ') + ') mula ' + (cur !== undefined ? cur : 'wala') + ' papuntang ' + r.newGrade + '.';
+    if (!confirm(msg)) return;
+    if (!sheet[r.lrn]) sheet[r.lrn] = {name: r.name, grades: {}};
+    if (!sheet[r.lrn].grades) sheet[r.lrn].grades = {};
+    sheet[r.lrn].grades[r.subject] = r.newGrade;
+    saveData(gkey, sheet);
+    r.status = 'approved';
+    r.appliedFrom = (cur !== undefined ? cur : null);
+    toast('Approved — naitama na ang grade.', 'su');
+  } else {
+    var note = prompt('Dahilan ng pag-reject (makikita ng adviser):', '');
+    if (note === null) return;
+    r.status = 'rejected';
+    r.adminNote = note.trim();
+    toast('Request rejected.', 'su');
+  }
+  r.decidedAt = new Date().toISOString();
+  r.decidedBy = 'Admin';
+  saveData(key, r);
+  loadGradeLocks();
 }
