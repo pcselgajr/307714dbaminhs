@@ -1107,6 +1107,16 @@ function updateStudentStats(lrn, grade, releasedTerms, studentRelease) {
     if (count > 0) allAvgs.push(Math.round((total / count) * 10) / 10);
   });
 
+  // General Average: ipapakita lang kapag na-release na ang Term 3
+  var hasTerm3 = false;
+  releasedTerms.forEach(function(term) {
+    if (term !== 'Term_3') return;
+    var k = (grade || '').replace(/\s/g,'_') + '_' + term + '_' + lrn;
+    if (studentRelease[k] === false) return;
+    var d = loadData('grades_' + (grade || '').replace(/\s/g, '_') + '_' + term, {});
+    if (d[lrn] && d[lrn].grades) hasTerm3 = true;
+  });
+  if (!hasTerm3) allAvgs = [];
   var overallAvg = allAvgs.length > 0 ? Math.round(allAvgs.reduce(function(a,b){return a+b;},0) / allAvgs.length * 10) / 10 : '--';
 
   // Get attendance
@@ -2117,7 +2127,8 @@ function printConsolidatedSummary() {
     // Final grade: avg of all available grades across all terms
     var total=0, count=0;
     terms.forEach(function(t){ var g=(termData[t][lrn]||{}).grades||{}; allSubjects.forEach(function(s){ if(g[s]!==undefined){total+=g[s];count++;} }); });
-    var avg = count>0 ? Math.round((total/count)*10)/10 : null;
+    var term3Done = !!((termData['Term_3'][lrn] || {}).grades && Object.keys(termData['Term_3'][lrn].grades).length);
+    var avg = (term3Done && count>0) ? Math.round((total/count)*10)/10 : null;
     var passed = avg!==null && avg>=75;
     return '<tr><td style="padding:3px 6px;border:1px solid #ccc;font-size:10px;text-align:center">' + num + '</td>' +
       '<td style="padding:3px 6px;border:1px solid #ccc;font-size:10px">' + name + '</td>' + cells +
@@ -2142,7 +2153,7 @@ function printConsolidatedSummary() {
     '<th rowspan="2" style="padding:5px;border:1px solid #ccc">Final Grade</th>' +
     '<th rowspan="2" style="padding:5px;border:1px solid #ccc">Remarks</th></tr>' +
     '<tr>' + subHeaders + '</tr></thead><tbody>' + rows + '</tbody></table></div>' +
-    '<p style="font-size:10px;color:#888;margin-top:8px">— = not yet uploaded | Final Grade = average of all available grades across all terms | Passing: 75</p>' +
+    '<p style="font-size:10px;color:#888;margin-top:8px">— = not yet uploaded | Final Grade = average of all terms, ilalabas pagkatapos ng Term 3 | Passing: 75</p>' +
     '<div style="display:flex;justify-content:space-between;margin-top:30px">' +
     '<div style="text-align:center;width:200px"><hr style="border-top:1px solid #000">' + teacherName + '<br><small>Class Adviser</small></div>' +
     '<div style="text-align:center;width:200px"><hr style="border-top:1px solid #000">___________________<br><small>Principal</small></div>' +
@@ -2179,16 +2190,18 @@ function printConsolidatedPerLearner() {
 
   var pages = sortedLrns.map(function(lrn) {
     var name = (allLrns[lrn]||{}).name||lrn;
+    // Final Grade at General Average: lalabas lang kapag may Term 3 grades na ang learner
+    var term3Done = !!((termData['Term_3'][lrn] || {}).grades && Object.keys(termData['Term_3'][lrn].grades).length);
     var rows = allSubjects.map(function(s) {
       var cells = terms.map(function(t){ var v=((termData[t][lrn]||{}).grades||{})[s]; return '<td style="text-align:center;padding:4px 8px;border:1px solid #ccc">' + (v!==undefined?v:'—') + '</td>'; }).join('');
       var allVals = []; terms.forEach(function(t){ var v=((termData[t][lrn]||{}).grades||{})[s]; if(v!==undefined)allVals.push(v); });
-      var avg = allVals.length>0 ? Math.round(allVals.reduce(function(a,b){return a+b;},0)/allVals.length*10)/10 : null;
+      var avg = (term3Done && allVals.length>0) ? Math.round(allVals.reduce(function(a,b){return a+b;},0)/allVals.length*10)/10 : null;
       return '<tr><td style="text-align:left;padding:4px 8px;border:1px solid #ccc">' + s + '</td>' + cells +
         '<td style="text-align:center;padding:4px 8px;font-weight:700;border:1px solid #ccc;color:' + (avg!==null?(avg>=75?'#166534':'#991b1b'):'#666') + '">' + (avg!==null?avg:'—') + '</td></tr>';
     }).join('');
     // Overall final grade
     var total=0,count=0; terms.forEach(function(t){ var g=(termData[t][lrn]||{}).grades||{}; allSubjects.forEach(function(s){ if(g[s]!==undefined){total+=g[s];count++;} }); });
-    var finalAvg = count>0?Math.round((total/count)*10)/10:null;
+    var finalAvg = (term3Done && count>0)?Math.round((total/count)*10)/10:null;
     var passed = finalAvg!==null&&finalAvg>=75;
     var termHeaders = terms.map(function(t){ return '<th style="text-align:center;padding:5px;background:'+termColors[t]+';color:#fff;border:1px solid #ccc">' + t.replace('_',' ') + '</th>'; }).join('');
 
@@ -2209,9 +2222,9 @@ function printConsolidatedPerLearner() {
       '<th style="text-align:center;padding:5px;border:1px solid #ccc;background:#1B2A4A;color:#fff">Final Grade</th></tr></thead>' +
       '<tbody>' + rows +
       '<tr style="background:#f5f5f5"><td style="padding:5px 8px;font-weight:700;border:1px solid #ccc">GENERAL AVERAGE</td>' +
-      terms.map(function(t){ var g=(termData[t][lrn]||{}).grades||{}; var vals=allSubjects.filter(function(s){return g[s]!==undefined;}).map(function(s){return g[s];}); var a=vals.length>0?Math.round(vals.reduce(function(a,b){return a+b;},0)/vals.length*10)/10:null; return '<td style="text-align:center;font-weight:700;border:1px solid #ccc;color:'+(a!==null?(a>=75?'#166534':'#991b1b'):'#666')+'">'+(a!==null?a:'—')+'</td>'; }).join('') +
+      terms.map(function(){ return '<td style="text-align:center;border:1px solid #ccc;color:#999">&nbsp;</td>'; }).join('') +
       '<td style="text-align:center;font-weight:700;border:1px solid #ccc;color:' + (passed?'#166534':'#991b1b') + '">' + (finalAvg!==null?finalAvg:'—') + '</td></tr>' +
-      '<tr><td colspan="' + (terms.length+2) + '" style="text-align:center;padding:5px;border:1px solid #ccc;font-weight:700;color:' + (passed?'#166534':'#991b1b') + '">' + (finalAvg!==null?(passed?'PASSED':'FAILED'):'—') + '</td></tr>' +
+      '<tr><td colspan="' + (terms.length+2) + '" style="text-align:center;padding:5px;border:1px solid #ccc;font-weight:700;color:' + (passed?'#166534':'#991b1b') + '">' + (finalAvg!==null?(passed?'PASSED':'FAILED'):'<span style="font-weight:400;font-size:11px;color:#666">Ang Final Grade at General Average ay ilalabas pagkatapos ng Term 3.</span>') + '</td></tr>' +
       '</tbody></table>' +
       '<div style="display:flex;justify-content:space-between;margin-top:30px">' +
       '<div style="text-align:center;width:200px"><hr style="border-top:1px solid #000">' + teacherName + '<br><small>Class Adviser</small></div>' +
