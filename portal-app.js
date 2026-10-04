@@ -1064,6 +1064,68 @@ function loadStudentGrades() {
   });
 
   el.innerHTML = html || '<div style="padding:24px;text-align:center;color:var(--g5);font-size:14px">&#128274; No released grades found.</div>';
+
+  // Update student stats
+  updateStudentStats(lrn, grade, releasedTerms, studentRelease);
+}
+
+function updateStudentStats(lrn, grade, releasedTerms, studentRelease) {
+  var allAvgs = [];
+  var allSubjectCount = 0;
+  var visibleTerms = 0;
+
+  releasedTerms.forEach(function(term) {
+    var studentReleaseKey = (grade || '').replace(/\s/g,'_') + '_' + term + '_' + lrn;
+    if (studentRelease[studentReleaseKey] === false) return;
+
+    var key = 'grades_' + (grade || '').replace(/\s/g, '_') + '_' + term;
+    var data = loadData(key, {});
+    var record = data[lrn];
+    if (!record || !record.grades) return;
+
+    visibleTerms++;
+    var g = record.grades;
+    var subjects = Object.keys(g);
+    allSubjectCount = Math.max(allSubjectCount, subjects.length);
+    var total = 0, count = 0;
+    subjects.forEach(function(s) {
+      if (g[s] !== undefined) { total += g[s]; count++; }
+    });
+    if (count > 0) allAvgs.push(Math.round((total / count) * 10) / 10);
+  });
+
+  var overallAvg = allAvgs.length > 0 ? Math.round(allAvgs.reduce(function(a,b){return a+b;},0) / allAvgs.length * 10) / 10 : '--';
+
+  // Get attendance
+  var attKey = 'attendance_' + (grade || '').replace(/\s/g,'_');
+  var attData = loadData(attKey, {});
+  var att = attData[lrn];
+  var attRate = '--';
+  if (att && att.present !== undefined && att.totalDays) {
+    attRate = Math.round((att.present / att.totalDays) * 100) + '%';
+  } else if (att && att.rate) {
+    attRate = att.rate;
+  }
+
+  // Update Student Dashboard stats
+  var e1 = document.getElementById('sdStatAvg');
+  var e2 = document.getElementById('sdStatAtt');
+  var e3 = document.getElementById('sdStatSubjects');
+  var e4 = document.getElementById('sdStatTerms');
+  if (e1) e1.textContent = overallAvg;
+  if (e2) e2.textContent = attRate;
+  if (e3) e3.textContent = allSubjectCount;
+  if (e4) e4.textContent = visibleTerms;
+
+  // Update Parent Dashboard stats too
+  var p1 = document.getElementById('pdStatAvg');
+  var p2 = document.getElementById('pdStatAtt');
+  var p3 = document.getElementById('pdStatSubjects');
+  var p4 = document.getElementById('pdStatTerms');
+  if (p1) p1.textContent = overallAvg;
+  if (p2) p2.textContent = attRate;
+  if (p3) p3.textContent = allSubjectCount;
+  if (p4) p4.textContent = visibleTerms;
 }
 
 
