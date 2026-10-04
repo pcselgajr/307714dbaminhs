@@ -106,6 +106,7 @@ listenForChanges(function() {
   renderPortalContent();
   if (typeof updateGradeLockPanel === 'function') updateGradeLockPanel();
   if (typeof renderGradeRequestList === 'function') renderGradeRequestList();
+  if (curUser && curUser.type === 'student' && typeof loadStudentSchedule === 'function') loadStudentSchedule();
   if (typeof updateSYLabels === 'function') updateSYLabels();
     populateSectionDropdowns();
     renderCalendar();
@@ -1940,6 +1941,45 @@ function renderSchedGrid(records) {
   return h + '</tbody></table></div>';
 }
 
+function schedCsvCell(v) {
+  v = String(v == null ? '' : v);
+  return /[",\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+}
+
+// I-download ang naka-save na schedule bilang grid CSV (puwedeng i-edit at i-upload ulit)
+function downloadCurrentSchedule() {
+  var cls = document.getElementById('schedClass').value;
+  if (!cls) { toast('Pumili muna ng section.', 'er'); return; }
+  var data = loadData('schedule_' + cls.replace(/\s/g, '_'), []);
+  if (!data || !data.length) { toast('Wala pang naka-save na schedule para sa ' + cls + '.', 'er'); return; }
+  var abbr = {Monday:'MON',Tuesday:'TUE',Wednesday:'WED',Thursday:'THU',Friday:'FRI',Saturday:'SAT'};
+  var days = SCHED_DAYS.filter(function(d) { return d !== 'Saturday' || data.some(function(r) { return r.day === d; }); });
+  var times = [];
+  data.forEach(function(r) { if (times.indexOf(r.time) === -1) times.push(r.time); });
+  var csv = 'Time,' + days.map(function(d) { return abbr[d]; }).join(',') + '\n';
+  times.forEach(function(t) {
+    var row = [schedCsvCell(t)];
+    days.forEach(function(d) {
+      var e = data.filter(function(r) { return r.day === d && r.time === t; })[0];
+      row.push(e ? schedCsvCell([e.subject, e.teacher, e.room].filter(function(x) { return x; }).join(' / ')) : '');
+    });
+    csv += row.join(',') + '\n';
+  });
+  var blob = new Blob(['\uFEFF' + csv], {type: 'text/csv;charset=utf-8'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'schedule_' + cls.replace(/\s/g, '_') + '_current.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+  showSchedStatus('Na-download ang kasalukuyang schedule. I-edit ito, tapos i-upload ulit para palitan.', 'success');
+}
+
+function formatSchedUpdated(iso) {
+  if (!iso) return '';
+  try { return new Date(iso).toLocaleString('en-PH', {dateStyle: 'medium', timeStyle: 'short'}); } catch (e) { return ''; }
+}
+
 function saveSchedule() {
   if (!window._pendingSched || !window._pendingSchedClass) {
     toast('No schedule to save.', 'er');
@@ -1949,8 +1989,13 @@ function saveSchedule() {
   var cls = window._pendingSchedClass;
   var records = window._pendingSched;
   var key = 'schedule_' + cls.replace(/\s/g, '_');
+  var existing = loadData(key, []);
+  if (existing && existing.length && !confirm('May naka-save nang schedule ang ' + cls + ' (' + existing.length + ' entries).\n\nPapalitan ito ng bagong schedule (' + records.length + ' entries)?')) return;
   
   saveData(key, records);
+  var meta = loadData('scheduleMeta', {}) || {};
+  meta[cls.replace(/\s/g, '_')] = {updatedAt: new Date().toISOString(), by: curUser ? (curUser.fname + ' ' + curUser.lname) : ''};
+  saveData('scheduleMeta', meta);
   
   window._pendingSched = null;
   window._pendingSchedClass = null;
@@ -1979,7 +2024,10 @@ function updateSchedView() {
     el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--g5);font-size:14px">No schedule uploaded yet.</div>';
     return;
   }
-  el.innerHTML = '<h4 style="font-size:15px;margin-bottom:12px">&#128197; Saved Schedule &mdash; ' + schedEsc(cls) + '</h4>' + renderSchedGrid(data);
+  var m = (loadData('scheduleMeta', {}) || {})[cls.replace(/\s/g, '_')];
+  el.innerHTML = '<h4 style="font-size:15px;margin-bottom:4px">&#128197; Saved Schedule &mdash; ' + schedEsc(cls) + '</h4>' +
+    (m && m.updatedAt ? '<div style="font-size:12px;color:var(--g5);margin-bottom:12px">Huling na-update: ' + formatSchedUpdated(m.updatedAt) + (m.by ? ' ni ' + schedEsc(m.by) : '') + '</div>' : '<div style="margin-bottom:8px"></div>') +
+    renderSchedGrid(data);
 }
 
 function showSchedStatus(msg, type) {
@@ -2015,6 +2063,13 @@ function loadStudentSchedule() {
   var dayColors = {Monday:'#e8733a',Tuesday:'#0891b2',Wednesday:'#7c3aed',Thursday:'#059669',Friday:'#dc2626',Saturday:'#6b7280'};
   
   var html = '<h3>&#128197; Class Schedule</h3>';
+  var sm = (loadData('scheduleMeta', {}) || {})[grade.replace(/\s/g, '_')];
+  if (sm && sm.updatedAt) {
+    var isNew = (Date.now() - new Date(sm.updatedAt).getTime()) < 7 * 24 * 3600 * 1000;
+    html += '<div style="font-size:12px;color:var(--g5);margin:-4px 0 14px">' +
+      (isNew ? '<span style="background:#FEF3C7;color:#92400E;font-weight:700;padding:2px 8px;border-radius:10px;margin-right:6px">&#127381; Bagong update</span>' : '') +
+      'Huling na-update: ' + formatSchedUpdated(sm.updatedAt) + '</div>';
+  }
   
   days.forEach(function(day) {
     var entries = data.filter(function(r) { return r.day === day; });

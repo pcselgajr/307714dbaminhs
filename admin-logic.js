@@ -1175,7 +1175,7 @@ function exportBackup() {
   var backupKeys = [
     'students', 'teachers', 'accounts', 'pending', 'settings',
     'news', 'events', 'resources', 'quizzes', 'passwordResetRequests',
-    'dtr_employees', 'dtr_settings', 'dtr_staff', 'gradeLock', 'gradeRelease'
+    'dtr_employees', 'dtr_settings', 'dtr_staff', 'gradeLock', 'gradeRelease', 'scheduleMeta'
   ];
 
   // Also include all grades_, attendance_, schedule_ documents
