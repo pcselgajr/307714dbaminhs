@@ -642,6 +642,9 @@ function handleCSVUpload(event) {
       var lrn = row[0].trim().replace(/^="?|"?=?"$/g, '').replace(/^"+|"+$/g, '').trim();
       if (/\d+\.?\d*[Ee][+\-]\d+/.test(lrn)) { lrn = Math.round(parseFloat(lrn)).toString(); }
       if (lrn.indexOf('---') === 0) continue; // skip gender separator rows
+      var name = row[1] ? fromLastFirst(row[1].trim()) : '';
+      var grades = {};
+      var hasError = false;
       
       for (var j = 2; j < header.length && j < row.length; j++) {
         var val = row[j] ? row[j].trim() : '';
