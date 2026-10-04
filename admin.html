@@ -338,6 +338,22 @@ tr:hover td{background:var(--cr)}
 <div id="dtrLocStatus" style="margin-top:8px;font-size:12px;color:var(--g5)"></div>
 <div style="margin-top:8px;font-size:12px;color:var(--g5)">&#9432; Tip: Puwedeng kopyahin ang coordinates sa Google Maps (i-right-click ang lugar, tapos i-click ang numero para ma-copy). Puwede ring i-paste dito ang buong &quot;13.86327, 121.07819&quot; sa Latitude field.</div>
 </div>
+<div style="margin-bottom:20px;padding:16px;background:var(--g1);border-radius:10px;border:1px solid var(--g2)">
+<h4 style="font-size:14px;margin-bottom:8px">&#128101; Sino ang puwedeng mag-DTR</h4>
+<p style="font-size:13px;color:var(--g5);margin-bottom:10px">Ang mga teacher sa <strong>Teachers Directory</strong> ay awtomatikong puwede. Idagdag dito ang <strong>non-teaching staff</strong> (guard, utility, admin staff) na gumagamit din ng DTR.</p>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;align-items:end">
+<div class="fg" style="margin-bottom:0"><label>Employee ID</label><input id="staffEid" placeholder="e.g. NT-001"></div>
+<div class="fg" style="margin-bottom:0"><label>Full Name</label><input id="staffName" placeholder="Juan Dela Cruz"></div>
+<div class="fg" style="margin-bottom:0"><label>Position</label><input id="staffPos" placeholder="Security Guard"></div>
+<button class="btn btn-p" type="button" onclick="addDTRStaff()">+ Add Staff</button>
+</div>
+<div id="dtrStaffList" style="margin-top:12px"></div>
+</div>
+<div style="margin-bottom:20px;padding:16px;background:var(--g1);border-radius:10px;border:1px solid var(--g2)">
+<h4 style="font-size:14px;margin-bottom:8px">&#128273; DTR Accounts &amp; PIN</h4>
+<p style="font-size:13px;color:var(--g5);margin-bottom:10px">Lahat ng nakapag-login na sa DTR. Ang <strong>Reset PIN</strong> ay ibabalik sa 1234, at kailangan nilang gumawa ng bagong PIN sa susunod na login.</p>
+<div id="dtrAccountList"></div>
+</div>
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
 <div style="background:var(--g1);border-radius:12px;padding:20px;text-align:center;border:1px solid var(--g2)">
 <h4 style="font-size:13px;color:var(--g5);margin-bottom:8px">Today's QR Code</h4>

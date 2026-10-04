@@ -55,7 +55,16 @@ body{font-family:var(--fb);background:var(--g1);min-height:100vh;color:var(--g9)
 <div class="fg"><label>Employee ID</label><input id="dtrEid" placeholder="e.g. T-2024-001"></div>
 <div class="fg"><label>PIN Code</label><input id="dtrPin" type="password" placeholder="4-digit PIN" maxlength="6"></div>
 <button class="btn btn-p" onclick="dtrLogin()">Login &#10148;</button>
-<p style="text-align:center;margin-top:12px;font-size:12px;color:var(--g5)">First time? Use your Employee ID and default PIN: 1234</p>
+<p style="text-align:center;margin-top:12px;font-size:12px;color:var(--g5)">Unang login? Gamitin ang Employee ID mo at default PIN na 1234. Kailangang nakarehistro sa school ang Employee ID mo.</p>
+</div>
+
+<div id="dtrPinChange" class="card hidden">
+<h2>&#128274; Palitan muna ang PIN</h2>
+<p style="font-size:14px;color:var(--g5);margin-bottom:14px" id="pinChangeMsg">Para sa seguridad, kailangan mong gumawa ng sariling PIN bago makapag-Time In.</p>
+<div class="fg"><label>Bagong PIN (4&ndash;6 na numero)</label><input id="forcePin1" type="password" inputmode="numeric" maxlength="6" placeholder="Bagong PIN"></div>
+<div class="fg"><label>Ulitin ang PIN</label><input id="forcePin2" type="password" inputmode="numeric" maxlength="6" placeholder="Ulitin ang PIN"></div>
+<button class="btn btn-p" onclick="submitForcedPin()">I-save ang PIN &#10148;</button>
+<button class="btn btn-s" style="margin-top:8px" onclick="dtrLogout()">Cancel</button>
 </div>
 
 <div id="dtrMain" class="hidden">
@@ -171,32 +180,89 @@ function setupDTRMode() {
   }
 }
 
+// Hinahanap ang employee sa Teachers Directory o sa Non-teaching Staff list ng Admin
+function findAllowedEmployee(eid) {
+  var key = String(eid).trim().toLowerCase();
+  var teachers = loadData('teachers', []) || [];
+  for (var i = 0; i < teachers.length; i++) {
+    if (String(teachers[i].eid || '').trim().toLowerCase() === key) return {id: String(teachers[i].eid).trim(), name: teachers[i].name, type: 'teacher'};
+  }
+  var staff = loadData('dtr_staff', []) || [];
+  for (var j = 0; j < staff.length; j++) {
+    if (String(staff[j].eid || '').trim().toLowerCase() === key) return {id: String(staff[j].eid).trim(), name: staff[j].name, type: 'staff'};
+  }
+  return null;
+}
+
+function isWeakPin(pin) {
+  return ['1234','0000','1111','2222','3333','4444','5555','6666','7777','8888','9999','123456','12345','4321'].indexOf(pin) > -1;
+}
+
 function dtrLogin() {
-  var eid = document.getElementById('dtrEid').value.trim();
+  var eidInput = document.getElementById('dtrEid').value.trim();
   var pin = document.getElementById('dtrPin').value.trim();
-  if (!eid) { alert('Enter Employee ID'); return; }
+  if (!eidInput) { alert('Ilagay ang Employee ID'); return; }
+  if (!pin) { alert('Ilagay ang PIN'); return; }
   loadAllFromFirebase(function() {
-    var employees = loadData('dtr_employees', {});
-    var emp = employees[eid];
-    var teacherName = findTeacherName(eid) || eid;
-    if (!emp) {
-      if (pin === '1234' || pin === '') {
-        employees[eid] = {name: teacherName, pin: '1234', registered: new Date().toISOString()};
-        saveData('dtr_employees', employees);
-        currentEmployee = {id: eid, name: teacherName};
-        showDTR();
-        setupDTRMode();
-        showStatus('Welcome, ' + teacherName + '! Please change your default PIN in Settings.', 'info');
-        return;
-      }
-      alert('Employee not found. Use default PIN 1234 for first login.');
+    var person = findAllowedEmployee(eidInput);
+    if (!person) {
+      alert('Hindi kilalang Employee ID: ' + eidInput + '\n\nKailangang nakarehistro ka sa school (Teachers Directory o Staff list). Makipag-ugnayan sa DTR admin.');
       return;
     }
-    if (teacherName !== eid) { emp.name = teacherName; employees[eid] = emp; saveData('dtr_employees', employees); }
-    if (emp.pin && emp.pin !== pin) { alert('Incorrect PIN'); return; }
-    currentEmployee = {id: eid, name: emp.name || teacherName};
+    var eid = person.id;
+    var employees = loadData('dtr_employees', {});
+    var emp = employees[eid];
+    if (!emp) {
+      // Unang login: default PIN 1234 lang ang tinatanggap
+      if (pin !== '1234') { alert('Unang login mo ito. Gamitin ang default PIN na 1234.'); return; }
+      emp = {name: person.name, pin: '1234', mustChangePin: true, registered: new Date().toISOString()};
+      employees[eid] = emp;
+      saveData('dtr_employees', employees);
+    } else {
+      var savedPin = emp.pin || '1234';
+      if (savedPin !== pin) { alert('Mali ang PIN'); return; }
+      if (person.name && emp.name !== person.name) { emp.name = person.name; employees[eid] = emp; saveData('dtr_employees', employees); }
+    }
+    currentEmployee = {id: eid, name: person.name || emp.name || eid};
+    document.getElementById('dtrPin').value = '';
+    if (emp.mustChangePin || (emp.pin || '1234') === '1234') {
+      currentEmployee.mustChangePin = true;
+      showPinChange();
+      return;
+    }
     showDTR();
     setupDTRMode();
+  });
+}
+
+function showPinChange() {
+  document.getElementById('dtrLogin').classList.add('hidden');
+  document.getElementById('dtrMain').classList.add('hidden');
+  document.getElementById('dtrPinChange').classList.remove('hidden');
+  document.getElementById('pinChangeMsg').innerHTML = 'Hi, <strong>' + String(currentEmployee.name).replace(/[<>&]/g, '') + '</strong>! Para sa seguridad, gumawa muna ng sariling PIN bago makapag-Time In.';
+  document.getElementById('forcePin1').value = '';
+  document.getElementById('forcePin2').value = '';
+}
+
+function submitForcedPin() {
+  var p1 = document.getElementById('forcePin1').value.trim();
+  var p2 = document.getElementById('forcePin2').value.trim();
+  if (!/^[0-9]{4,6}$/.test(p1)) { alert('Ang PIN ay dapat 4 hanggang 6 na numero.'); return; }
+  if (isWeakPin(p1)) { alert('Masyadong madaling hulaan ang PIN na iyan. Pumili ng iba.'); return; }
+  if (p1 !== p2) { alert('Hindi magkatugma ang PIN.'); return; }
+  loadAllFromFirebase(function() {
+    var employees = loadData('dtr_employees', {});
+    var emp = employees[currentEmployee.id] || {name: currentEmployee.name, registered: new Date().toISOString()};
+    emp.pin = p1;
+    emp.mustChangePin = false;
+    emp.pinChanged = new Date().toISOString();
+    employees[currentEmployee.id] = emp;
+    saveData('dtr_employees', employees);
+    currentEmployee.mustChangePin = false;
+    document.getElementById('dtrPinChange').classList.add('hidden');
+    showDTR();
+    setupDTRMode();
+    showStatus('PIN saved! Puwede ka nang mag-Time In.', 'success');
   });
 }
 
@@ -256,6 +322,7 @@ function showDTR() {
 function dtrLogout() {
   currentEmployee = null;
   document.getElementById('dtrMain').classList.add('hidden');
+  var pc = document.getElementById('dtrPinChange'); if (pc) pc.classList.add('hidden');
   document.getElementById('dtrLogin').classList.remove('hidden');
   document.getElementById('dtrEid').value = '';
   document.getElementById('dtrPin').value = '';
@@ -387,6 +454,7 @@ function simpleTimeIn() {
 }
 
 function recordTime(location) {
+  if (!currentEmployee || currentEmployee.mustChangePin) { showStatus('Palitan muna ang PIN bago mag-Time In.', 'error'); return; }
   var key = 'dtr_' + getTodayKey();
   loadAllFromFirebase(function() {
     var records = loadData(key, {});
@@ -475,13 +543,16 @@ function loadHistory() {
 }
 
 function changePin() {
-  var np = document.getElementById('newPin').value;
-  var cp = document.getElementById('confirmPin').value;
-  if (!np || np.length < 4) { alert('PIN must be at least 4 digits'); return; }
-  if (np !== cp) { alert('PINs do not match'); return; }
+  var np = document.getElementById('newPin').value.trim();
+  var cp = document.getElementById('confirmPin').value.trim();
+  if (!/^[0-9]{4,6}$/.test(np)) { alert('Ang PIN ay dapat 4 hanggang 6 na numero.'); return; }
+  if (isWeakPin(np)) { alert('Masyadong madaling hulaan ang PIN na iyan. Pumili ng iba.'); return; }
+  if (np !== cp) { alert('Hindi magkatugma ang PIN.'); return; }
   var employees = loadData('dtr_employees', {});
   if (employees[currentEmployee.id]) {
     employees[currentEmployee.id].pin = np;
+    employees[currentEmployee.id].mustChangePin = false;
+    employees[currentEmployee.id].pinChanged = new Date().toISOString();
     saveData('dtr_employees', employees);
     document.getElementById('newPin').value = '';
     document.getElementById('confirmPin').value = '';

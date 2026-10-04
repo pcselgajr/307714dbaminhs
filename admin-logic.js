@@ -1333,6 +1333,7 @@ function loadDTRDashboard() {
   loadDTRMode();
   loadDTRSchedule();
   loadDTRLocation();
+  loadDTRAccess();
 }
 
 function loadDTRRecords() {
@@ -2051,4 +2052,119 @@ function viewDTRLocationMap() {
   var lat = document.getElementById('dtrLat').value, lng = document.getElementById('dtrLng').value;
   if (!lat || !lng) { toast('Walang coordinates', 'er'); return; }
   window.open('https://www.google.com/maps?q=' + encodeURIComponent(lat + ',' + lng), '_blank');
+}
+
+// ============================================
+// DTR ACCESS: Non-teaching staff + PIN reset
+// ============================================
+function dtrEsc(v) {
+  return String(v == null ? '' : v).replace(/[&<>"']/g, function(c) {
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+
+function findDTRPerson(eid) {
+  var key = String(eid).trim().toLowerCase();
+  var teachers = loadData('teachers', []) || [];
+  for (var i = 0; i < teachers.length; i++) {
+    if (String(teachers[i].eid || '').trim().toLowerCase() === key) return {name: teachers[i].name, type: 'Teacher'};
+  }
+  var staff = loadData('dtr_staff', []) || [];
+  for (var j = 0; j < staff.length; j++) {
+    if (String(staff[j].eid || '').trim().toLowerCase() === key) return {name: staff[j].name, type: 'Staff'};
+  }
+  return null;
+}
+
+function loadDTRAccess() {
+  var staffEl = document.getElementById('dtrStaffList');
+  var accEl = document.getElementById('dtrAccountList');
+  var th = 'text-align:left;padding:8px;border-bottom:1px solid var(--g2);font-size:12px;color:var(--g5)';
+  var td = 'padding:8px;border-bottom:1px solid var(--g2);font-size:13px';
+
+  if (staffEl) {
+    var staff = loadData('dtr_staff', []) || [];
+    if (!staff.length) {
+      staffEl.innerHTML = '<div style="font-size:13px;color:var(--g5)">Wala pang naidagdag na non-teaching staff.</div>';
+    } else {
+      var h = '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;background:var(--w);border-radius:8px"><thead><tr><th style="' + th + '">Employee ID</th><th style="' + th + '">Name</th><th style="' + th + '">Position</th><th style="' + th + '"></th></tr></thead><tbody>';
+      staff.forEach(function(x, i) {
+        h += '<tr><td style="' + td + '">' + dtrEsc(x.eid) + '</td><td style="' + td + '">' + dtrEsc(x.name) + '</td><td style="' + td + '">' + dtrEsc(x.pos) + '</td>' +
+             '<td style="' + td + ';text-align:right"><button class="btn btn-s" style="padding:6px 12px;font-size:12px" onclick="removeDTRStaff(' + i + ')">Remove</button></td></tr>';
+      });
+      staffEl.innerHTML = h + '</tbody></table></div>';
+    }
+  }
+
+  if (accEl) {
+    var employees = loadData('dtr_employees', {}) || {};
+    var ids = Object.keys(employees).sort();
+    if (!ids.length) {
+      accEl.innerHTML = '<div style="font-size:13px;color:var(--g5)">Wala pang nakapag-login sa DTR.</div>';
+      return;
+    }
+    var h2 = '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;background:var(--w);border-radius:8px"><thead><tr><th style="' + th + '">Employee ID</th><th style="' + th + '">Name</th><th style="' + th + '">Uri</th><th style="' + th + '">PIN</th><th style="' + th + '"></th></tr></thead><tbody>';
+    ids.forEach(function(eid) {
+      var e = employees[eid] || {};
+      var person = findDTRPerson(eid);
+      var typeLabel = person ? person.type : '<span style="color:#b91c1c;font-weight:600">Hindi kilala</span>';
+      var isDefault = e.mustChangePin || !e.pin || e.pin === '1234';
+      var pinLabel = isDefault ? '<span style="color:#b45309;font-weight:600">Default (1234)</span>' : '<span style="color:#15803d;font-weight:600">Sariling PIN</span>';
+      h2 += '<tr><td style="' + td + '">' + dtrEsc(eid) + '</td><td style="' + td + '">' + dtrEsc((person && person.name) || e.name || '') + '</td><td style="' + td + '">' + typeLabel + '</td><td style="' + td + '">' + pinLabel + '</td>' +
+            '<td style="' + td + ';text-align:right;white-space:nowrap">' +
+            '<button class="btn btn-s" style="padding:6px 12px;font-size:12px" data-eid="' + dtrEsc(eid) + '" onclick="resetDTRPin(this.getAttribute(\'data-eid\'))">Reset PIN</button>' +
+            (person ? '' : ' <button class="btn btn-s" style="padding:6px 12px;font-size:12px;color:#b91c1c" data-eid="' + dtrEsc(eid) + '" onclick="removeDTRAccount(this.getAttribute(\'data-eid\'))">Remove</button>') +
+            '</td></tr>';
+    });
+    accEl.innerHTML = h2 + '</tbody></table></div>' +
+      '<div style="font-size:12px;color:var(--g5);margin-top:8px">&#9432; Ang &quot;Hindi kilala&quot; ay mga ID na wala sa Teachers Directory o Staff list. Hindi na sila makakapag-login hangga&#39;t hindi naidadagdag.</div>';
+  }
+}
+
+function addDTRStaff() {
+  var eid = document.getElementById('staffEid').value.trim();
+  var name = document.getElementById('staffName').value.trim();
+  var pos = document.getElementById('staffPos').value.trim();
+  if (!eid || !name) { toast('Ilagay ang Employee ID at Name', 'er'); return; }
+  if (findDTRPerson(eid)) { toast('Nakarehistro na ang Employee ID na ito', 'er'); return; }
+  var staff = loadData('dtr_staff', []) || [];
+  staff.push({eid: eid, name: name, pos: pos, added: new Date().toISOString()});
+  saveData('dtr_staff', staff);
+  document.getElementById('staffEid').value = '';
+  document.getElementById('staffName').value = '';
+  document.getElementById('staffPos').value = '';
+  loadDTRAccess();
+  toast('Staff added: ' + name, 'su');
+}
+
+function removeDTRStaff(i) {
+  var staff = loadData('dtr_staff', []) || [];
+  if (!staff[i]) return;
+  if (!confirm('Tanggalin si ' + staff[i].name + ' sa DTR staff list? Hindi na siya makakapag-login sa DTR.')) return;
+  staff.splice(i, 1);
+  saveData('dtr_staff', staff);
+  loadDTRAccess();
+  toast('Staff removed', 'su');
+}
+
+function resetDTRPin(eid) {
+  var employees = loadData('dtr_employees', {}) || {};
+  if (!employees[eid]) return;
+  if (!confirm('I-reset ang PIN ng ' + (employees[eid].name || eid) + ' sa 1234? Kailangan niyang gumawa ng bagong PIN sa susunod na login.')) return;
+  employees[eid].pin = '1234';
+  employees[eid].mustChangePin = true;
+  employees[eid].pinReset = new Date().toISOString();
+  saveData('dtr_employees', employees);
+  loadDTRAccess();
+  toast('PIN reset to 1234', 'su');
+}
+
+function removeDTRAccount(eid) {
+  var employees = loadData('dtr_employees', {}) || {};
+  if (!employees[eid]) return;
+  if (!confirm('Burahin ang DTR account na ' + eid + '? (Mananatili ang mga lumang DTR records.)')) return;
+  delete employees[eid];
+  saveData('dtr_employees', employees);
+  loadDTRAccess();
+  toast('Account removed', 'su');
 }
