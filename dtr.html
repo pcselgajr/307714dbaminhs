@@ -298,19 +298,39 @@ function getSchoolLocation() {
 
 function checkGPS() {
   return new Promise(function(resolve, reject) {
-    if (!navigator.geolocation) { reject('GPS not supported'); return; }
-    navigator.geolocation.getCurrentPosition(
-      function(pos) {
-        var loc = getSchoolLocation();
-        var dist = getDistance(pos.coords.latitude, pos.coords.longitude, loc.lat, loc.lng);
-        // Isinasama ang GPS accuracy (max 50m) para hindi ma-reject dahil lang sa mahinang signal
-        var allowance = Math.min(pos.coords.accuracy || 0, 50);
-        if (dist <= loc.radius + allowance) resolve({lat: pos.coords.latitude, lng: pos.coords.longitude, distance: Math.round(dist)});
-        else reject('You are ' + Math.round(dist) + 'm away from school. Must be within ' + loc.radius + 'm.');
-      },
-      function() { reject('GPS error: Enable location services.'); },
-      {enableHighAccuracy: true, timeout: 10000}
-    );
+    if (!window.isSecureContext) { reject('GPS error: Kailangang naka-HTTPS ang site (https://dbaminhs.org).'); return; }
+    if (!navigator.geolocation) { reject('GPS error: Hindi suportado ng browser na ito ang GPS. Gamitin ang Chrome o Safari.'); return; }
+
+    function onSuccess(pos) {
+      var loc = getSchoolLocation();
+      var dist = getDistance(pos.coords.latitude, pos.coords.longitude, loc.lat, loc.lng);
+      // Isinasama ang GPS accuracy (max 50m) para hindi ma-reject dahil lang sa mahinang signal
+      var allowance = Math.min(pos.coords.accuracy || 0, 50);
+      if (dist <= loc.radius + allowance) resolve({lat: pos.coords.latitude, lng: pos.coords.longitude, distance: Math.round(dist)});
+      else reject('You are ' + Math.round(dist) + 'm away from school. Must be within ' + loc.radius + 'm.');
+    }
+
+    function explain(err) {
+      var inApp = /FBAN|FBAV|Messenger|Instagram|Line\/|GSA\//i.test(navigator.userAgent);
+      if (err && err.code === 1) {
+        return 'GPS error: Naka-block ang location permission. I-tap ang icon sa tabi ng address bar &rarr; Permissions/Site settings &rarr; Location &rarr; Allow, tapos i-refresh.' +
+          (inApp ? '<br>Mukhang nakabukas ito sa loob ng app (Messenger/Facebook/Google). Buksan sa <strong>Chrome</strong> o <strong>Safari</strong>.' : '');
+      }
+      if (err && err.code === 2) return 'GPS error: Hindi makuha ang location. I-ON ang <strong>Location/GPS</strong> ng phone (sa notification panel), tapos subukan ulit.';
+      if (err && err.code === 3) return 'GPS error: Natagalan ang pagkuha ng location. Lumapit sa bintana o lumabas sandali, tapos subukan ulit.';
+      return 'GPS error: Enable location services.';
+    }
+
+    showStatus('Kinukuha ang GPS location... (hanggang 20 segundo)', 'info');
+    // Unang subok: high accuracy. Kapag nag-timeout o unavailable, subukan ulit gamit ang mas mabilis na low accuracy.
+    navigator.geolocation.getCurrentPosition(onSuccess, function(err) {
+      console.warn('GPS high-accuracy failed:', err && err.code, err && err.message);
+      if (err && err.code === 1) { reject(explain(err)); return; }
+      navigator.geolocation.getCurrentPosition(onSuccess, function(err2) {
+        console.warn('GPS low-accuracy failed:', err2 && err2.code, err2 && err2.message);
+        reject(explain(err2));
+      }, {enableHighAccuracy: false, timeout: 15000, maximumAge: 120000});
+    }, {enableHighAccuracy: true, timeout: 20000, maximumAge: 30000});
   });
 }
 
