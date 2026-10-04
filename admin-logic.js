@@ -1332,6 +1332,7 @@ function loadDTRDashboard() {
   loadDTRRecords();
   loadDTRMode();
   loadDTRSchedule();
+  loadDTRLocation();
 }
 
 function loadDTRRecords() {
@@ -1987,4 +1988,67 @@ function printEmployeeDTR() {
   w.document.write('</body></html>');
   w.document.close();
   setTimeout(function() { w.print(); }, 500);
+}
+
+// ============================================
+// DTR SCHOOL LOCATION (GPS) - manual setting
+// ============================================
+var DTR_DEFAULT_LOC = {lat: 13.86327, lng: 121.07819, radius: 200};
+
+function loadDTRLocation() {
+  var st = loadData('dtr_settings', {mode:'qr+gps', radius:200});
+  var lat = (st.lat !== undefined && st.lat !== '') ? st.lat : DTR_DEFAULT_LOC.lat;
+  var lng = (st.lng !== undefined && st.lng !== '') ? st.lng : DTR_DEFAULT_LOC.lng;
+  var rad = st.radius || DTR_DEFAULT_LOC.radius;
+  var a = document.getElementById('dtrLat'), b = document.getElementById('dtrLng'), c = document.getElementById('dtrRadius');
+  if (a && document.activeElement !== a) a.value = lat;
+  if (b && document.activeElement !== b) b.value = lng;
+  if (c && document.activeElement !== c) c.value = rad;
+  var stEl = document.getElementById('dtrLocStatus');
+  if (stEl) stEl.innerHTML = 'Kasalukuyang setting: <strong>' + lat + ', ' + lng + '</strong> &middot; radius <strong>' + rad + 'm</strong>' + ((st.lat === undefined) ? ' (default)' : '');
+}
+
+function saveDTRLocation() {
+  var latEl = document.getElementById('dtrLat');
+  var raw = String(latEl.value || '').trim();
+  var lat, lng;
+  // Payagan ang pag-paste ng "lat, lng" sa iisang field
+  if (raw.indexOf(',') > -1) {
+    var parts = raw.split(',');
+    lat = parseFloat(parts[0]); lng = parseFloat(parts[1]);
+  } else {
+    lat = parseFloat(raw);
+    lng = parseFloat(document.getElementById('dtrLng').value);
+  }
+  var rad = parseInt(document.getElementById('dtrRadius').value, 10);
+  if (isNaN(lat) || lat < -90 || lat > 90) { toast('Mali ang Latitude', 'er'); return; }
+  if (isNaN(lng) || lng < -180 || lng > 180) { toast('Mali ang Longitude', 'er'); return; }
+  if (isNaN(rad) || rad < 20 || rad > 5000) { toast('Radius dapat 20 - 5000 meters', 'er'); return; }
+  var st = loadData('dtr_settings', {mode:'qr+gps', radius:200});
+  st.lat = Math.round(lat * 1e6) / 1e6;
+  st.lng = Math.round(lng * 1e6) / 1e6;
+  st.radius = rad;
+  saveData('dtr_settings', st);
+  loadDTRLocation();
+  toast('School location saved!', 'su');
+}
+
+function useCurrentLocationDTR() {
+  var stEl = document.getElementById('dtrLocStatus');
+  if (!navigator.geolocation) { toast('GPS not supported sa device na ito', 'er'); return; }
+  if (stEl) stEl.textContent = 'Kinukuha ang location... (payagan ang location permission)';
+  navigator.geolocation.getCurrentPosition(function(pos) {
+    document.getElementById('dtrLat').value = pos.coords.latitude.toFixed(6);
+    document.getElementById('dtrLng').value = pos.coords.longitude.toFixed(6);
+    if (stEl) stEl.innerHTML = '&#9989; Nakuha! Accuracy: ~' + Math.round(pos.coords.accuracy) + 'm. I-click ang <strong>Save Location</strong> para i-save.' +
+      (pos.coords.accuracy > 50 ? ' <span style="color:#c62828">(Mababa ang accuracy &mdash; subukan sa labas o gamit ang phone)</span>' : '');
+  }, function(err) {
+    if (stEl) stEl.textContent = 'Hindi makuha ang location: ' + (err.message || 'permission denied');
+  }, {enableHighAccuracy: true, timeout: 15000, maximumAge: 0});
+}
+
+function viewDTRLocationMap() {
+  var lat = document.getElementById('dtrLat').value, lng = document.getElementById('dtrLng').value;
+  if (!lat || !lng) { toast('Walang coordinates', 'er'); return; }
+  window.open('https://www.google.com/maps?q=' + encodeURIComponent(lat + ',' + lng), '_blank');
 }

@@ -322,6 +322,22 @@ tr:hover td{background:var(--cr)}
 <span>&#9432; Employee is <strong>LATE</strong> if Time In is after the Start time. <strong>UNDERTIME</strong> if Time Out is before End time.</span>
 </div>
 </div>
+<div style="margin-bottom:20px;padding:16px;background:var(--g1);border-radius:10px;border:1px solid var(--g2)">
+<h4 style="font-size:14px;margin-bottom:8px">&#128205; School Location (GPS)</h4>
+<p style="font-size:13px;color:var(--g5);margin-bottom:10px">Ito ang gitna ng school na gagamitin sa GPS check. Dapat nasa loob ng radius ang employee para makapag-Time In/Out.</p>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px">
+<div class="fg" style="margin-bottom:0"><label>Latitude</label><input type="number" step="any" id="dtrLat" placeholder="13.86327"></div>
+<div class="fg" style="margin-bottom:0"><label>Longitude</label><input type="number" step="any" id="dtrLng" placeholder="121.07819"></div>
+<div class="fg" style="margin-bottom:0"><label>Radius (meters)</label><input type="number" min="20" max="5000" step="10" id="dtrRadius" placeholder="200"></div>
+</div>
+<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px">
+<button class="btn btn-p" type="button" onclick="saveDTRLocation()">&#128190; Save Location</button>
+<button class="btn btn-s" type="button" onclick="useCurrentLocationDTR()">&#128225; Gamitin ang Current Location ko</button>
+<button class="btn btn-s" type="button" onclick="viewDTRLocationMap()">&#128506; Tingnan sa Map</button>
+</div>
+<div id="dtrLocStatus" style="margin-top:8px;font-size:12px;color:var(--g5)"></div>
+<div style="margin-top:8px;font-size:12px;color:var(--g5)">&#9432; Tip: Puwedeng kopyahin ang coordinates sa Google Maps (i-right-click ang lugar, tapos i-click ang numero para ma-copy). Puwede ring i-paste dito ang buong &quot;13.86327, 121.07819&quot; sa Latitude field.</div>
+</div>
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
 <div style="background:var(--g1);border-radius:12px;padding:20px;text-align:center;border:1px solid var(--g2)">
 <h4 style="font-size:13px;color:var(--g5);margin-bottom:8px">Today's QR Code</h4>

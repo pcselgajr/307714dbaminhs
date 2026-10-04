@@ -285,14 +285,28 @@ function loadTodayRecord() {
   el.innerHTML = html;
 }
 
+// Kinukuha ang school location mula sa Admin > DTR > School Location (GPS); fallback sa default
+function getSchoolLocation() {
+  var st = loadData('dtr_settings', {}) || {};
+  var lat = parseFloat(st.lat), lng = parseFloat(st.lng), rad = parseFloat(st.radius);
+  return {
+    lat: isNaN(lat) ? SCHOOL_LAT : lat,
+    lng: isNaN(lng) ? SCHOOL_LNG : lng,
+    radius: (isNaN(rad) || rad <= 0) ? SCHOOL_RADIUS : rad
+  };
+}
+
 function checkGPS() {
   return new Promise(function(resolve, reject) {
     if (!navigator.geolocation) { reject('GPS not supported'); return; }
     navigator.geolocation.getCurrentPosition(
       function(pos) {
-        var dist = getDistance(pos.coords.latitude, pos.coords.longitude, SCHOOL_LAT, SCHOOL_LNG);
-        if (dist <= SCHOOL_RADIUS) resolve({lat: pos.coords.latitude, lng: pos.coords.longitude, distance: Math.round(dist)});
-        else reject('You are ' + Math.round(dist) + 'm away. Must be within ' + SCHOOL_RADIUS + 'm.');
+        var loc = getSchoolLocation();
+        var dist = getDistance(pos.coords.latitude, pos.coords.longitude, loc.lat, loc.lng);
+        // Isinasama ang GPS accuracy (max 50m) para hindi ma-reject dahil lang sa mahinang signal
+        var allowance = Math.min(pos.coords.accuracy || 0, 50);
+        if (dist <= loc.radius + allowance) resolve({lat: pos.coords.latitude, lng: pos.coords.longitude, distance: Math.round(dist)});
+        else reject('You are ' + Math.round(dist) + 'm away from school. Must be within ' + loc.radius + 'm.');
       },
       function() { reject('GPS error: Enable location services.'); },
       {enableHighAccuracy: true, timeout: 10000}
