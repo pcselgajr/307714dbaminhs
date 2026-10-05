@@ -135,13 +135,23 @@ tr:hover td{background:var(--cr)}
 <img src="school-logo.png" alt="DBAMINHS">
 <h1>Admin Dashboard</h1>
 <p class="sub">DBAMINHS School Portal Management</p>
-<div class="fg"><label>Admin Username</label><input type="text" id="lu" placeholder="admin" value="admin"></div>
-<div class="fg"><label>Password</label><input type="password" id="lp" placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;" value="admin123"></div>
+<div class="fg"><label>Admin Username</label><input type="text" id="lu" placeholder="Username" autocomplete="username"></div>
+<div class="fg"><label>Password</label><input type="password" id="lp" placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;" autocomplete="current-password"></div>
 <div style="text-align:left;margin-bottom:18px"><label style="font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer;color:var(--g5)"><input type="checkbox" checked style="width:auto"> Remember me</label></div>
 <button class="btn btn-p btn-full" onclick="doLogin()">Log In &#10148;</button>
-<p style="margin-top:14px;font-size:12px;color:var(--g4)">Default: admin / admin123</p>
+<p style="margin-top:14px;font-size:12px;color:var(--g4)">Para sa awtorisadong school personnel lamang.</p>
 </div>
 </div>
+
+<div id="myPwModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;align-items:center;justify-content:center;padding:16px">
+<div style="background:#fff;border-radius:14px;padding:22px;width:100%;max-width:380px">
+<h3 style="font-size:16px;margin-bottom:4px">&#128273; Palitan ang Password</h3>
+<p id="myPwNote" style="font-size:13px;color:#666;margin-bottom:14px"></p>
+<div class="fg"><label>Kasalukuyang Password</label><input id="mpCur" type="password" autocomplete="current-password"></div>
+<div class="fg"><label>Bagong Password (min. 8)</label><input id="mpNew" type="password" autocomplete="new-password"></div>
+<div class="fg"><label>Ulitin ang Bagong Password</label><input id="mpNew2" type="password" autocomplete="new-password"></div>
+<div style="display:flex;gap:8px"><button class="btn btn-p" style="flex:1" onclick="saveMyPassword()">I-save</button><button class="btn btn-s" id="mpCancel" style="flex:1" onclick="closeMyPassword()">Cancel</button></div>
+</div></div>
 
 <!-- APP -->
 <div class="app" id="app">
@@ -171,8 +181,9 @@ tr:hover td{background:var(--cr)}
 <button class="sl" onclick="go('alumni',this)"><span class="i">&#127891;</span> Alumni</button>
 <div class="sb-sec">System</div>
 <button class="sl" onclick="go('settings',this)"><span class="i">&#9881;</span> Portal Settings</button>
+<button class="sl" onclick="go('admins',this)"><span class="i">&#128737;</span> Admin Accounts</button>
 </nav>
-<div class="sb-ft"><div class="sb-user"><div class="sb-av">A</div><div><div class="sb-un">Admin</div><div class="sb-ur">Super Admin</div></div></div></div>
+<div class="sb-ft"><div class="sb-user"><div class="sb-av" id="sbAv">A</div><div><div class="sb-un" id="sbUserName">Admin</div><div class="sb-ur" id="sbUserRole">Super Admin</div></div></div></div>
 </aside>
 
 <div class="main">
@@ -185,6 +196,7 @@ tr:hover td{background:var(--cr)}
 <div class="tb-btn" title="Notifications" onclick="toast('3 pending signups need approval','su')">&#128276;<span class="ndot"></span></div>
 <div class="tb-btn" title="View Portal" onclick="window.open('./index.html','_blank')">&#127760;</div>
 <div class="tb-btn" title="Refresh" onclick="toast('Data refreshed!','su')">&#8635;</div>
+<div class="tb-btn" title="Palitan ang password ko" onclick="openMyPassword()">&#128273;</div>
 <div class="tb-btn" title="Logout" onclick="doLogout()">&#9211;</div>
 </div>
 </div>
@@ -421,6 +433,18 @@ tr:hover td{background:var(--cr)}
 <div style="padding:22px"><div id="alumniList"></div></div></div></div>
 
 <!-- SETTINGS -->
+<div class="pg" id="pg-admins"><div class="panel"><div class="ph"><h3>&#128737; Admin Accounts</h3></div>
+<div style="padding:16px 20px">
+<p style="font-size:13px;color:var(--g5);margin-bottom:14px">Bawat may admin access ay may sariling account. <strong>Super Admin</strong>: buong access. <strong>Principal</strong>: lahat maliban sa Settings, Backup at Admin Accounts. <strong>Viewer</strong>: titingin lang, walang mababago.</p>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;align-items:end;background:var(--g1);padding:14px;border-radius:10px;margin-bottom:16px">
+<div class="fg" style="margin-bottom:0"><label>Buong Pangalan</label><input id="naName" placeholder="Dr. Maria Santos"></div>
+<div class="fg" style="margin-bottom:0"><label>Username</label><input id="naUser" placeholder="principal" autocomplete="off"></div>
+<div class="fg" style="margin-bottom:0"><label>Pansamantalang Password</label><input id="naPass" type="text" placeholder="min. 8 characters" autocomplete="off"></div>
+<div class="fg" style="margin-bottom:0"><label>Role</label><select id="naRole"><option value="principal">Principal</option><option value="viewer">Viewer</option><option value="super">Super Admin</option></select></div>
+<button class="btn btn-p" type="button" onclick="addAdminAccount()">+ Add Account</button>
+</div>
+<div id="adminAccountList"></div>
+</div></div></div>
 <div class="pg" id="pg-settings"><div class="panel" style="max-width:680px"><div class="ph"><h3>&#9881; Portal Settings</h3></div><div style="padding:22px">
 <div class="fg"><label>School Name</label><input id="setName" value="Dr. Bonifacio A. Masilungan Integrated National High School"></div>
 <div class="fg-row"><div class="fg"><label>School ID</label><input id="setId" value="307714"></div><div class="fg"><label>School Year</label><input id="setSY" value="2025-2026"></div></div>

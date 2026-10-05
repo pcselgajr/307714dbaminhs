@@ -37,15 +37,18 @@ function initFromFirebase(callback) {
   });
 }
 
-function doLogin(){
-  if(document.getElementById('lu').value==='admin'&&document.getElementById('lp').value==='admin123'){
-    document.getElementById('loginPage').style.display='none';
-    document.getElementById('app').classList.add('act');
-    initFromFirebase(function() {
-      renderAll();
-      toast('Welcome back, Admin! Connected to Firebase.','su');
-    });
-  }else{toast('Invalid credentials!','er')}
+// Ang tunay na login ay nasa admin-password-patch.js (admin accounts na may role)
+function doLogin(){ toast('Naglo-load pa ang login system, subukan ulit.','er'); }
+
+function adminName(){ return (window.currentAdmin && window.currentAdmin.name) ? window.currentAdmin.name : 'Admin'; }
+
+function enterAdminApp(){
+  document.getElementById('loginPage').style.display='none';
+  document.getElementById('app').classList.add('act');
+  initFromFirebase(function() {
+    renderAll();
+    toast('Welcome, ' + adminName() + '!','su');
+  });
 }
 function doLogout(){document.getElementById('app').classList.remove('act');document.getElementById('loginPage').style.display='flex'}
 document.getElementById('lp').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin()});
@@ -55,7 +58,7 @@ function go(p,el){
   document.getElementById('pg-'+p).classList.add('act');
   document.querySelectorAll('.sl').forEach(function(x){x.classList.remove('act')});
   el.classList.add('act');
-  var t={dash:'Dashboard',news:'News & Announcements',events:'Events & Calendar',students:'Student Management',teachers:'Teachers & Staff',parents:'Parents Directory',pending:'Pending Signups',enrollments:'Online Enrollments',gradelock:'Grade Lock',resources:'Teacher Resources',settings:'Portal Settings'};
+  var t={dash:'Dashboard',news:'News & Announcements',events:'Events & Calendar',students:'Student Management',teachers:'Teachers & Staff',parents:'Parents Directory',pending:'Pending Signups',enrollments:'Online Enrollments',gradelock:'Grade Lock',admins:'Admin Accounts',resources:'Teacher Resources',settings:'Portal Settings'};
   document.getElementById('pt').textContent=t[p]||p;
   if(p==='gradelock'&&typeof loadGradeLocks==='function')loadGradeLocks();
   document.getElementById('sidebar').classList.remove('open');
@@ -2222,7 +2225,7 @@ function loadGradeLocks() {
     var isL = !!(l && l.locked);
     var detail = '';
     if (isL) detail = (l.by ? 'ni ' + glEsc(l.by) : 'ni Admin') + (l.at ? ' &middot; ' + new Date(l.at).toLocaleString('en-PH', {dateStyle:'medium', timeStyle:'short'}) : '');
-    else if (l && l.unlockedAt) detail = 'Na-unlock ' + new Date(l.unlockedAt).toLocaleString('en-PH', {dateStyle:'medium', timeStyle:'short'});
+    else if (l && l.unlockedAt) detail = 'Na-unlock' + (l.unlockedBy ? ' ni ' + glEsc(l.unlockedBy) : '') + ' ' + new Date(l.unlockedAt).toLocaleString('en-PH', {dateStyle:'medium', timeStyle:'short'});
     h += '<tr><td style="' + td + ';font-weight:600">' + glEsc(x.section) + '</td>' +
       '<td style="' + td + '">' + x.term.replace('_', ' ') + '</td>' +
       '<td style="' + td + '">' + x.count + '</td>' +
@@ -2239,11 +2242,11 @@ function toggleGradeLockAdmin(key) {
   var label = key.replace(/_(Term_[123])$/, ' ($1)').replace(/_/g, ' ');
   if (cur.locked) {
     if (!confirm('I-unlock ang grades ng ' + label + '?\n\nMakakapag-edit ulit ang adviser hanggang i-lock ulit.')) return;
-    locks[key] = {locked: false, by: cur.by || '', at: cur.at || '', unlockedAt: new Date().toISOString()};
+    locks[key] = {locked: false, by: cur.by || '', at: cur.at || '', unlockedAt: new Date().toISOString(), unlockedBy: adminName()};
     toast('Unlocked: ' + label, 'su');
   } else {
     if (!confirm('I-lock ang grades ng ' + label + '?')) return;
-    locks[key] = {locked: true, by: 'Admin', at: new Date().toISOString()};
+    locks[key] = {locked: true, by: adminName(), at: new Date().toISOString()};
     toast('Locked: ' + label, 'su');
   }
   saveData('gradeLock', locks);
@@ -2257,7 +2260,7 @@ function lockAllGradesForTerm() {
   if (!targets.length) { toast('Walang bukas na grades para sa ' + term.replace('_', ' '), 'er'); return; }
   if (!confirm('I-lock ang ' + targets.length + ' section para sa ' + term.replace('_', ' ') + '?')) return;
   var now = new Date().toISOString();
-  targets.forEach(function(x) { locks[x.key] = {locked: true, by: 'Admin', at: now}; });
+  targets.forEach(function(x) { locks[x.key] = {locked: true, by: adminName(), at: now}; });
   saveData('gradeLock', locks);
   loadGradeLocks();
   toast(targets.length + ' section ang naka-lock na.', 'su');
@@ -2301,7 +2304,7 @@ function renderAdminGradeRequests() {
     done.forEach(function(r) {
       h += '<div style="font-size:12px;padding:6px 0;border-bottom:1px solid var(--g2)">' + (r.status === 'approved' ? '&#9989;' : '&#10060;') + ' ' +
         glEsc(r.name) + ' &middot; ' + glEsc(r.section) + ' ' + glEsc(String(r.term).replace('_', ' ')) + ' &middot; ' + glEsc(r.subject) + ': ' +
-        (r.oldGrade !== null ? r.oldGrade : 'wala') + ' &rarr; ' + r.newGrade + ' <span style="color:var(--g5)">(' + fmt(r.decidedAt) + ')</span></div>';
+        (r.oldGrade !== null ? r.oldGrade : 'wala') + ' &rarr; ' + r.newGrade + ' <span style="color:var(--g5)">(' + (r.decidedBy ? glEsc(r.decidedBy) + ', ' : '') + fmt(r.decidedAt) + ')</span></div>';
     });
     h += '</div></details>';
   }
@@ -2333,7 +2336,7 @@ function decideGradeRequest(id, approve) {
     toast('Request rejected.', 'su');
   }
   r.decidedAt = new Date().toISOString();
-  r.decidedBy = 'Admin';
+  r.decidedBy = adminName();
   saveData(key, r);
   loadGradeLocks();
 }
