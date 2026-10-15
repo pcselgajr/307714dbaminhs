@@ -912,6 +912,29 @@ function handleCSVUpload(event) {
     });
     
     html += '</tbody></table></div>';
+
+    // --- Mga kulang at hindi tanggap na grade ---
+    var activeCols = allSubjects.filter(function(sb) { return records.some(function(r) { return r.grades[sb] !== undefined; }); });
+    var unknownCols = header.slice(2).filter(function(hc) { return hc && allSubjects.indexOf(hc) === -1 && hc !== 'MAPEH'; });
+    var blankList = [], emptyLearners = [];
+    records.forEach(function(r) {
+      var miss = activeCols.filter(function(sb) { return r.grades[sb] === undefined && !(sb === 'MAPEH'); });
+      if (Object.keys(r.grades).length === 0) emptyLearners.push(r.name || r.lrn);
+      else if (miss.length) blankList.push('<li><strong>' + gradeEsc(r.name || r.lrn) + '</strong>: ' + miss.map(gradeEsc).join(', ') + '</li>');
+    });
+    var issueCount = blankList.length + emptyLearners.length + errors.length + unknownCols.length;
+    if (issueCount > 0) {
+      html += '<div style="margin-top:14px;padding:12px 14px;background:#FFFBEB;border:1.5px solid #F59E0B;border-radius:10px;font-size:13px">';
+      html += '<div style="font-weight:700;color:#92400E;margin-bottom:6px">&#9888; I-check muna bago i-save</div>';
+      if (errors.length) html += '<div style="margin-bottom:6px"><strong>Hindi tanggap na grade (hindi mase-save):</strong><ul style="margin:4px 0 0 18px">' + errors.map(function(e) { return '<li>' + gradeEsc(e) + '</li>'; }).join('') + '</ul></div>';
+      if (blankList.length) html += '<div style="margin-bottom:6px"><strong>Blangkong grade</strong> (may grade ang ibang learner sa subject na ito):<ul style="margin:4px 0 0 18px">' + blankList.join('') + '</ul></div>';
+      if (emptyLearners.length) html += '<div style="margin-bottom:6px"><strong>Walang kahit isang grade</strong> (hindi isasama sa pag-save; mananatili ang dati nilang grade): ' + emptyLearners.map(gradeEsc).join(', ') + '</div>';
+      if (unknownCols.length) html += '<div><strong>Column na hindi tugma sa subject list ng section:</strong> ' + unknownCols.map(gradeEsc).join(', ') + ' &mdash; i-check ang spelling ng header.</div>';
+      html += '</div>';
+    }
+    window._pendingIssueCount = issueCount;
+    window._pendingEmptyLearners = emptyLearners.length;
+
     html += '<div style="display:flex;gap:10px;margin-top:16px">';
     html += '<button class="btn btn-p btn-sm" onclick="saveUploadedGrades()">&#128190; Save All Grades</button>';
     html += '<button class="btn btn-s btn-sm" onclick="cancelUpload()">Cancel</button>';
@@ -921,7 +944,7 @@ function handleCSVUpload(event) {
     window._pendingRecords = records;
     window._pendingClass = cls;
     
-    showUploadStatus('CSV parsed! Review grades and click Save.', 'success');
+    showUploadStatus(issueCount > 0 ? ('CSV parsed, pero may ' + issueCount + ' bagay na dapat i-check (nasa ilalim ng table).') : 'CSV parsed! Review grades and click Save.', issueCount > 0 ? 'error' : 'success');
   };
   reader.readAsText(file, 'UTF-8');
   event.target.value = '';
@@ -936,12 +959,18 @@ function saveUploadedGrades() {
   var cls = window._pendingClass;
   var records = window._pendingRecords;
   if (blockIfGradesLocked(cls)) return;
+  if (window._pendingIssueCount > 0 && !confirm('May mga blangko o hindi tanggap na grade sa CSV (tingnan ang dilaw na listahan).' +
+      (window._pendingEmptyLearners ? '\n\nMay ' + window._pendingEmptyLearners + ' learner na walang kahit isang grade — hindi sila isasama.' : '') +
+      '\n\nI-save pa rin?')) return;
   var key = getGradeKey(cls);
   
   var existing = loadData(key, {});
   
+  var saved = 0;
   records.forEach(function(r) {
+    if (!r.grades || Object.keys(r.grades).length === 0) return; // huwag burahin ang dating grade ng learner na blangko sa CSV
     existing[r.lrn] = {name: r.name, grades: r.grades};
+    saved++;
   });
   
   saveData(key, existing);
@@ -950,8 +979,8 @@ function saveUploadedGrades() {
   window._pendingClass = null;
   document.getElementById('gradePreview').innerHTML = '';
   
-  toast(records.length + ' students grades saved! Students can now view their grades.', 'su');
-  showUploadStatus(records.length + ' students grades saved for ' + cls + '!', 'success');
+  toast(saved + ' students grades saved! Students can now view their grades.', 'su');
+  showUploadStatus(saved + ' students grades saved for ' + cls + '!', 'success');
   
   updateGradeView();
 }
@@ -1209,6 +1238,78 @@ function showUploadStatus(msg, type) {
 }
 
 // Update student dashboard to load grades from Firebase
+// ============================================
+// GRADE COMPLETENESS HELPERS
+// "Inaasahang subject" sa isang term = mga subject na may grade ang kahit isang
+// learner sa section para sa term na iyon. Ang subject na walang grade ang buong
+// section ay itinuturing na hindi itinuro sa term na iyon (hal. ibang term ang SHS subject).
+// ============================================
+function gradeEsc(v) {
+  return String(v == null ? '' : v).replace(/[&<>"']/g, function(c) {
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+
+function getExpectedSubjects(section, termData) {
+  var present = {};
+  Object.keys(termData || {}).forEach(function(l) {
+    var g = (termData[l] && termData[l].grades) || {};
+    Object.keys(g).forEach(function(s) { if (g[s] !== undefined && g[s] !== null && g[s] !== '') present[s] = true; });
+  });
+  var order = [];
+  try {
+    var settings = loadData('settings', DEFAULT_SETTINGS);
+    var secs = (settings.sections && settings.sections.length > 0) ? settings.sections : DEFAULT_SECTIONS;
+    order = getSubjectsForSection(section || '', secs).slice();
+    if (order.indexOf('Music & Arts') > -1 && order.indexOf('MAPEH') === -1) order.push('MAPEH');
+  } catch (e) { order = []; }
+  var out = order.filter(function(s) { return present[s]; });
+  Object.keys(present).forEach(function(s) { if (out.indexOf(s) === -1) out.push(s); });
+  return out;
+}
+
+// Ibinabalik ang {html, complete, avg, missing, expected}
+function buildTermGradeTable(term, section, termData, lrn) {
+  var record = termData[lrn] || {};
+  var g = record.grades || {};
+  var expected = getExpectedSubjects(section, termData);
+  var total = 0, count = 0, missing = [];
+  var html = '<div style="margin-bottom:20px"><div style="font-size:15px;font-weight:700;color:var(--n);margin-bottom:10px;padding:8px 12px;background:var(--g1);border-radius:8px;border-left:4px solid var(--o)">' + term.replace('_', ' ') + '</div>';
+  html += '<div style="overflow-x:auto"><table><thead><tr><th>Subject</th><th>Grade</th><th>Remarks</th></tr></thead><tbody>';
+  expected.forEach(function(s) {
+    var v = g[s];
+    var isMAPEH = s === 'MAPEH';
+    html += '<tr style="' + (isMAPEH ? 'background:#f0f7ff;font-weight:600' : '') + '">';
+    html += '<td>' + (isMAPEH ? '&#128900; ' : '') + gradeEsc(s) + '</td>';
+    if (v === undefined || v === null || v === '') {
+      missing.push(s);
+      html += '<td style="text-align:center;color:var(--g5)">&mdash;</td>';
+      html += '<td><span class="badge" style="background:#FEF3C7;color:#92400E">Wala pang grade</span></td></tr>';
+      return;
+    }
+    total += v; count++;
+    var ok = v >= 75;
+    html += '<td style="text-align:center"><strong>' + v + '</strong></td>';
+    html += '<td><span class="badge ' + (ok ? 'b-g' : 'b-r') + '">' + (ok ? 'Passed' : 'Failed') + '</span></td></tr>';
+  });
+  var complete = expected.length > 0 && missing.length === 0;
+  var avg = complete ? Math.round((total / count) * 10) / 10 : null;
+  html += '<tr style="background:#f9f9f9;border-top:2px solid #ddd"><td><strong>General Average</strong></td>';
+  if (complete) {
+    html += '<td style="text-align:center"><strong style="font-size:16px;color:' + (avg >= 75 ? '#22c55e' : '#ef4444') + '">' + avg + '</strong></td>';
+    html += '<td><span class="badge ' + (avg >= 75 ? 'b-g' : 'b-r') + '">' + (avg >= 75 ? 'Passed' : 'Failed') + '</span></td></tr>';
+  } else {
+    html += '<td style="text-align:center;color:var(--g5)">&mdash;</td>';
+    html += '<td style="font-size:12px;color:var(--g5)">Hindi pa kumpleto (' + count + ' sa ' + expected.length + ' subject)</td></tr>';
+  }
+  html += '</tbody></table></div>';
+  if (!complete && missing.length) {
+    html += '<div style="font-size:12px;color:#92400E;margin-top:6px">Ilalabas ang General Average kapag kumpleto na ang lahat ng grade. Makipag-ugnayan sa adviser kung matagal nang walang grade ang isang subject.</div>';
+  }
+  html += '</div>';
+  return {html: html, complete: complete, avg: avg, missing: missing, expected: expected};
+}
+
 function loadStudentGrades() {
   if (!curUser || curUser.type !== 'student') return;
   var lrn = curUser.lrn;
@@ -1243,31 +1344,7 @@ function loadStudentGrades() {
     var studentReleaseKey = (grade || '').replace(/\s/g,'_') + '_' + term + '_' + lrn;
     if (studentRelease[studentReleaseKey] === false) return; // hidden only if explicitly set to false
 
-    var g = record.grades;
-    var allSubjects = Object.keys(g);
-    var total = 0, count = 0;
-
-    html += '<div style="margin-bottom:20px"><div style="font-size:15px;font-weight:700;color:var(--n);margin-bottom:10px;padding:8px 12px;background:var(--g1);border-radius:8px;border-left:4px solid var(--o)">' + term.replace('_', ' ') + '</div>';
-    html += '<div style="overflow-x:auto"><table><thead><tr><th>Subject</th><th>Grade</th><th>Remarks</th></tr></thead><tbody>';
-
-    allSubjects.forEach(function(s) {
-      var v = g[s];
-      if (v === undefined) return;
-      total += v; count++;
-      var remarks = v >= 75 ? 'Passed' : 'Failed';
-      var badge = v >= 75 ? 'b-g' : 'b-r';
-      var isMAPEH = s === 'MAPEH';
-      html += '<tr style="' + (isMAPEH ? 'background:#f0f7ff;font-weight:600' : '') + '">';
-      html += '<td>' + (isMAPEH ? '&#128900; ' : '') + s + '</td>';
-      html += '<td style="text-align:center"><strong>' + v + '</strong></td>';
-      html += '<td><span class="badge ' + badge + '">' + remarks + '</span></td></tr>';
-    });
-
-    var avg = count > 0 ? Math.round((total / count) * 10) / 10 : '';
-    html += '<tr style="background:#f9f9f9;border-top:2px solid #ddd"><td><strong>General Average</strong></td>';
-    html += '<td style="text-align:center"><strong style="font-size:16px;color:' + (avg >= 75 ? '#22c55e' : '#ef4444') + '">' + avg + '</strong></td>';
-    html += '<td><span class="badge ' + (avg >= 75 ? 'b-g' : 'b-r') + '">' + (avg >= 75 ? 'Passed' : 'Failed') + '</span></td></tr>';
-    html += '</tbody></table></div></div>';
+    html += buildTermGradeTable(term, grade, data, lrn).html;
   });
 
   el.innerHTML = html || '<div style="padding:24px;text-align:center;color:var(--g5);font-size:14px">&#128274; No released grades found.</div>';
@@ -1278,6 +1355,7 @@ function loadStudentGrades() {
 
 function updateStudentStats(lrn, grade, releasedTerms, studentRelease) {
   var allAvgs = [];
+  var incompleteTerm = false;
   var allSubjectCount = 0;
   var visibleTerms = 0;
 
@@ -1291,14 +1369,9 @@ function updateStudentStats(lrn, grade, releasedTerms, studentRelease) {
     if (!record || !record.grades) return;
 
     visibleTerms++;
-    var g = record.grades;
-    var subjects = Object.keys(g);
-    allSubjectCount = Math.max(allSubjectCount, subjects.length);
-    var total = 0, count = 0;
-    subjects.forEach(function(s) {
-      if (g[s] !== undefined) { total += g[s]; count++; }
-    });
-    if (count > 0) allAvgs.push(Math.round((total / count) * 10) / 10);
+    var res = buildTermGradeTable(term, grade, data, lrn);
+    allSubjectCount = Math.max(allSubjectCount, res.expected.length);
+    if (res.complete) allAvgs.push(res.avg); else incompleteTerm = true;
   });
 
   // General Average: ipapakita lang kapag na-release na ang Term 3
@@ -1310,7 +1383,7 @@ function updateStudentStats(lrn, grade, releasedTerms, studentRelease) {
     var d = loadData('grades_' + (grade || '').replace(/\s/g, '_') + '_' + term, {});
     if (d[lrn] && d[lrn].grades) hasTerm3 = true;
   });
-  if (!hasTerm3) allAvgs = [];
+  if (!hasTerm3 || incompleteTerm) allAvgs = [];
   var overallAvg = allAvgs.length > 0 ? Math.round(allAvgs.reduce(function(a,b){return a+b;},0) / allAvgs.length * 10) / 10 : '--';
 
   // Get attendance
@@ -1680,7 +1753,7 @@ function loadParentGrades() {
   }
 
   var html = '<h3>&#128202; Child\'s Grades &mdash; ' + childName + '</h3>';
-  var overallTotal = 0, overallCount = 0;
+  var termAvgs = {};
 
   releasedTerms.forEach(function(term) {
     var gradeKey = 'grades_' + (childGrade || '').replace(/\s/g, '_') + '_' + term;
@@ -1692,38 +1765,18 @@ function loadParentGrades() {
     if (studentRelease[studentReleaseKey] === false) return; // hidden only if explicitly set to false
 
     if (record.name) childName = record.name;
-    var g = record.grades;
-    var allSubjects = Object.keys(g);
-    var total = 0, count = 0;
-
-    html += '<div style="margin-bottom:20px"><div style="font-size:15px;font-weight:700;color:var(--n);margin-bottom:10px;padding:8px 12px;background:var(--g1);border-radius:8px;border-left:4px solid var(--o)">' + term.replace('_', ' ') + '</div>';
-    html += '<div style="overflow-x:auto"><table><thead><tr><th>Subject</th><th>Grade</th><th>Remarks</th></tr></thead><tbody>';
-
-    allSubjects.forEach(function(s) {
-      var v = g[s];
-      if (v === undefined) return;
-      total += v; count++;
-      overallTotal += v; overallCount++;
-      var remarks = v >= 75 ? 'Passed' : 'Failed';
-      var badge = v >= 75 ? 'b-g' : 'b-r';
-      var isMAPEH = s === 'MAPEH';
-      html += '<tr style="' + (isMAPEH ? 'background:#f0f7ff;font-weight:600' : '') + '">';
-      html += '<td>' + (isMAPEH ? '&#128900; ' : '') + s + '</td>';
-      html += '<td style="text-align:center"><strong>' + v + '</strong></td>';
-      html += '<td><span class="badge ' + badge + '">' + remarks + '</span></td></tr>';
-    });
-
-    var avg = count > 0 ? Math.round((total / count) * 10) / 10 : '';
-    html += '<tr style="background:#f9f9f9;border-top:2px solid #ddd"><td><strong>General Average</strong></td>';
-    html += '<td style="text-align:center"><strong style="font-size:16px;color:' + (avg >= 75 ? '#22c55e' : '#ef4444') + '">' + avg + '</strong></td>';
-    html += '<td><span class="badge ' + (avg >= 75 ? 'b-g' : 'b-r') + '">' + (avg >= 75 ? 'Passed' : 'Failed') + '</span></td></tr>';
-    html += '</tbody></table></div></div>';
+    var res = buildTermGradeTable(term, childGrade, data, lrn);
+    html += res.html;
+    if (res.complete) termAvgs[term] = res.avg;
   });
 
   el.innerHTML = html;
 
   // Update parent stat card with overall average
-  var overallAvg = overallCount > 0 ? Math.round((overallTotal / overallCount) * 10) / 10 : '';
+  // Overall average: kapag kumpleto na ang Term 3 (at ang lahat ng naunang term na naka-release)
+  var tv = Object.keys(termAvgs).map(function(k) { return termAvgs[k]; });
+  var overallAvg = (termAvgs['Term_3'] !== undefined && tv.length === releasedTerms.length)
+    ? Math.round(tv.reduce(function(x, y) { return x + y; }, 0) / tv.length * 10) / 10 : '';
   var statEls = document.querySelectorAll('#parentDash .dash-stat b');
   if (statEls.length >= 1 && overallAvg) statEls[0].textContent = overallAvg;
 }
