@@ -4105,3 +4105,123 @@ doLogin = function() {
     setTimeout(function() { loadStudentGrades(); loadStudentAttendance(); loadStudentSchedule(); loadStudentQuizzes(); }, 100);
   }
 };
+
+// ============================================
+// E-LIBRARY — para lang sa mga naka-login (students, teachers, parents)
+// Data: 'elibrary' = [{id,title,subject,level,type,audience,desc,link,added}]
+// ============================================
+var ELIB_LEVELS = ['Lahat ng antas', 'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12'];
+var ELIB_TYPES = ['Module', 'Textbook', 'Reviewer', 'Activity Sheet', 'Video', 'Reference', 'Iba pa'];
+
+function elibEsc(v) {
+  return String(v == null ? '' : v).replace(/[&<>"']/g, function(c) {
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+function elibSafeUrl(u) {
+  u = String(u || '').trim();
+  return /^https?:\/\//i.test(u) ? u : '';
+}
+// Kinukuha ang grade level (hal. "Grade 11") mula sa section ng estudyante o ng anak
+function elibUserLevel() {
+  if (!curUser) return '';
+  var sec = '';
+  if (curUser.type === 'student') sec = curUser.grade || '';
+  else if (curUser.type === 'parent') {
+    var st = (loadData('students', []) || []).find(function(x) { return x.lrn === curUser.childLrn; });
+    sec = st ? st.grade : '';
+  }
+  var m = String(sec).match(/grade\s*(7|8|9|10|11|12)\b/i);
+  return m ? 'Grade ' + m[1] : '';
+}
+
+var _elibAfterLogin = false;
+function openELibrary() {
+  if (!curUser) {
+    _elibAfterLogin = true;
+    toast('Mag-login muna para magamit ang E-Library.', 'er');
+    openM('login');
+    return;
+  }
+  var lv = document.getElementById('elibLevel'), tp = document.getElementById('elibType');
+  lv.innerHTML = '<option value="">Lahat ng grade level</option>' + ELIB_LEVELS.slice(1).map(function(l) { return '<option>' + l + '</option>'; }).join('');
+  tp.innerHTML = '<option value="">Lahat ng uri</option>' + ELIB_TYPES.map(function(t) { return '<option>' + t + '</option>'; }).join('');
+  lv.value = elibUserLevel();
+  document.getElementById('elibSearch').value = '';
+  renderELibrary(true);
+  document.getElementById('elibModal').style.display = 'flex';
+}
+function closeELibrary() {
+  var m = document.getElementById('elibModal');
+  if (m) m.style.display = 'none';
+}
+
+function elibVisibleItems() {
+  var items = loadData('elibrary', []) || [];
+  var isTeacher = curUser && curUser.type === 'teacher';
+  return items.filter(function(it) { return it && (it.audience !== 'teachers' || isTeacher); });
+}
+
+function renderELibrary(resetSubject) {
+  if (!curUser) { closeELibrary(); return; }
+  var items = elibVisibleItems();
+  var subjSel = document.getElementById('elibSubject');
+  var curSubj = resetSubject ? '' : subjSel.value;
+  var subjects = [];
+  items.forEach(function(it) { if (it.subject && subjects.indexOf(it.subject) === -1) subjects.push(it.subject); });
+  subjects.sort();
+  subjSel.innerHTML = '<option value="">Lahat ng subject</option>' + subjects.map(function(x) { return '<option value="' + elibEsc(x) + '">' + elibEsc(x) + '</option>'; }).join('');
+  subjSel.value = subjects.indexOf(curSubj) > -1 ? curSubj : '';
+
+  var q = document.getElementById('elibSearch').value.trim().toLowerCase();
+  var lv = document.getElementById('elibLevel').value;
+  var sj = subjSel.value;
+  var tp = document.getElementById('elibType').value;
+  var list = items.filter(function(it) {
+    if (lv && it.level !== lv && it.level !== 'Lahat ng antas') return false;
+    if (sj && it.subject !== sj) return false;
+    if (tp && it.type !== tp) return false;
+    if (q && (String(it.title) + ' ' + String(it.desc || '') + ' ' + String(it.subject || '')).toLowerCase().indexOf(q) === -1) return false;
+    return true;
+  });
+  list.sort(function(a, b) { return String(b.added || '').localeCompare(String(a.added || '')); });
+
+  document.getElementById('elibCount').textContent = list.length + ' item' + (list.length === 1 ? '' : 's') +
+    (items.length !== list.length ? ' (sa ' + items.length + ')' : '');
+  var el = document.getElementById('elibList');
+  if (!items.length) {
+    el.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:36px;color:var(--g5)"><div style="font-size:44px;margin-bottom:8px">&#128218;</div>Wala pang laman ang E-Library. Abangan ang mga idaragdag ng paaralan.</div>';
+    return;
+  }
+  if (!list.length) {
+    el.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:28px;color:var(--g5)">Walang tugma. Subukang baguhin ang filter o ang hinahanap.</div>';
+    return;
+  }
+  el.innerHTML = list.map(function(it) {
+    var url = elibSafeUrl(it.link);
+    return '<div style="border:1.5px solid var(--g2);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:6px;background:#fff">' +
+      '<div style="display:flex;gap:6px;flex-wrap:wrap">' +
+        '<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;background:#FFF1E8;color:#B8430E">' + elibEsc(it.type || 'Iba pa') + '</span>' +
+        '<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;background:var(--g1);color:var(--g7)">' + elibEsc(it.level || '') + '</span>' +
+        (it.audience === 'teachers' ? '<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;background:#E8EEF9;color:#1B2A4A">Teachers lang</span>' : '') +
+      '</div>' +
+      '<div style="font-weight:700;font-size:15px;line-height:1.3">' + elibEsc(it.title) + '</div>' +
+      (it.subject ? '<div style="font-size:12px;color:var(--g5)">' + elibEsc(it.subject) + '</div>' : '') +
+      (it.desc ? '<div style="font-size:13px;color:var(--g7);line-height:1.4">' + elibEsc(it.desc) + '</div>' : '') +
+      '<div style="margin-top:auto;padding-top:6px">' + (url
+        ? '<a href="' + elibEsc(url) + '" target="_blank" rel="noopener noreferrer" style="display:inline-block;padding:8px 14px;border-radius:8px;background:var(--o);color:#fff;font-weight:600;font-size:13px;text-decoration:none">Buksan &#8599;</a>'
+        : '<span style="font-size:12px;color:#b91c1c">Walang valid na link</span>') + '</div>' +
+      '</div>';
+  }).join('');
+}
+
+// Pagkatapos mag-login galing sa E-Library card, buksan agad ang E-Library
+(function() {
+  var _origComplete = completeLogin;
+  completeLogin = function(user) {
+    _origComplete(user);
+    if (_elibAfterLogin) { _elibAfterLogin = false; setTimeout(openELibrary, 300); }
+  };
+  var _origLogout = doLogout;
+  doLogout = function() { closeELibrary(); _origLogout(); };
+})();

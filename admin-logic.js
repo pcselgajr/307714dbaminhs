@@ -58,9 +58,10 @@ function go(p,el){
   document.getElementById('pg-'+p).classList.add('act');
   document.querySelectorAll('.sl').forEach(function(x){x.classList.remove('act')});
   el.classList.add('act');
-  var t={dash:'Dashboard',news:'News & Announcements',events:'Events & Calendar',students:'Student Management',teachers:'Teachers & Staff',parents:'Parents Directory',pending:'Pending Signups',enrollments:'Online Enrollments',gradelock:'Grade Lock',admins:'Admin Accounts',resources:'Teacher Resources',settings:'Portal Settings'};
+  var t={dash:'Dashboard',news:'News & Announcements',events:'Events & Calendar',students:'Student Management',teachers:'Teachers & Staff',parents:'Parents Directory',pending:'Pending Signups',enrollments:'Online Enrollments',gradelock:'Grade Lock',elibrary:'E-Library',admins:'Admin Accounts',resources:'Teacher Resources',settings:'Portal Settings'};
   document.getElementById('pt').textContent=t[p]||p;
   if(p==='gradelock'&&typeof loadGradeLocks==='function')loadGradeLocks();
+  if(p==='elibrary'&&typeof renderELibAdmin==='function')renderELibAdmin();
   document.getElementById('sidebar').classList.remove('open');
   if(p==='parents') rParents();
   if(p==='enrollments') rEnrollments();
@@ -183,7 +184,7 @@ function exportEnrollments(){
   });
 }
 
-function renderAll(){rN();rE();rS();rT();rP();rPwReset();rParents();rEnrollments();uS();loadSettings();loadResources();loadGallery();loadAchievements();loadHistory();loadAlumni();loadDTRDashboard();loadGradeLocks();setTimeout(updateDashChart,100)}
+function renderAll(){rN();rE();rS();rT();rP();rPwReset();rParents();rEnrollments();uS();loadSettings();loadResources();loadGallery();loadAchievements();loadHistory();loadAlumni();loadDTRDashboard();loadGradeLocks();if(typeof renderELibAdmin==='function')renderELibAdmin();setTimeout(updateDashChart,100)}
 function uS(){
   document.getElementById('sS').textContent=S.length.toLocaleString();
   document.getElementById('sT').textContent=T.length;
@@ -1178,7 +1179,7 @@ function exportBackup() {
   var backupKeys = [
     'students', 'teachers', 'accounts', 'pending', 'settings',
     'news', 'events', 'resources', 'quizzes', 'passwordResetRequests',
-    'dtr_employees', 'dtr_settings', 'dtr_staff', 'gradeLock', 'gradeRelease', 'scheduleMeta'
+    'dtr_employees', 'dtr_settings', 'dtr_staff', 'gradeLock', 'gradeRelease', 'scheduleMeta', 'elibrary'
   ];
 
   // Also include all grades_, attendance_, schedule_ documents
@@ -2339,4 +2340,105 @@ function decideGradeRequest(id, approve) {
   r.decidedBy = adminName();
   saveData(key, r);
   loadGradeLocks();
+}
+
+// ============================================
+// E-LIBRARY (Admin)
+// ============================================
+var ELIB_LEVELS_A = ['Lahat ng antas', 'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12'];
+var ELIB_TYPES_A = ['Module', 'Textbook', 'Reviewer', 'Activity Sheet', 'Video', 'Reference', 'Iba pa'];
+function elEsc(v) {
+  return String(v == null ? '' : v).replace(/[&<>"']/g, function(c) {
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+
+function renderELibAdmin() {
+  var items = loadData('elibrary', []) || [];
+  var badge = document.getElementById('elibCountBadge');
+  if (badge) badge.textContent = items.length;
+  var el = document.getElementById('elibAdminList');
+  if (!el) return;
+  var q = ((document.getElementById('elibAdminSearch') || {}).value || '').trim().toLowerCase();
+  var list = items.filter(function(it) {
+    return !q || (String(it.title) + ' ' + String(it.subject || '') + ' ' + String(it.level || '') + ' ' + String(it.type || '')).toLowerCase().indexOf(q) > -1;
+  });
+  if (!items.length) {
+    el.innerHTML = '<div style="text-align:center;padding:32px;color:var(--g5)"><div style="font-size:44px;margin-bottom:8px">&#128218;</div>Wala pang laman. I-click ang "+ Add Item" para magdagdag ng libro o module.</div>';
+    return;
+  }
+  var h = '<div style="overflow-x:auto"><table><thead><tr><th>Pamagat</th><th>Grade Level</th><th>Subject</th><th>Uri</th><th>Para kanino</th><th>Link</th><th></th></tr></thead><tbody>';
+  list.forEach(function(it) {
+    var url = /^https?:\/\//i.test(String(it.link || '')) ? it.link : '';
+    h += '<tr><td><strong>' + elEsc(it.title) + '</strong>' + (it.desc ? '<br><span style="font-size:12px;color:var(--g5)">' + elEsc(it.desc) + '</span>' : '') + '</td>' +
+      '<td>' + elEsc(it.level) + '</td><td>' + elEsc(it.subject) + '</td>' +
+      '<td><span class="badge b-b">' + elEsc(it.type) + '</span></td>' +
+      '<td>' + (it.audience === 'teachers' ? 'Teachers lang' : 'Lahat ng naka-login') + '</td>' +
+      '<td>' + (url ? '<a href="' + elEsc(url) + '" target="_blank" rel="noopener noreferrer" style="color:var(--p);font-size:13px">Open &#8599;</a>' : '<span style="color:#b91c1c;font-size:12px">Invalid</span>') + '</td>' +
+      '<td><div style="display:flex;gap:4px"><button class="abtn edt" data-id="' + elEsc(it.id) + '" onclick="openELibItem(this.getAttribute(\'data-id\'))">&#9998;</button>' +
+      '<button class="abtn del" data-id="' + elEsc(it.id) + '" onclick="deleteELibItem(this.getAttribute(\'data-id\'))">&#128465;</button></div></td></tr>';
+  });
+  el.innerHTML = h + '</tbody></table></div>';
+}
+
+function openELibItem(id) {
+  var items = loadData('elibrary', []) || [];
+  var x = id ? items.filter(function(i) { return String(i.id) === String(id); })[0] : null;
+  var isEdit = !!x;
+  x = x || {title: '', link: '', subject: '', level: 'Lahat ng antas', type: 'Module', audience: 'all', desc: ''};
+  var subjects = [];
+  items.forEach(function(i) { if (i.subject && subjects.indexOf(i.subject) === -1) subjects.push(i.subject); });
+  var opt = function(arr, cur) { return arr.map(function(v) { return '<option' + (v === cur ? ' selected' : '') + '>' + elEsc(v) + '</option>'; }).join(''); };
+  opM(isEdit ? 'Edit E-Library Item' : 'Add E-Library Item',
+    '<div class="fg"><label>Pamagat</label><input id="elTitle" value="' + elEsc(x.title) + '" placeholder="hal. General Mathematics Module 1"></div>' +
+    '<div class="fg"><label>Link</label><input id="elLink" value="' + elEsc(x.link) + '" placeholder="https://drive.google.com/..."></div>' +
+    '<div class="fg-row"><div class="fg"><label>Grade Level</label><select id="elLevel">' + opt(ELIB_LEVELS_A, x.level) + '</select></div>' +
+    '<div class="fg"><label>Uri</label><select id="elType">' + opt(ELIB_TYPES_A, x.type) + '</select></div></div>' +
+    '<div class="fg-row"><div class="fg"><label>Subject</label><input id="elSubject" list="elSubjList" value="' + elEsc(x.subject) + '" placeholder="hal. Mathematics"><datalist id="elSubjList">' +
+      subjects.map(function(sb) { return '<option value="' + elEsc(sb) + '">'; }).join('') + '</datalist></div>' +
+    '<div class="fg"><label>Para kanino</label><select id="elAudience"><option value="all"' + (x.audience !== 'teachers' ? ' selected' : '') + '>Lahat ng naka-login</option><option value="teachers"' + (x.audience === 'teachers' ? ' selected' : '') + '>Teachers lang</option></select></div></div>' +
+    '<div class="fg"><label>Maikling paglalarawan (opsyonal)</label><input id="elDesc" value="' + elEsc(x.desc) + '" placeholder="hal. Quarter 1, Week 1-2"></div>' +
+    '<div style="display:flex;gap:10px;margin-top:18px"><button class="btn btn-p" data-id="' + elEsc(isEdit ? x.id : '') + '" onclick="saveELibItem(this.getAttribute(\'data-id\'))">Save &#10148;</button>' +
+    '<button class="btn btn-s" onclick="clM()">Cancel</button></div>');
+}
+
+function saveELibItem(id) {
+  var title = document.getElementById('elTitle').value.trim();
+  var link = document.getElementById('elLink').value.trim();
+  if (!title) { toast('Ilagay ang pamagat', 'er'); return; }
+  if (!/^https?:\/\//i.test(link)) { toast('Ang link ay dapat nagsisimula sa https://', 'er'); return; }
+  var item = {
+    title: title, link: link,
+    subject: document.getElementById('elSubject').value.trim(),
+    level: document.getElementById('elLevel').value,
+    type: document.getElementById('elType').value,
+    audience: document.getElementById('elAudience').value,
+    desc: document.getElementById('elDesc').value.trim()
+  };
+  var items = loadData('elibrary', []) || [];
+  if (id) {
+    var i = items.findIndex(function(x) { return String(x.id) === String(id); });
+    if (i === -1) { toast('Hindi mahanap ang item', 'er'); return; }
+    item.id = items[i].id; item.added = items[i].added; item.addedBy = items[i].addedBy;
+    item.updated = new Date().toISOString();
+    items[i] = item;
+  } else {
+    item.id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    item.added = new Date().toISOString();
+    item.addedBy = (typeof adminName === 'function') ? adminName() : 'Admin';
+    items.unshift(item);
+  }
+  saveData('elibrary', items);
+  clM();
+  renderELibAdmin();
+  toast(id ? 'Na-update ang item!' : 'Naidagdag sa E-Library!', 'su');
+}
+
+function deleteELibItem(id) {
+  var items = loadData('elibrary', []) || [];
+  var it = items.filter(function(x) { return String(x.id) === String(id); })[0];
+  if (!it || !confirm('Burahin ang "' + it.title + '" sa E-Library?')) return;
+  saveData('elibrary', items.filter(function(x) { return String(x.id) !== String(id); }));
+  renderELibAdmin();
+  toast('Nabura ang item', 'su');
 }

@@ -173,6 +173,7 @@ tr:hover td{background:var(--cr)}
 <button class="sl" onclick="go('backup',this)"><span class="i">&#128190;</span> Backup &amp; Restore</button>
 <div class="sb-sec">System</div>
 <button class="sl" onclick="go('resources',this)"><span class="i">&#128194;</span> Teacher Resources</button>
+<button class="sl" onclick="go('elibrary',this)"><span class="i">&#128218;</span> E-Library <span class="sb-count" id="elibCountBadge">0</span></button>
 <button class="sl" onclick="go('dtr',this)"><span class="i">&#128336;</span> DTR System</button>
 <div class="sb-sec">Community</div>
 <button class="sl" onclick="go('gallery',this)"><span class="i">&#128248;</span> Photo Gallery</button>
@@ -324,6 +325,17 @@ tr:hover td{background:var(--cr)}
 <button class="btn btn-p btn-sm" onclick="saveResPassword()">Save Password</button>
 </div></div>
 <div id="resourcesList"></div>
+</div></div></div>
+
+<div class="pg" id="pg-elibrary"><div class="panel"><div class="ph"><h3>&#128218; E-Library</h3><div class="pa"><button class="btn btn-p btn-sm" onclick="openELibItem()">+ Add Item</button></div></div>
+<div style="padding:18px 22px">
+<div style="padding:12px 14px;background:var(--g1);border:1px solid var(--g2);border-radius:10px;font-size:13px;color:var(--g7);margin-bottom:14px;line-height:1.5">
+&#9432; Makikita lang ang E-Library ng mga <strong>naka-login</strong> (students, teachers, parents). Ilagay ang file sa <strong>Google Drive</strong>, i-click ang <strong>Share</strong> &rarr; General access: <strong>Anyone with the link</strong> (Viewer), tapos i-paste ang link dito. Puwede ring link mula sa DepEd LR Portal o YouTube.
+</div>
+<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+<input id="elibAdminSearch" placeholder="Hanapin..." oninput="renderELibAdmin()" style="flex:1;min-width:180px;padding:8px 12px;border-radius:8px;border:1px solid var(--g2)">
+</div>
+<div id="elibAdminList"></div>
 </div></div></div>
 
 <!-- DTR SYSTEM -->

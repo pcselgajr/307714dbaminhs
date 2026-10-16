@@ -254,7 +254,7 @@ td{padding:12px 16px;border-bottom:1px solid var(--g1);font-size:13.5px}
 <div class="qcard" onclick="openM('login')"><div class="qi qi-b">&#128218;</div><h3>Teacher Portal</h3><p>Manage classes and input grades</p></div>
 <div class="qcard" onclick="openM('login')"><div class="qi qi-c">&#128202;</div><h3>Grades &amp; Records</h3><p>Check academic performance</p></div>
 <div class="qcard" onclick="window.location.href='enrollment.html'"><div class="qi qi-d">&#128221;</div><h3>Online Enrollment</h3><p>Enroll for the upcoming school year</p></div>
-<div class="qcard" onclick="openM('login')"><div class="qi qi-e">&#128214;</div><h3>E-Library</h3><p>Browse digital books and modules</p></div>
+<div class="qcard" onclick="openELibrary()"><div class="qi qi-e">&#128214;</div><h3>E-Library</h3><p>Browse digital books and modules</p></div>
 <div class="qcard"><div class="qi qi-f">&#128197;</div><h3>School Calendar</h3><p>Events, holidays, and important dates</p></div>
 <div class="qcard" onclick="openM('login')"><div class="qi qi-g">&#128203;</div><h3>Attendance</h3><p>Track daily attendance records</p></div>
 <div class="qcard" onclick="openM('login')"><div class="qi qi-h">&#128172;</div><h3>Parent Portal</h3><p>Monitor your child's progress</p></div>
@@ -329,7 +329,7 @@ td{padding:12px 16px;border-bottom:1px solid var(--g1);font-size:13.5px}
 
 <!-- ==================== DASHBOARDS ==================== -->
 <div class="dash-page" id="studentDash">
-<div class="dash-top"><div class="dash-top-brand"><img src="school-logo.png" alt=""><span>DBAMINHS Student Portal</span></div><div class="dash-top-right"><div class="dash-user"><div class="dash-avatar" id="sdAv">J</div><span id="sdName">Student</span></div><button class="dash-logout" onclick="doLogout()">Logout &#10140;</button></div></div>
+<div class="dash-top"><div class="dash-top-brand"><img src="school-logo.png" alt=""><span>DBAMINHS Student Portal</span></div><div class="dash-top-right"><div class="dash-user"><div class="dash-avatar" id="sdAv">J</div><span id="sdName">Student</span></div><button class="dash-logout" style="margin-right:8px" onclick="openELibrary()">&#128218; E-Library</button><button class="dash-logout" onclick="doLogout()">Logout &#10140;</button></div></div>
 <div class="dash-body">
 <div class="dash-welcome"><h2>&#128075; Welcome back, <span id="sdWelcome">Student</span>!</h2><p>Here's your academic overview for <span id="sdSY">SY 2025-2026</span></p></div>
 <div class="dash-stat-row"><div class="dash-stat"><b id="sdStatAvg">--</b><small>Gen. Average</small></div><div class="dash-stat"><b id="sdStatAtt">--</b><small>Attendance</small></div><div class="dash-stat"><b id="sdStatSubjects">--</b><small>Subjects</small></div><div class="dash-stat"><b id="sdStatTerms">0</b><small>Terms Released</small></div></div>
@@ -355,7 +355,7 @@ td{padding:12px 16px;border-bottom:1px solid var(--g1);font-size:13.5px}
 </div></div>
 
 <div class="dash-page" id="teacherDash">
-<div class="dash-top"><div class="dash-top-brand"><img src="school-logo.png" alt=""><span>DBAMINHS Teacher Portal</span></div><div class="dash-top-right"><div class="dash-user"><div class="dash-avatar" id="tdAv">T</div><span id="tdName">Teacher</span></div><button class="dash-logout" style="background:var(--g2);color:var(--n);margin-right:8px" onclick="openFingerprintEnroll()">&#128272; Fingerprint Login</button><button class="dash-logout" onclick="doLogout()">Logout &#10140;</button></div></div>
+<div class="dash-top"><div class="dash-top-brand"><img src="school-logo.png" alt=""><span>DBAMINHS Teacher Portal</span></div><div class="dash-top-right"><div class="dash-user"><div class="dash-avatar" id="tdAv">T</div><span id="tdName">Teacher</span></div><button class="dash-logout" style="margin-right:8px" onclick="openELibrary()">&#128218; E-Library</button><button class="dash-logout" style="background:var(--g2);color:var(--n);margin-right:8px" onclick="openFingerprintEnroll()">&#128272; Fingerprint Login</button><button class="dash-logout" onclick="doLogout()">Logout &#10140;</button></div></div>
 <div class="dash-body">
 <div class="dash-welcome" style="background:linear-gradient(135deg,var(--n),var(--nl))"><h2>&#128075; Welcome, <span id="tdWelcome">Teacher</span>!</h2><p>Manage your classes and students</p></div>
 <div class="dash-stat-row"><div class="dash-stat"><b id="tStatClasses">0</b><small id="tStatClassesLabel">Sections</small></div><div class="dash-stat"><b id="tStatStudents">0</b><small>Students</small></div><div class="dash-stat"><b id="tStatPending">0</b><small id="tStatPendingLabel">Sections w/ Grades</small></div><div class="dash-stat"><b id="tStatAttendance">--</b><small>Avg. Attendance</small></div></div>
@@ -516,7 +516,7 @@ Sa cell: <code style="background:var(--w);padding:2px 6px;border-radius:4px;font
 </div></div>
 
 <div class="dash-page" id="parentDash">
-<div class="dash-top"><div class="dash-top-brand"><img src="school-logo.png" alt=""><span>DBAMINHS Parent Portal</span></div><div class="dash-top-right"><div class="dash-user"><div class="dash-avatar" id="pdAv">P</div><span id="pdName">Parent</span></div><button class="dash-logout" onclick="doLogout()">Logout &#10140;</button></div></div>
+<div class="dash-top"><div class="dash-top-brand"><img src="school-logo.png" alt=""><span>DBAMINHS Parent Portal</span></div><div class="dash-top-right"><div class="dash-user"><div class="dash-avatar" id="pdAv">P</div><span id="pdName">Parent</span></div><button class="dash-logout" style="margin-right:8px" onclick="openELibrary()">&#128218; E-Library</button><button class="dash-logout" onclick="doLogout()">Logout &#10140;</button></div></div>
 <div class="dash-body">
 <div class="dash-welcome" style="background:linear-gradient(135deg,#2D8B46,#1a6830)"><h2>&#128075; Welcome, <span id="pdWelcome">Parent</span>!</h2><p>Monitor your child's academic progress</p></div>
 <div class="dash-stat-row"><div class="dash-stat"><b id="pdStatAvg">--</b><small>Child's Average</small></div><div class="dash-stat"><b id="pdStatAtt">--</b><small>Attendance</small></div><div class="dash-stat"><b id="pdStatSubjects">--</b><small>Subjects</small></div><div class="dash-stat"><b id="pdStatTerms">0</b><small>Terms Released</small></div></div>
@@ -568,6 +568,23 @@ Sa cell: <code style="background:var(--w);padding:2px 6px;border-radius:4px;font
 </div></div>
 
 <div class="toast" id="toastEl"></div>
+
+<!-- E-LIBRARY MODAL (naka-login lang) -->
+<div id="elibModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:flex-start;justify-content:center;padding:24px 12px;overflow-y:auto" onclick="if(event.target===this)closeELibrary()">
+<div style="background:#fff;border-radius:16px;padding:24px;max-width:900px;width:100%;position:relative;box-sizing:border-box">
+<button onclick="closeELibrary()" aria-label="Isara" style="position:absolute;top:14px;right:16px;background:none;border:none;font-size:26px;cursor:pointer;color:#999;line-height:1">&times;</button>
+<h3 style="font-family:var(--fd);font-size:22px;margin:0 0 4px">&#128218; E-Library</h3>
+<p style="font-size:13px;color:var(--g5);margin:0 0 16px">Mga digital na libro, module at reviewer para sa DBAMINHS</p>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:14px">
+<input id="elibSearch" type="search" placeholder="Hanapin ang pamagat o paksa..." oninput="renderELibrary()" style="padding:10px 12px;border:1.5px solid var(--g2);border-radius:8px;font-size:14px;font-family:var(--fb)">
+<select id="elibLevel" onchange="renderELibrary()" style="padding:10px 12px;border:1.5px solid var(--g2);border-radius:8px;font-size:14px;font-family:var(--fb)"></select>
+<select id="elibSubject" onchange="renderELibrary()" style="padding:10px 12px;border:1.5px solid var(--g2);border-radius:8px;font-size:14px;font-family:var(--fb)"></select>
+<select id="elibType" onchange="renderELibrary()" style="padding:10px 12px;border:1.5px solid var(--g2);border-radius:8px;font-size:14px;font-family:var(--fb)"></select>
+</div>
+<div id="elibCount" style="font-size:12px;color:var(--g5);margin-bottom:8px"></div>
+<div id="elibList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px"></div>
+</div>
+</div>
 
 <!-- TEACHER RESOURCES MODAL -->
 <div id="resourcesModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center" onclick="if(event.target===this)closeResModal()">
