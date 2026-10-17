@@ -50,6 +50,27 @@ function enterAdminApp(){
     toast('Welcome, ' + adminName() + '!','su');
   });
 }
+// ---------- Ligtas na pag-save ng accounts at pending (transaction) ----------
+function atomicAccounts(mutate, okMsg) {
+  if (window.currentAdmin && currentAdmin.role === 'viewer') { toast('Wala kang permiso na baguhin ito (Viewer).', 'er'); return Promise.resolve(); }
+  return atomicUpdate('accounts', [], mutate).then(function() {
+    if (okMsg) toast(okMsg, 'su');
+  }).catch(function(e) { console.error('accounts update error:', e); toast('Hindi na-save sa server. Subukan ulit.', 'er'); });
+}
+// I-sync ang Pending Signups: tinatanggal lang ang mga in-approve/reject, hindi binubura ang mga bagong dating
+function syncPending(newP) {
+  var keep = {};
+  (newP || []).forEach(function(x) { keep[x.id] = true; });
+  var removed = (loadData('pending', []) || []).filter(function(x) { return !keep[x.id]; }).map(function(x) { return x.id; });
+  if (window.currentAdmin && currentAdmin.role === 'viewer') { saveData('pending', newP); return; } // hinaharang ng role check
+  return atomicUpdate('pending', [], function(cur) {
+    return cur.filter(function(x) { return removed.indexOf(x.id) === -1; });
+  }).then(function(n) {
+    P = n;
+    try { rP(); uS(); } catch (e) {}
+  }).catch(function(e) { console.error('pending update error:', e); toast('Hindi na-save ang Pending Signups. I-refresh at subukan ulit.', 'er'); });
+}
+
 function doLogout(){document.getElementById('app').classList.remove('act');document.getElementById('loginPage').style.display='flex'}
 document.getElementById('lp').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin()});
 
@@ -263,7 +284,7 @@ function deleteParentAccount(pid) {
   var before = accts.length;
   accts = accts.filter(function(a){ return a.type !== 'parent' || (a.id !== pid && a.email !== pid); });
   if (accts.length < before) {
-    saveData('accounts', accts);
+    atomicAccounts(function(cur){ return cur.filter(function(a){ return a.type !== 'parent' || (a.id !== pid && a.email !== pid); }); });
     rParents();
     uS();
     toast('Parent account deleted.', 'su');
@@ -304,7 +325,7 @@ function approvePwReset(id){
     return;
   }
   accts[idx].pw = req.newPassword;
-  saveData('accounts', accts);
+  atomicAccounts(function(cur){ cur.forEach(function(a){ if (a.id === req.accountId) a.pw = req.newPassword; }); return cur; });
   
   req.status = 'approved';
   saveData('passwordResetRequests', PWRESET);
@@ -391,7 +412,7 @@ function del(type,id){
       var before = accts.length;
       accts = accts.filter(function(a){return a.eid!==teacherRecord.eid});
       if(accts.length < before){
-        saveData('accounts', accts);
+        atomicAccounts(function(cur){ return cur.filter(function(a){return a.eid!==teacherRecord.eid}); });
       }
     }
     rT();
@@ -411,7 +432,7 @@ function del(type,id){
       var before2 = accts2.length;
       accts2 = accts2.filter(function(a){return a.lrn!==studentRecord.lrn});
       if(accts2.length < before2){
-        saveData('accounts', accts2);
+        atomicAccounts(function(cur){ return cur.filter(function(a){return a.lrn!==studentRecord.lrn}); });
       }
     }
     rS();
@@ -463,7 +484,7 @@ function apv(id){
   } else if(p.type==='Parent'){
     if(confirm('Approve '+p.name+' as Parent? They will be able to login and view their child\'s records.')){
       P=P.filter(function(x){return x.id!==id});
-      saveData('pending',P);
+      syncPending(P);
       rP();uS();
       toast(p.name+' (Parent) approved! Can now login.','su');
     }
@@ -484,7 +505,7 @@ function confirmApvStudent(id){
   S.unshift({id:getNextId(S),lrn:lrn,name:p.name,grade:grade,gender:p.gender||'',contact:p.email,status:status});
   saveData('students',S);
   P=P.filter(function(x){return x.id!==id});
-  saveData('pending',P);
+  syncPending(P);
   clM();rS();rP();uS();
   toast(p.name+' approved and added to Students!','su');
 }
@@ -499,11 +520,11 @@ function confirmApvTeacher(id){
   T.unshift({id:getNextId(T),eid:eid,name:name,dept:dept,pos:pos,contact:p.email});
   saveData('teachers',T);
   P=P.filter(function(x){return x.id!==id});
-  saveData('pending',P);
+  syncPending(P);
   clM();rT();rP();uS();
   toast(p.name+' approved and added to Teachers!','su');
 }
-function rej(id){if(!confirm('Reject this signup?'))return;P=P.filter(function(x){return x.id!==id});saveData('pending',P);rP();uS();toast('Signup rejected','su')}
+function rej(id){if(!confirm('Reject this signup?'))return;P=P.filter(function(x){return x.id!==id});syncPending(P);rP();uS();toast('Signup rejected','su')}
 function approveAll(){
   if(!confirm('Approve all '+P.length+' pending signups?'))return;
   var skipped=[];
@@ -538,7 +559,7 @@ function approveAll(){
     P=[];
     toast('All signups approved!','su');
   }
-  saveData('pending',P);
+  syncPending(P);
   rP();rS();rT();uS();
 }
 
@@ -1243,7 +1264,7 @@ function removeAccountsByLrns(lrns) {
   var before = accts.length;
   accts = accts.filter(function(a){ return lrns.indexOf(a.lrn) === -1; });
   if (accts.length < before) {
-    saveData('accounts', accts);
+    atomicAccounts(function(cur){ return cur.filter(function(a){ return lrns.indexOf(a.lrn) === -1; }); });
   }
 }
 

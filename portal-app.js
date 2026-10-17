@@ -124,12 +124,20 @@ function stab(el){el.parentElement.querySelectorAll('.tab').forEach(function(t){
 function stype(el,t){stab(el);signupType=t;document.getElementById('fLrn').style.display=t==='s'?'block':'none';document.getElementById('fGender').style.display=t==='s'?'block':'none';document.getElementById('fEmp').style.display=t==='t'?'block':'none';document.getElementById('fChild').style.display=t==='p'?'block':'none';document.getElementById('fGrade').style.display=t==='s'?'block':'none'}
 
 function doLogin(){
-loadSavedAccounts();
 var id=document.getElementById('liId').value.trim().toLowerCase();
 var pw=document.getElementById('liPw').value;
-var user=accounts.find(function(a){return (a.id===id||a.lrn===id||a.eid===id||(a.email&&a.email.toLowerCase()===id))&&a.pw===pw});
-if(!user){toast('Invalid credentials. Please check your ID and password.','er');return}
-completeLogin(user);
+if(!id||!pw){toast('Please enter your ID and password.','er');return}
+var finish=function(){
+  // ang pinakabagong bersyon ng account sa Firebase ang masusunod (hal. bagong password)
+  (loadData('accounts', [])||[]).forEach(function(a){
+    var i=accounts.findIndex(function(x){return x.id===a.id});
+    if(i>-1) accounts[i]=a; else accounts.push(a);
+  });
+  var user=accounts.find(function(a){return (a.id===id||a.lrn===id||a.eid===id||(a.email&&a.email.toLowerCase()===id))&&a.pw===pw});
+  if(!user){toast('Invalid credentials. Please check your ID and password.','er');return}
+  completeLogin(user);
+};
+fetchFresh('accounts', []).then(finish).catch(function(){ finish(); });
 }
 
 // School Year label sa Student Dashboard - kinukuha sa Admin > Portal Settings > School Year
@@ -240,14 +248,13 @@ function enrollFingerprint() {
     curUser.webauthnCredentialId = credentialId;
     
     // Persist to the saved accounts list in Firebase
-    var saved = loadData('accounts', []);
-    var idx = saved.findIndex(function(a) { return a.id === curUser.id; });
-    if (idx > -1) {
-      saved[idx].webauthnCredentialId = credentialId;
-    } else {
-      saved.push(curUser);
-    }
-    saveData('accounts', saved);
+    var me = JSON.parse(JSON.stringify(curUser));
+    atomicUpdate('accounts', [], function(saved) {
+      var idx = saved.findIndex(function(a) { return a.id === me.id; });
+      if (idx > -1) saved[idx].webauthnCredentialId = credentialId;
+      else saved.push(me);
+      return saved;
+    }).catch(function(e) { console.error('Fingerprint save error:', e); toast('Hindi na-save ang fingerprint. Subukan ulit.', 'er'); });
     
     closeFingerprintModal();
     toast('Fingerprint login enabled on this device!', 'su');
@@ -413,39 +420,46 @@ if(childRec) newAcc.childName = childRec.name;
 if(!newAcc.childLrn){toast('Please enter child LRN.','er');return}
 }
 if(accounts.find(function(a){return a.id===newAcc.id})){toast('An account with this ID already exists. Please log in instead.','er');return}
-accounts.push(newAcc);
-// Save account to Firebase
-var accts = loadData('accounts', []);
-accts.push(newAcc);
-saveData('accounts', accts);
-// Add to pending signups - load fresh from Firebase first
-db.collection('portal_data').doc('pending').get().then(function(doc) {
-  var pending = [];
-  if (doc.exists) {
-    try { pending = JSON.parse(doc.data().data); } catch(e) { pending = []; }
-  }
-  var maxId = 0;
-  pending.forEach(function(p) { if (p.id > maxId) maxId = p.id; });
-  pending.unshift({
-    id: maxId + 1,
-    name: fn + ' ' + ln,
-    type: newAcc.type.charAt(0).toUpperCase() + newAcc.type.slice(1),
-    email: em,
-    idnum: newAcc.lrn || newAcc.eid || newAcc.childLrn || '',
-    grade: newAcc.grade || '',
-    gender: newAcc.gender || '',
-    date: new Date().toISOString().split('T')[0]
-  });
-  saveData('pending', pending);
-  console.log('Signup added to pending! Total pending:', pending.length);
-}).catch(function(err) {
-  console.error('Error adding to pending:', err);
+var signupBtn=document.querySelector('#signupForm .btn-p');
+if(signupBtn){signupBtn.disabled=true;signupBtn.style.opacity='0.6';}
+var reEnable=function(){if(signupBtn){signupBtn.disabled=false;signupBtn.style.opacity='';}};
+var dupErr=function(msg){var e=new Error(msg);e.userMessage=msg;return e;};
+// I-save ang account nang ligtas: sinusuri ulit ang duplicate laban sa pinakabagong data sa Firebase
+atomicUpdate('accounts', [], function(accts){
+  if(newAcc.lrn && accts.some(function(a){return a.lrn===newAcc.lrn})) throw dupErr('This LRN is already registered. Please log in instead, or contact the admin if this is a mistake.');
+  if(newAcc.eid && accts.some(function(a){return a.eid===newAcc.eid})) throw dupErr('This Employee ID is already registered. Please log in instead, or contact the admin if this is a mistake.');
+  if(accts.some(function(a){return a.id===newAcc.id})) throw dupErr('An account with this ID already exists. Please log in instead.');
+  accts.push(newAcc);
+  return accts;
+}).then(function(){
+  accounts.push(newAcc);
+  // Idagdag sa Pending Signups (ligtas din sa sabay-sabay na sign-up)
+  return atomicUpdate('pending', [], function(pending){
+    var maxId = 0;
+    pending.forEach(function(p) { if (p.id > maxId) maxId = p.id; });
+    pending.unshift({
+      id: maxId + 1,
+      name: fn + ' ' + ln,
+      type: newAcc.type.charAt(0).toUpperCase() + newAcc.type.slice(1),
+      email: em,
+      idnum: newAcc.lrn || newAcc.eid || newAcc.childLrn || '',
+      grade: newAcc.grade || '',
+      gender: newAcc.gender || '',
+      date: new Date().toISOString().split('T')[0]
+    });
+    return pending;
+  }).catch(function(err){ console.error('Error adding to pending:', err); });
+}).then(function(){
+  reEnable();
+  toast('Account created! Welcome, '+fn+'! You can now log in.');
+  switchMode('login');
+  document.getElementById('liId').value=newAcc.id;
+  document.getElementById('liPw').value='';
+}).catch(function(err){
+  reEnable();
+  console.error('Signup error:', err);
+  toast(err && err.userMessage ? err.userMessage : 'Hindi na-save ang account dahil sa problema sa koneksyon. Subukan ulit.', 'er');
 });
-
-toast('Account created! Welcome, '+fn+'! You can now log in.');
-switchMode('login');
-document.getElementById('liId').value=newAcc.id;
-document.getElementById('liPw').value='';
 }
 
 function sdTab(el,id){el.parentElement.querySelectorAll('button').forEach(function(b){b.className=''});el.className='act';['sdGrades','sdSched','sdTasks','sdAtt','sdAnn'].forEach(function(x){var e=document.getElementById(x);if(e)e.style.display=x===id?'block':'none'})}

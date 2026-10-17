@@ -38,6 +38,36 @@ function saveData(key, data) {
   });
 }
 
+// Ligtas na pag-update ng isang listahan kahit may sabay-sabay na nagse-save.
+// Kinukuha ang pinakabagong laman mula sa Firebase, binabago ito ng `mutate`, at isinusulat
+// nang sabay (Firestore transaction). Kapag may ibang nagsulat sa pagitan, inuulit ito ng Firebase.
+// Puwedeng mag-throw ang mutate ng Error na may .userMessage para kanselahin ang pagbabago.
+function atomicUpdate(key, defaults, mutate) {
+  var ref = db.collection('portal_data').doc(key);
+  return db.runTransaction(function(t) {
+    return t.get(ref).then(function(doc) {
+      var cur = defaults;
+      if (doc.exists) { try { cur = JSON.parse(doc.data().data); } catch (e) { cur = defaults; } }
+      cur = JSON.parse(JSON.stringify(cur === undefined ? defaults : cur));
+      var next = mutate(cur);
+      if (next === undefined) next = cur;
+      t.set(ref, { data: JSON.stringify(next), updated: firebase.firestore.FieldValue.serverTimestamp() });
+      return next;
+    });
+  }).then(function(next) {
+    _cache[key] = next;
+    return next;
+  });
+}
+
+// Kinukuha ang pinakabagong laman ng isang document (hal. sa pag-login)
+function fetchFresh(key, defaults) {
+  return db.collection('portal_data').doc(key).get().then(function(doc) {
+    if (doc.exists) { try { _cache[key] = JSON.parse(doc.data().data); } catch (e) {} }
+    return loadData(key, defaults);
+  });
+}
+
 // Load ALL data from Firestore into cache (called on page load)
 function loadAllFromFirebase(callback) {
   db.collection('portal_data').get().then(function(snapshot) {
