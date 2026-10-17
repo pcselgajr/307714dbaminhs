@@ -114,7 +114,7 @@ listenForChanges(function() {
 // Real-time updates handled by Firebase listener above
 
 // === AUTH FUNCTIONS ===
-function openM(m){document.getElementById('authModal').classList.add('act');switchMode(m||'login')}
+function openM(m){document.getElementById('authModal').classList.add('act');switchMode(m||'login');if(m==='signup'){var at=document.querySelector('#sigTabs .tab.act');if(at)stype(at,signupType||'s');}}
 function closeM(){document.getElementById('authModal').classList.remove('act')}
 function switchMode(m){var l=m==='login';document.getElementById('loginForm').style.display=l?'block':'none';document.getElementById('signupForm').style.display=l?'none':'block';document.getElementById('mtL').className='tab'+(l?' act':'');document.getElementById('mtS').className='tab'+(l?'':' act')}
 function stab(el){el.parentElement.querySelectorAll('.tab').forEach(function(t){t.className='tab'});el.className='tab act'}
