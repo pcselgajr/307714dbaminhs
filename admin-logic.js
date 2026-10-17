@@ -185,23 +185,51 @@ function deleteEnrollment(idx){
   }).then(function(){rEnrollments();toast('Enrollment deleted.','su');});
 }
 
+// CSV cell: laging may panipi; doble ang panipi sa loob; hinaharang ang formula (=, +, -, @)
+function csvCell(v){
+  v = (v === undefined || v === null) ? '' : String(v).replace(/\r?\n/g, ' ').trim();
+  if (/^[=+\-@\t\r]/.test(v)) v = "'" + v;
+  return '"' + v.replace(/"/g, '""') + '"';
+}
+// Para sa numerong dapat manatiling text sa Excel (LRN, cellphone, PSA No.): ="09171234567"
+function csvText(v){
+  v = (v === undefined || v === null) ? '' : String(v).replace(/\r?\n/g, ' ').trim();
+  if (!v) return '""';
+  if (!/^[0-9A-Za-z\- \/]+$/.test(v)) return csvCell(v);
+  return '"=""' + v + '"""';
+}
 function exportEnrollments(){
   db.collection('portal_data').doc('enrollments').get().then(function(doc){
     if(!doc.exists||!doc.data().data){toast('No enrollments to export.','er');return;}
     var parsed=JSON.parse(doc.data().data);
     var enrollments=Array.isArray(parsed)?parsed:Object.values(parsed);
+    if(!enrollments.length){toast('No enrollments to export.','er');return;}
+    var typeLabel={no_lrn:'No LRN (New)',with_lrn:'With LRN',balik_aral:'Balik-Aral'};
+    var fmtDate=function(d){ if(!d) return ''; var x=new Date(d); if(isNaN(x)) return d;
+      var z=function(n){return ('0'+n).slice(-2)}; return x.getFullYear()+'-'+z(x.getMonth()+1)+'-'+z(x.getDate())+' '+z(x.getHours())+':'+z(x.getMinutes()); };
     var headers=['Ref #','Last Name','First Name','Middle Name','Ext','LRN','PSA No','Birthdate','Age','Sex','Mother Tongue','Street','Barangay','City','Zip','Father','Mother','Guardian','Cellphone','Email','Grade Level','Track','Strand','Enrollment Type','Submission','Status','Date Submitted'];
-    var rows=[headers.join(',')];
+    var rows=[headers.map(csvCell).join(',')];
     enrollments.forEach(function(e){
-      rows.push([e.refNum||'',e.lastName||'',e.firstName||'',e.middleName||'',e.extName||'',e.lrn||'',e.psaNo||'',e.birthdate||'',e.age||'',e.sex||'',e.motherTongue||'','"'+(e.street||'')+'"',e.barangay||'',e.city||'',e.zipCode||'','"'+(e.fatherName||'')+'"','"'+(e.motherName||'')+'"','"'+(e.guardianName||'')+'"',e.cellphone||'',e.email||'',e.gradeLevel||'',e.track||'',e.strand||'',e.enrollType||'',e.submissionMethod||'',e.status||'',e.dateSubmitted||''].join(','));
+      if(!e) return;
+      rows.push([
+        csvCell(e.refNum), csvCell(e.lastName), csvCell(e.firstName), csvCell(e.middleName), csvCell(e.extName),
+        csvText(e.lrn), csvText(e.psaNo), csvCell(e.birthdate), csvCell(e.age), csvCell(e.sex), csvCell(e.motherTongue),
+        csvCell(e.street), csvCell(e.barangay), csvCell(e.city), csvText(e.zipCode),
+        csvCell(e.fatherName), csvCell(e.motherName), csvCell(e.guardianName),
+        csvText(e.cellphone), csvCell(e.email), csvCell(e.gradeLevel), csvCell(e.track), csvCell(e.strand),
+        csvCell(typeLabel[e.enrollType]||e.enrollType||''), csvCell(e.submissionMethod==='email'?'Email':(e.submissionMethod?'Personal':'')),
+        csvCell(e.status), csvCell(fmtDate(e.dateSubmitted))
+      ].join(','));
     });
-    var csv='\uFEFF'+rows.join('\n');
+    var st=loadData('settings',{})||{};
+    var sy=String(st.schoolYear||'').replace(/^S\.?Y\.?\s*/i,'').trim()||'2026-2027';
+    var csv='﻿'+rows.join('\r\n');
     var blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
     var url=URL.createObjectURL(blob);
     var a=document.createElement('a');
-    a.href=url;a.download='DBAMINHS_Enrollments_2026-2027.csv';a.click();
-    URL.revokeObjectURL(url);
-    toast('Enrollments exported!','su');
+    a.href=url;a.download='DBAMINHS_Enrollments_'+sy+'.csv';document.body.appendChild(a);a.click();a.remove();
+    setTimeout(function(){URL.revokeObjectURL(url);},1000);
+    toast(enrollments.length+' enrollment(s) exported!','su');
   });
 }
 
