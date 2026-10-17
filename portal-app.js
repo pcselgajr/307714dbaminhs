@@ -1,9 +1,6 @@
 var signupType='s';
-var accounts=[
-{id:'student',pw:'student123',type:'student',fname:'Juan',lname:'Dela Cruz',grade:'Grade 10 - Rizal',lrn:'136789012345'},
-{id:'teacher',pw:'teacher123',type:'teacher',fname:'Elena',lname:'Bautista',dept:'Mathematics',eid:'T-2024-001'},
-{id:'parent',pw:'parent123',type:'parent',fname:'Roberto',lname:'Dela Cruz',childLrn:'136789012345',childName:'Juan Dela Cruz'}
-];
+// Walang naka-hardcode na account: lahat ng account ay galing sa Firebase ('accounts')
+var accounts=[];
 
 // Load signup accounts from Firebase (loaded via loadAllFromFirebase)
 function loadSavedAccounts() {
