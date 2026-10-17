@@ -63,11 +63,11 @@ function renderPortalContent() {
     var html = '';
     // Main featured
     var feat = published[0];
-    html += '<div class="ncard nmain"><div class="nimg ' + (feat.image ? '" style="background:none' : colors[0]) + '">' + (feat.image ? '<img src="'+feat.image+'" style="width:100%;height:100%;object-fit:cover">' : icons[0]) + '</div><span class="nbadge">Featured</span><div class="nbody"><div class="ndate">' + formatDate(feat.date) + '</div><h3>' + feat.title + '</h3><p>' + (feat.content || '') + '</p><a href="#" class="nlink">Read more &#8594;</a></div></div>';
+    html += '<div class="ncard nmain"><div class="nimg ' + (feat.image ? '" style="background:none' : colors[0]) + '">' + (feat.image ? '<img src="'+feat.image+'" style="width:100%;height:100%;object-fit:cover">' : icons[0]) + '</div><span class="nbadge">Featured</span><div class="nbody"><div class="ndate">' + formatDate(feat.date) + '</div><h3>' + feat.title + '</h3><p>' + (feat.content || '') + '</p><a href="#" class="nlink" onclick="openNewsFromCard(this);return false">Read more &#8594;</a></div></div>';
     // Side cards
     for (var i = 1; i < Math.min(published.length, 3); i++) {
       var n = published[i];
-      html += '<div class="ncard"><div class="nimg ' + (n.image ? '" style="background:none' : colors[i % 4]) + '">' + (n.image ? '<img src="'+n.image+'" style="width:100%;height:100%;object-fit:cover">' : icons[i % 4]) + '</div><div class="nbody"><div class="ndate">' + formatDate(n.date) + '</div><h3>' + n.title + '</h3><p>' + (n.content || '') + '</p><a href="#" class="nlink">Read more &#8594;</a></div></div>';
+      html += '<div class="ncard"><div class="nimg ' + (n.image ? '" style="background:none' : colors[i % 4]) + '">' + (n.image ? '<img src="'+n.image+'" style="width:100%;height:100%;object-fit:cover">' : icons[i % 4]) + '</div><div class="nbody"><div class="ndate">' + formatDate(n.date) + '</div><h3>' + n.title + '</h3><p>' + (n.content || '') + '</p><a href="#" class="nlink" onclick="openNewsFromCard(this);return false">Read more &#8594;</a></div></div>';
     }
     newsEl.innerHTML = html;
   }
@@ -449,7 +449,7 @@ document.getElementById('liPw').value='';
 }
 
 function sdTab(el,id){el.parentElement.querySelectorAll('button').forEach(function(b){b.className=''});el.className='act';['sdGrades','sdSched','sdTasks','sdAtt','sdAnn'].forEach(function(x){var e=document.getElementById(x);if(e)e.style.display=x===id?'block':'none'})}
-function tdTab(el,id){el.parentElement.querySelectorAll('button').forEach(function(b){b.className=''});el.className='act';['tdClasses','tdGrade','tdAttendance','tdQuiz','tdSchedule','tdAnnounce'].forEach(function(x){var e=document.getElementById(x);if(e)e.style.display=x===id?'block':'none'})}
+function tdTab(el,id){el.parentElement.querySelectorAll('button').forEach(function(b){b.className=''});el.className='act';['tdClasses','tdGrade','tdAttendance','tdQuiz','tdSchedule','tdTasks','tdAnnounce'].forEach(function(x){var e=document.getElementById(x);if(e)e.style.display=x===id?'block':'none'})}
 function pdTab(el,id){el.parentElement.querySelectorAll('button').forEach(function(b){b.className=''});el.className='act';['pdGrades','pdAtt','pdMsg'].forEach(function(x){document.getElementById(x).style.display=x===id?'block':'none'})}
 
 var tt;
@@ -4225,3 +4225,280 @@ function renderELibrary(resetSubject) {
   var _origLogout = doLogout;
   doLogout = function() { closeELibrary(); _origLogout(); };
 })();
+
+// ============================================
+// 1. SCHOOL CALENDAR CARD
+// ============================================
+function goToCalendar() {
+  var el = document.getElementById('schoolCalendar');
+  if (el) el.scrollIntoView({behavior: 'smooth', block: 'start'});
+}
+
+// ============================================
+// 2. NEWS "READ MORE" — buong balita sa modal
+// ============================================
+function openNewsFromCard(link) {
+  var card = link && link.closest ? link.closest('.ncard') : null;
+  if (!card) return;
+  var title = card.querySelector('h3'), date = card.querySelector('.ndate'), body = card.querySelector('.nbody p'), img = card.querySelector('.nimg img');
+  document.getElementById('newsModalTitle').textContent = title ? title.textContent : '';
+  document.getElementById('newsModalDate').textContent = date ? date.textContent : '';
+  document.getElementById('newsModalBody').textContent = body ? body.textContent : '';
+  var imgBox = document.getElementById('newsModalImg');
+  imgBox.innerHTML = '';
+  var src = img ? img.getAttribute('src') : '';
+  if (src && /^(https?:|data:image\/)/i.test(src)) {
+    var im = document.createElement('img');
+    im.src = src; im.alt = '';
+    im.style.cssText = 'width:100%;max-height:380px;object-fit:cover;display:block';
+    imgBox.appendChild(im);
+  }
+  document.getElementById('newsModal').style.display = 'flex';
+}
+function closeNewsModal() { document.getElementById('newsModal').style.display = 'none'; }
+
+// ============================================
+// 3. ASSIGNMENTS & TASKS
+// Data: 'assignments' = [{id, section, subject, title, desc, due (YYYY-MM-DD), link, by, byId, created}]
+// ============================================
+function taskEsc(v) {
+  return String(v == null ? '' : v).replace(/[&<>"']/g, function(c) {
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+function taskToday() {
+  var d = new Date();
+  return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+}
+function taskDaysLeft(due) {
+  var a = new Date(taskToday() + 'T00:00:00'), b = new Date(String(due) + 'T00:00:00');
+  return Math.round((b - a) / 86400000);
+}
+function taskStatus(due) {
+  var n = taskDaysLeft(due);
+  if (isNaN(n)) return {label: '—', bg: 'var(--g1)', fg: 'var(--g5)'};
+  if (n < 0) return {label: 'Lampas na sa deadline', bg: '#FEE2E2', fg: '#991B1B'};
+  if (n === 0) return {label: 'Ngayon ang deadline', bg: '#FEF3C7', fg: '#92400E'};
+  if (n === 1) return {label: 'Bukas ang deadline', bg: '#FEF3C7', fg: '#92400E'};
+  return {label: n + ' araw pa', bg: '#DCFCE7', fg: '#166534'};
+}
+function taskDueText(due) {
+  try { return new Date(String(due) + 'T00:00:00').toLocaleDateString('en-PH', {weekday: 'short', year: 'numeric', month: 'short', day: 'numeric'}); }
+  catch (e) { return due; }
+}
+function taskSafeUrl(u) { u = String(u || '').trim(); return /^https?:\/\//i.test(u) ? u : ''; }
+function taskUserId() { return curUser ? String(curUser.id || curUser.eid || '') : ''; }
+
+function taskSectionNames() {
+  var settings = loadData('settings', DEFAULT_SETTINGS);
+  var secs = (settings.sections && settings.sections.length > 0) ? settings.sections : DEFAULT_SECTIONS;
+  return secs.map(function(x) { return typeof x === 'object' ? x.name : x; });
+}
+
+function fillTaskSubjects() {
+  var sec = document.getElementById('taskSection').value;
+  var dl = document.getElementById('taskSubjectList');
+  if (!dl) return;
+  var subs = [];
+  try {
+    var settings = loadData('settings', DEFAULT_SETTINGS);
+    var secs = (settings.sections && settings.sections.length > 0) ? settings.sections : DEFAULT_SECTIONS;
+    subs = getSubjectsForSection(sec || '', secs) || [];
+  } catch (e) {}
+  subs = subs.filter(function(x, i) { return subs.indexOf(x) === i; });
+  dl.innerHTML = subs.map(function(x) { return '<option value="' + taskEsc(x) + '">'; }).join('');
+}
+
+function loadTeacherTasks() {
+  var sel = document.getElementById('taskSection');
+  if (sel && !sel.options.length) {
+    var names = taskSectionNames();
+    // ilagay muna ang advisory sections ng teacher, kung meron
+    var mine = (curUser && curUser.sections) ? curUser.sections : [];
+    names.sort(function(a, b) { return (mine.indexOf(b) > -1) - (mine.indexOf(a) > -1); });
+    sel.innerHTML = names.map(function(n) { return '<option value="' + taskEsc(n) + '">' + taskEsc(n) + (mine.indexOf(n) > -1 ? ' (advisory)' : '') + '</option>'; }).join('');
+    fillTaskSubjects();
+  }
+  var due = document.getElementById('taskDue');
+  if (due && !due.min) due.min = taskToday();
+
+  var el = document.getElementById('taskList');
+  if (!el) return;
+  var uid = taskUserId();
+  var list = (loadData('assignments', []) || []).filter(function(t) { return t && String(t.byId) === uid; });
+  list.sort(function(a, b) { return String(b.due).localeCompare(String(a.due)); });
+  if (!list.length) {
+    el.innerHTML = '<div style="text-align:center;padding:16px;color:var(--g5);font-size:13px">Wala pang in-post na assignment.</div>';
+    return;
+  }
+  el.innerHTML = list.slice(0, 40).map(function(t) {
+    var st = taskStatus(t.due), url = taskSafeUrl(t.link);
+    return '<div style="background:#fff;border:1px solid #e0e4ef;border-radius:10px;padding:12px 14px;margin-bottom:8px">' +
+      '<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">' +
+      '<div><div style="font-size:14px;font-weight:700;color:#1B2A4A">' + taskEsc(t.title) + '</div>' +
+      '<div style="font-size:12px;color:#777;margin-top:2px">' + taskEsc(t.subject) + ' &bull; <span style="background:#e8f0fe;color:#1B2A4A;padding:1px 8px;border-radius:10px;font-size:11px;font-weight:600">' + taskEsc(t.section) + '</span></div></div>' +
+      '<button data-id="' + taskEsc(t.id) + '" onclick="deleteTask(this.getAttribute(\'data-id\'))" title="Burahin" aria-label="Burahin" style="background:none;border:none;color:#bbb;font-size:20px;cursor:pointer;padding:0 4px;line-height:1">&times;</button></div>' +
+      (t.desc ? '<div style="font-size:13px;color:#555;margin-top:6px;white-space:pre-wrap">' + taskEsc(t.desc) + '</div>' : '') +
+      '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:8px;font-size:12px">' +
+      '<span>Deadline: <strong>' + taskEsc(taskDueText(t.due)) + '</strong></span>' +
+      '<span style="background:' + st.bg + ';color:' + st.fg + ';padding:2px 8px;border-radius:10px;font-weight:600">' + st.label + '</span>' +
+      (url ? '<a href="' + taskEsc(url) + '" target="_blank" rel="noopener noreferrer" style="color:var(--o);font-weight:600">Link &#8599;</a>' : '') +
+      '</div></div>';
+  }).join('');
+}
+
+function postTask() {
+  if (!curUser || curUser.type !== 'teacher') return;
+  var sec = document.getElementById('taskSection').value;
+  var subj = document.getElementById('taskSubject').value.trim();
+  var title = document.getElementById('taskTitle').value.trim();
+  var desc = document.getElementById('taskDesc').value.trim();
+  var due = document.getElementById('taskDue').value;
+  var link = document.getElementById('taskLink').value.trim();
+  if (!sec || !subj || !title || !due) { toast('Punan ang Section, Subject, Pamagat at Deadline.', 'er'); return; }
+  if (link && !taskSafeUrl(link)) { toast('Ang link ay dapat nagsisimula sa https://', 'er'); return; }
+  if (taskDaysLeft(due) < 0 && !confirm('Lampas na ang deadline na pinili mo. I-post pa rin?')) return;
+  var list = loadData('assignments', []) || [];
+  list.unshift({
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    section: sec, subject: subj, title: title, desc: desc, due: due, link: link,
+    by: curUser.fname + ' ' + curUser.lname, byId: taskUserId(), created: new Date().toISOString()
+  });
+  saveData('assignments', list);
+  ['taskTitle', 'taskDesc', 'taskLink'].forEach(function(id) { document.getElementById(id).value = ''; });
+  loadTeacherTasks();
+  toast('Naipost ang assignment para sa ' + sec + '!', 'su');
+}
+
+function deleteTask(id) {
+  var list = loadData('assignments', []) || [];
+  var t = list.filter(function(x) { return String(x.id) === String(id); })[0];
+  if (!t || String(t.byId) !== taskUserId()) return;
+  if (!confirm('Burahin ang "' + t.title + '"?')) return;
+  saveData('assignments', list.filter(function(x) { return String(x.id) !== String(id); }));
+  loadTeacherTasks();
+  toast('Nabura ang assignment.', 'su');
+}
+
+function loadStudentTasks() {
+  var el = document.getElementById('sdTasksContent');
+  if (!el || !curUser || curUser.type !== 'student') return;
+  var sec = curUser.grade || '';
+  var list = (loadData('assignments', []) || []).filter(function(t) {
+    // ipakita ang mga paparating, at ang lumampas sa loob ng nakaraang 14 na araw
+    return t && t.section === sec && taskDaysLeft(t.due) >= -14;
+  });
+  var upcoming = list.filter(function(t) { return taskDaysLeft(t.due) >= 0; }).sort(function(a, b) { return String(a.due).localeCompare(String(b.due)); });
+  var past = list.filter(function(t) { return taskDaysLeft(t.due) < 0; }).sort(function(a, b) { return String(b.due).localeCompare(String(a.due)); });
+  if (!upcoming.length && !past.length) {
+    el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--g5);font-size:14px">&#127881; Walang assignment sa ngayon.</div>';
+    return;
+  }
+  var row = function(t) {
+    var st = taskStatus(t.due), url = taskSafeUrl(t.link);
+    return '<tr><td>' + taskEsc(t.subject) + '</td>' +
+      '<td><strong>' + taskEsc(t.title) + '</strong>' +
+      (t.desc ? '<div style="font-size:12px;color:var(--g5);white-space:pre-wrap;margin-top:2px">' + taskEsc(t.desc) + '</div>' : '') +
+      (url ? '<div style="margin-top:4px"><a href="' + taskEsc(url) + '" target="_blank" rel="noopener noreferrer" style="color:var(--o);font-weight:600;font-size:12px">Buksan ang link &#8599;</a></div>' : '') +
+      '<div style="font-size:11px;color:var(--g5);margin-top:2px">ni ' + taskEsc(t.by || 'Teacher') + '</div></td>' +
+      '<td style="white-space:nowrap">' + taskEsc(taskDueText(t.due)) + '</td>' +
+      '<td><span class="badge" style="background:' + st.bg + ';color:' + st.fg + '">' + st.label + '</span></td></tr>';
+  };
+  var head = '<div style="overflow-x:auto"><table><thead><tr><th>Subject</th><th>Gawain</th><th>Deadline</th><th>Status</th></tr></thead><tbody>';
+  var h = '';
+  if (upcoming.length) h += head + upcoming.map(row).join('') + '</tbody></table></div>';
+  if (past.length) h += '<div style="font-size:13px;font-weight:700;color:var(--g5);margin:16px 0 6px">Lumampas na (nakaraang 2 linggo)</div>' + head + past.map(row).join('') + '</tbody></table></div>';
+  el.innerHTML = h;
+}
+
+// i-refresh kapag may bagong assignment (real-time)
+(function() {
+  if (typeof listenForChanges !== 'function') return;
+  listenForChanges(function() {
+    try {
+      if (curUser && curUser.type === 'student') loadStudentTasks();
+      if (curUser && curUser.type === 'teacher' && document.getElementById('tdTasks') && document.getElementById('tdTasks').style.display === 'block') loadTeacherTasks();
+    } catch (e) {}
+  });
+})();
+(function() {
+  var _oc = completeLogin;
+  completeLogin = function(user) { _oc(user); try { if (user && user.type === 'student') setTimeout(loadStudentTasks, 200); } catch (e) {} };
+})();
+
+// ============================================
+// 4. TERMS OF USE AT PRIVACY NOTICE
+// ============================================
+function legalSchool() {
+  var st = loadData('settings', DEFAULT_SETTINGS) || {};
+  return {
+    name: st.schoolName || 'Dr. Bonifacio A. Masilungan Integrated National High School',
+    addr: st.address || 'Brgy. Lalayat, San Jose, Batangas',
+    email: st.email || '',
+    phone: st.phone || ''
+  };
+}
+function openLegal(kind) {
+  var sc = legalSchool(), e = taskEsc;
+  var contact = (sc.email ? 'email: <strong>' + e(sc.email) + '</strong>' : '') + (sc.email && sc.phone ? ' o ' : '') + (sc.phone ? 'tel.: <strong>' + e(sc.phone) + '</strong>' : '');
+  if (!contact) contact = 'ang tanggapan ng School Head';
+  var h2 = function(t) { return '<h4 style="font-size:15px;color:var(--n);margin:18px 0 6px">' + t + '</h4>'; };
+  var ul = function(items) { return '<ul style="margin:0 0 0 20px;padding:0">' + items.map(function(x) { return '<li style="margin-bottom:4px">' + x + '</li>'; }).join('') + '</ul>'; };
+  var html;
+  if (kind === 'terms') {
+    html = '<h3 style="font-family:var(--fd);font-size:22px;margin:0 0 4px">Terms of Use</h3>' +
+      '<div style="font-size:12px;color:var(--g5);margin-bottom:10px">DBAMINHS School Portal &bull; Huling na-update: Oktubre 2026</div>' +
+      '<p>Sa paggamit ng DBAMINHS School Portal, sumasang-ayon ka sa mga sumusunod:</p>' +
+      h2('1. Para kanino ang portal') +
+      '<p>Para lamang ito sa mga learner, magulang o guardian, at kawani ng ' + e(sc.name) + '. Ang bawat account ay para sa iisang tao lamang.</p>' +
+      h2('2. Iyong account') +
+      ul(['Panatilihing lihim ang iyong password at huwag itong ibahagi kaninuman.',
+          'Huwag mag-login gamit ang account ng iba, at huwag gumawa ng account gamit ang LRN o Employee ID na hindi sa iyo.',
+          'Ipaalam agad sa paaralan kung sa tingin mo ay nagamit ng iba ang iyong account.']) +
+      h2('3. Tamang paggamit') +
+      ul(['Huwag subukang pasukin ang bahagi ng portal na hindi para sa iyo, o baguhin, kopyahin o burahin ang data ng iba.',
+          'Huwag mag-post o mag-upload ng nilalamang mapanakit, malaswa, o lumalabag sa batas.',
+          'Ang mga materyal sa E-Library ay para sa pag-aaral lamang; igalang ang copyright ng mga may-akda.']) +
+      h2('4. Mga grade at record') +
+      '<p>Ang mga grade, attendance at iba pang record sa portal ay para sa monitoring. Ang opisyal na record ay ang nasa School Forms ng DepEd (hal. SF9 at SF10) na inilalabas ng paaralan. Kung may nakita kang mali, makipag-ugnayan sa iyong adviser.</p>' +
+      h2('5. Pagsuspinde ng account') +
+      '<p>Maaaring suspindihin o burahin ng paaralan ang account na lumabag sa mga patakarang ito.</p>' +
+      h2('6. Pagbabago') +
+      '<p>Maaaring baguhin ng paaralan ang mga patakarang ito. Ang patuloy na paggamit ng portal ay nangangahulugang sumasang-ayon ka sa mga pagbabago.</p>' +
+      h2('7. Makipag-ugnayan') + '<p>Para sa mga tanong: ' + contact + '.</p>';
+  } else {
+    html = '<h3 style="font-family:var(--fd);font-size:22px;margin:0 0 4px">Privacy Notice</h3>' +
+      '<div style="font-size:12px;color:var(--g5);margin-bottom:10px">DBAMINHS School Portal &bull; Huling na-update: Oktubre 2026</div>' +
+      '<p>Pinahahalagahan ng ' + e(sc.name) + ' ang iyong privacy alinsunod sa <strong>Data Privacy Act of 2012 (RA 10173)</strong>. Ipinapaliwanag ng notice na ito kung anong impormasyon ang kinokolekta ng portal at paano ito ginagamit.</p>' +
+      h2('Anong impormasyon ang kinokolekta') +
+      ul(['<strong>Account:</strong> pangalan, email, LRN o Employee ID, at password.',
+          '<strong>Learner:</strong> grade level at section, kasarian, grades, attendance, at class schedule.',
+          '<strong>Magulang o guardian:</strong> pangalan, email, at LRN ng anak na naka-link sa account.',
+          '<strong>Kawani:</strong> Daily Time Record (oras ng time in/out) at pag-check ng lokasyon sa oras ng time in, kung naka-on ang GPS verification.',
+          '<strong>Online enrollment:</strong> ang impormasyong inilagay sa enrollment form.']) +
+      h2('Bakit ito kinokolekta') +
+      ul(['Para sa enrollment at pagpapanatili ng record ng mga learner.',
+          'Para maitala, makalkula at maipakita ang grades at attendance sa learner at sa kanyang magulang.',
+          'Para sa announcements, schedules, assignments at E-Library.',
+          'Para sa Daily Time Record ng mga kawani.']) +
+      h2('Sino ang makakakita') +
+      ul(['Ang learner at ang naka-link niyang magulang o guardian: ang sariling record lamang.',
+          'Mga adviser at teacher: ang record ng kanilang mga section.',
+          'Mga awtorisadong administrator ng paaralan.',
+          'Hindi ibinebenta ang iyong impormasyon. Ibinabahagi lamang ito sa DepEd o sa ibang ahensya kung hinihingi ng batas o ng patakaran ng DepEd.']) +
+      h2('Saan at gaano katagal iniimbak') +
+      '<p>Iniimbak ang data sa cloud service ng Google (Firebase), na maaaring may server sa labas ng Pilipinas. Itinatago ito habang ikaw ay enrolled o empleyado, at hangga\'t kinakailangan ng mga patakaran ng DepEd sa pagtatago ng record.</p>' +
+      h2('Mga learner na wala pang 18 taong gulang') +
+      '<p>Hinihikayat ang mga magulang o guardian na basahin at ipaliwanag ang notice na ito sa kanilang anak, at gabayan sila sa paggamit ng portal.</p>' +
+      h2('Iyong mga karapatan') +
+      '<p>Sa ilalim ng RA 10173, may karapatan kang: malaman kung paano ginagamit ang iyong data; makita at humingi ng kopya nito; ipatama ang maling impormasyon; tumutol o ipahinto ang paggamit nito; ipabura ito kung wala nang legal na batayan para itago; at magreklamo sa <strong>National Privacy Commission</strong> (privacy.gov.ph).</p>' +
+      h2('Makipag-ugnayan') +
+      '<p>Para sa mga tanong o kahilingan tungkol sa iyong data, makipag-ugnayan sa School Head o sa itinalagang Data Protection Officer ng paaralan: ' + contact + '.</p>';
+  }
+  document.getElementById('legalBody').innerHTML = html;
+  var tp = document.getElementById('legalTabPrivacy'), tt = document.getElementById('legalTabTerms');
+  tp.className = 'btn btn-sm ' + (kind === 'terms' ? 'btn-s' : 'btn-p');
+  tt.className = 'btn btn-sm ' + (kind === 'terms' ? 'btn-p' : 'btn-s');
+  document.getElementById('legalModal').style.display = 'flex';
+}
+function closeLegal() { document.getElementById('legalModal').style.display = 'none'; }

@@ -255,16 +255,16 @@ td{padding:12px 16px;border-bottom:1px solid var(--g1);font-size:13.5px}
 <div class="qcard" onclick="openM('login')"><div class="qi qi-c">&#128202;</div><h3>Grades &amp; Records</h3><p>Check academic performance</p></div>
 <div class="qcard" onclick="window.location.href='enrollment.html'"><div class="qi qi-d">&#128221;</div><h3>Online Enrollment</h3><p>Enroll for the upcoming school year</p></div>
 <div class="qcard" onclick="openELibrary()"><div class="qi qi-e">&#128214;</div><h3>E-Library</h3><p>Browse digital books and modules</p></div>
-<div class="qcard"><div class="qi qi-f">&#128197;</div><h3>School Calendar</h3><p>Events, holidays, and important dates</p></div>
+<div class="qcard" onclick="goToCalendar()"><div class="qi qi-f">&#128197;</div><h3>School Calendar</h3><p>Events, holidays, and important dates</p></div>
 <div class="qcard" onclick="openM('login')"><div class="qi qi-g">&#128203;</div><h3>Attendance</h3><p>Track daily attendance records</p></div>
 <div class="qcard" onclick="openM('login')"><div class="qi qi-h">&#128172;</div><h3>Parent Portal</h3><p>Monitor your child's progress</p></div>
 </div></div></section>
 
 <section class="sec news-sec" id="news"><div class="sec-in"><div class="sec-h"><div class="aline"></div><h2>Latest News</h2><p>Stay informed with what's happening</p></div>
 <div class="ngrid" id="portalNews">
-<div class="ncard nmain"><div class="nimg ni-a">&#127942;</div><span class="nbadge">Featured</span><div class="nbody"><div class="ndate">April 2, 2026</div><h3>DBAMINHS Students Excel at Regional Science Fair</h3><p>Our Grade 10 students brought home gold and silver medals at the Regional Science and Technology Fair held in Batangas City.</p><a href="#" class="nlink">Read more &#8594;</a></div></div>
-<div class="ncard"><div class="nimg ni-b">&#128227;</div><div class="nbody"><div class="ndate">March 28, 2026</div><h3>Enrollment for SY 2026-2027 Now Open</h3><p>Online and walk-in enrollment is now open for all grade levels.</p><a href="#" class="nlink">Read more &#8594;</a></div></div>
-<div class="ncard"><div class="nimg ni-c">&#127793;</div><div class="nbody"><div class="ndate">March 20, 2026</div><h3>Brigada Eskwela Volunteer Registration</h3><p>Join us in preparing our school for the new academic year!</p><a href="#" class="nlink">Read more &#8594;</a></div></div>
+<div class="ncard nmain"><div class="nimg ni-a">&#127942;</div><span class="nbadge">Featured</span><div class="nbody"><div class="ndate">April 2, 2026</div><h3>DBAMINHS Students Excel at Regional Science Fair</h3><p>Our Grade 10 students brought home gold and silver medals at the Regional Science and Technology Fair held in Batangas City.</p><a href="#" class="nlink" onclick="openNewsFromCard(this);return false">Read more &#8594;</a></div></div>
+<div class="ncard"><div class="nimg ni-b">&#128227;</div><div class="nbody"><div class="ndate">March 28, 2026</div><h3>Enrollment for SY 2026-2027 Now Open</h3><p>Online and walk-in enrollment is now open for all grade levels.</p><a href="#" class="nlink" onclick="openNewsFromCard(this);return false">Read more &#8594;</a></div></div>
+<div class="ncard"><div class="nimg ni-c">&#127793;</div><div class="nbody"><div class="ndate">March 20, 2026</div><h3>Brigada Eskwela Volunteer Registration</h3><p>Join us in preparing our school for the new academic year!</p><a href="#" class="nlink" onclick="openNewsFromCard(this);return false">Read more &#8594;</a></div></div>
 </div></div></section>
 
 <section class="sec" id="events"><div class="sec-in"><div class="sec-h"><div class="aline"></div><h2>Upcoming Events</h2></div>
@@ -333,7 +333,7 @@ td{padding:12px 16px;border-bottom:1px solid var(--g1);font-size:13.5px}
 <div class="dash-body">
 <div class="dash-welcome"><h2>&#128075; Welcome back, <span id="sdWelcome">Student</span>!</h2><p>Here's your academic overview for <span id="sdSY">SY 2025-2026</span></p></div>
 <div class="dash-stat-row"><div class="dash-stat"><b id="sdStatAvg">--</b><small>Gen. Average</small></div><div class="dash-stat"><b id="sdStatAtt">--</b><small>Attendance</small></div><div class="dash-stat"><b id="sdStatSubjects">--</b><small>Subjects</small></div><div class="dash-stat"><b id="sdStatTerms">0</b><small>Terms Released</small></div></div>
-<div class="dash-nav"><button class="act" onclick="sdTab(this,'sdGrades')">&#128202; Grades</button><button onclick="sdTab(this,'sdSched')">&#128197; Schedule</button><button onclick="sdTab(this,'sdTasks')">&#128221; Assignments</button><button onclick="sdTab(this,'sdAtt')">&#128203; Attendance</button><button onclick="sdTab(this,'sdAnn');loadStudentAnnouncements()">&#128227; Announcements</button></div>
+<div class="dash-nav"><button class="act" onclick="sdTab(this,'sdGrades')">&#128202; Grades</button><button onclick="sdTab(this,'sdSched')">&#128197; Schedule</button><button onclick="sdTab(this,'sdTasks');loadStudentTasks()">&#128221; Assignments</button><button onclick="sdTab(this,'sdAtt')">&#128203; Attendance</button><button onclick="sdTab(this,'sdAnn');loadStudentAnnouncements()">&#128227; Announcements</button></div>
 <div id="sdGrades" class="dash-card"><h3>&#128202; My Grades &mdash; 2nd Semester</h3><table><thead><tr><th>Subject</th><th>1st Qtr</th><th>2nd Qtr</th><th>3rd Qtr</th><th>4th Qtr</th><th>Final</th><th>Remarks</th></tr></thead><tbody>
 <tr><td>Mathematics</td><td>87</td><td>89</td><td>90</td><td>88</td><td>88.5</td><td><span class="badge b-g">Passed</span></td></tr>
 <tr><td>Science</td><td>91</td><td>88</td><td>92</td><td>90</td><td>90.3</td><td><span class="badge b-g">Passed</span></td></tr>
@@ -343,13 +343,7 @@ td{padding:12px 16px;border-bottom:1px solid var(--g1);font-size:13.5px}
 <tr><td>MAPEH</td><td>92</td><td>93</td><td>91</td><td>94</td><td>92.5</td><td><span class="badge b-g">Passed</span></td></tr>
 </tbody></table></div>
 <div id="sdSched" class="dash-card" style="display:none"><div id="sdSchedContent"><div style="text-align:center;padding:24px;color:var(--g5)">No schedule uploaded yet.</div></div></div>
-<div id="sdTasks" class="dash-card" style="display:none"><h3>&#128221; Assignments &amp; Tasks</h3><table><thead><tr><th>Subject</th><th>Task</th><th>Due Date</th><th>Status</th></tr></thead><tbody>
-<tr><td>Mathematics</td><td>Problem Set #12 &mdash; Quadratic Equations</td><td>Apr 8, 2026</td><td><span class="badge b-y">Pending</span></td></tr>
-<tr><td>Science</td><td>Lab Report &mdash; Photosynthesis Experiment</td><td>Apr 10, 2026</td><td><span class="badge b-y">Pending</span></td></tr>
-<tr><td>English</td><td>Essay &mdash; My Community Hero</td><td>Apr 12, 2026</td><td><span class="badge b-y">Pending</span></td></tr>
-<tr><td>Filipino</td><td>Sanaysay &mdash; Kahalagahan ng Edukasyon</td><td>Apr 5, 2026</td><td><span class="badge b-g">Submitted</span></td></tr>
-<tr><td>AP</td><td>Timeline &mdash; Philippine Revolution</td><td>Apr 3, 2026</td><td><span class="badge b-g">Submitted</span></td></tr>
-</tbody></table></div>
+<div id="sdTasks" class="dash-card" style="display:none"><h3>&#128221; Assignments &amp; Tasks</h3><div id="sdTasksContent"><div style="text-align:center;padding:16px;color:var(--g5);font-size:13px">Wala pang assignment.</div></div></div>
 <div id="sdAtt" class="dash-card" style="display:none"><div id="sdAttContent"><div style="text-align:center;padding:24px;color:var(--g5)">No attendance records yet.</div></div></div>
 <div id="sdAnn" class="dash-card" style="display:none"><h3>&#128227; Announcements</h3><div id="sdAnnContent"><div style="text-align:center;padding:16px;color:var(--g5);font-size:13px">Loading...</div></div></div>
 </div></div>
@@ -359,7 +353,7 @@ td{padding:12px 16px;border-bottom:1px solid var(--g1);font-size:13.5px}
 <div class="dash-body">
 <div class="dash-welcome" style="background:linear-gradient(135deg,var(--n),var(--nl))"><h2>&#128075; Welcome, <span id="tdWelcome">Teacher</span>!</h2><p>Manage your classes and students</p></div>
 <div class="dash-stat-row"><div class="dash-stat"><b id="tStatClasses">0</b><small id="tStatClassesLabel">Sections</small></div><div class="dash-stat"><b id="tStatStudents">0</b><small>Students</small></div><div class="dash-stat"><b id="tStatPending">0</b><small id="tStatPendingLabel">Sections w/ Grades</small></div><div class="dash-stat"><b id="tStatAttendance">--</b><small>Avg. Attendance</small></div></div>
-<div class="dash-nav"><button class="act" onclick="tdTab(this,'tdClasses')">&#128218; My Classes</button><button onclick="tdTab(this,'tdGrade')">&#128202; Grade Input</button><button onclick="tdTab(this,'tdAttendance')">&#128203; Attendance</button><button onclick="tdTab(this,'tdSchedule')">&#128197; Schedule</button><button onclick="tdTab(this,'tdAnnounce')">&#128227; Announcements</button><button onclick="openResourcesModal()">&#128194; Resources</button></div>
+<div class="dash-nav"><button class="act" onclick="tdTab(this,'tdClasses')">&#128218; My Classes</button><button onclick="tdTab(this,'tdGrade')">&#128202; Grade Input</button><button onclick="tdTab(this,'tdAttendance')">&#128203; Attendance</button><button onclick="tdTab(this,'tdSchedule')">&#128197; Schedule</button><button onclick="tdTab(this,'tdTasks');loadTeacherTasks()">&#128221; Assignments</button><button onclick="tdTab(this,'tdAnnounce')">&#128227; Announcements</button><button onclick="openResourcesModal()">&#128194; Resources</button></div>
 <div id="tdClasses" class="dash-card"><div id="tdClassesContent"><div style="text-align:center;padding:24px;color:var(--g5)">Loading classes...</div></div></div>
 <div id="tdGrade" class="dash-card" style="display:none">
 <h3>&#128202; Grade Upload System</h3>
@@ -504,6 +498,23 @@ Sa cell: <code style="background:var(--w);padding:2px 6px;border-radius:4px;font
 <div id="savedSchedule"></div>
 </div>
 
+<div id="tdTasks" class="dash-card" style="display:none"><h3>&#128221; Assignments &amp; Tasks</h3>
+<div style="background:#f8f9fc;border-radius:10px;padding:14px;margin-bottom:16px">
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:0 12px">
+<div class="fg"><label>Section <span style="color:var(--o)">*</span></label><select id="taskSection" onchange="fillTaskSubjects()"></select></div>
+<div class="fg"><label>Subject <span style="color:var(--o)">*</span></label><input id="taskSubject" list="taskSubjectList" placeholder="hal. General Mathematics"><datalist id="taskSubjectList"></datalist></div>
+</div>
+<div class="fg"><label>Pamagat ng gawain <span style="color:var(--o)">*</span></label><input id="taskTitle" placeholder="hal. Performance Task 1: Budget Plan"></div>
+<div class="fg"><label>Instructions</label><textarea id="taskDesc" rows="3" placeholder="Ano ang gagawin, paano ipapasa, ilang puntos..."></textarea></div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:0 12px">
+<div class="fg"><label>Deadline <span style="color:var(--o)">*</span></label><input id="taskDue" type="date"></div>
+<div class="fg"><label>Link (opsyonal)</label><input id="taskLink" placeholder="https://... (hal. Google Form o file)"></div>
+</div>
+<button class="btn btn-p btn-sm" onclick="postTask()">&#128221; I-post ang Assignment</button>
+</div>
+<h4 style="font-size:14px;margin-bottom:8px">Mga in-post ko</h4>
+<div id="taskList"><div style="text-align:center;padding:16px;color:var(--g5);font-size:13px">Wala pang in-post na assignment.</div></div>
+</div>
 <div id="tdAnnounce" class="dash-card" style="display:none"><h3>&#128227; Announcements</h3>
 <div style="background:#f8f9fc;border-radius:10px;padding:14px;margin-bottom:16px">
 <div class="fg"><label>Title <span style="color:var(--o)">*</span></label><input id="annTitle" placeholder="e.g. Reminder: Quiz on Monday"></div>
@@ -561,13 +572,35 @@ Sa cell: <code style="background:var(--w);padding:2px 6px;border-radius:4px;font
 <div class="fg" id="fGrade"><label>Grade &amp; Section</label><select id="sGradeSection"><option value="">Select Section</option></select></div>
 <div class="fg"><label>Password * (min 8 chars)</label><input type="password" id="sp1" placeholder="Create password"></div>
 <div class="fg"><label>Confirm Password *</label><input type="password" id="sp2" placeholder="Re-enter password"></div>
-<label style="font-size:12.5px;display:flex;align-items:start;gap:8px;cursor:pointer;color:var(--g5);line-height:1.5;margin-bottom:16px"><input type="checkbox" id="sag" style="width:auto;margin-top:3px"> I agree to the Terms &amp; Conditions and Privacy Policy</label>
+<label style="font-size:12.5px;display:flex;align-items:start;gap:8px;cursor:pointer;color:var(--g5);line-height:1.5;margin-bottom:16px"><input type="checkbox" id="sag" style="width:auto;margin-top:3px"> <span>Nabasa ko at sumasang-ayon ako sa <a href="#" onclick="openLegal('terms');return false" style="color:var(--o);font-weight:600">Terms of Use</a> at <a href="#" onclick="openLegal('privacy');return false" style="color:var(--o);font-weight:600">Privacy Notice</a> ng DBAMINHS Portal.</span></label>
 <button class="btn btn-p btn-full" onclick="doSignup()">Create Account &#10148;</button>
 <p style="margin-top:14px;font-size:13px;color:var(--g5);text-align:center">Have an account? <a href="#" onclick="switchMode('login');return false" style="color:var(--o);font-weight:600">Log In</a></p>
 </div>
 </div></div>
 
 <div class="toast" id="toastEl"></div>
+
+<!-- NEWS MODAL -->
+<div id="newsModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:flex-start;justify-content:center;padding:24px 12px;overflow-y:auto" onclick="if(event.target===this)closeNewsModal()">
+<div style="background:#fff;border-radius:16px;max-width:720px;width:100%;position:relative;overflow:hidden">
+<button onclick="closeNewsModal()" aria-label="Isara" style="position:absolute;top:10px;right:12px;background:rgba(255,255,255,.9);border:none;border-radius:50%;width:36px;height:36px;font-size:24px;cursor:pointer;color:#555;line-height:1;z-index:2">&times;</button>
+<div id="newsModalImg"></div>
+<div style="padding:24px">
+<div id="newsModalDate" style="font-size:13px;color:var(--g5);margin-bottom:6px"></div>
+<h3 id="newsModalTitle" style="font-family:var(--fd);font-size:24px;line-height:1.3;margin:0 0 14px"></h3>
+<div id="newsModalBody" style="font-size:15px;line-height:1.7;color:var(--g7);white-space:pre-wrap"></div>
+</div></div></div>
+
+<!-- TERMS / PRIVACY MODAL -->
+<div id="legalModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10001;align-items:flex-start;justify-content:center;padding:24px 12px;overflow-y:auto" onclick="if(event.target===this)closeLegal()">
+<div style="background:#fff;border-radius:16px;padding:26px;max-width:720px;width:100%;position:relative;box-sizing:border-box">
+<button onclick="closeLegal()" aria-label="Isara" style="position:absolute;top:14px;right:16px;background:none;border:none;font-size:26px;cursor:pointer;color:#999;line-height:1">&times;</button>
+<div style="display:flex;gap:8px;margin-bottom:16px">
+<button id="legalTabPrivacy" class="btn btn-sm" onclick="openLegal('privacy')">Privacy Notice</button>
+<button id="legalTabTerms" class="btn btn-sm" onclick="openLegal('terms')">Terms of Use</button>
+</div>
+<div id="legalBody" style="font-size:14px;line-height:1.7;color:var(--g7)"></div>
+</div></div>
 
 <!-- E-LIBRARY MODAL (naka-login lang) -->
 <div id="elibModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:flex-start;justify-content:center;padding:24px 12px;overflow-y:auto" onclick="if(event.target===this)closeELibrary()">
