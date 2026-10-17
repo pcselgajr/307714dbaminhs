@@ -118,6 +118,7 @@ function rEnrollments(){
         '<td>'+statusBadge+'</td>'+
         '<td><div class="ab">'+
         '<button class="abtn apv" title="View" onclick="viewEnrollment('+i+')">&#128065;</button>'+
+        '<button class="abtn edt" title="Print form" onclick="printEnrollmentForms(['+i+'])">&#128424;</button>'+
         (e.status==='Pending'?'<button class="abtn apv" title="Approve" onclick="approveEnrollment('+i+')">&#10003;</button>':'')+
         (e.status==='Pending'?'<button class="abtn del" title="Reject" onclick="rejectEnrollment('+i+')">&#10005;</button>':'')+
         '<button class="abtn del" title="Delete" onclick="deleteEnrollment('+i+')">&#128465;</button>'+
@@ -2490,4 +2491,174 @@ function deleteELibItem(id) {
   saveData('elibrary', items.filter(function(x) { return String(x.id) !== String(id); }));
   renderELibAdmin();
   toast('Nabura ang item', 'su');
+}
+
+// ============================================
+// ENROLLMENT PRINTING — listahan (landscape) at form bawat learner (portrait)
+// ============================================
+function epEsc(v) {
+  return String(v == null ? '' : v).replace(/[&<>"']/g, function(c) {
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+function epLoad() {
+  return epGetLogo().then(function() { return db.collection('portal_data').doc('enrollments').get(); }).then(function(doc) {
+    if (!doc.exists || !doc.data().data) return [];
+    var parsed = JSON.parse(doc.data().data);
+    return Array.isArray(parsed) ? parsed : Object.values(parsed);
+  });
+}
+function epType(t) { return t === 'no_lrn' ? 'No LRN (New)' : t === 'with_lrn' ? 'With LRN' : t === 'balik_aral' ? 'Balik-Aral' : (t || ''); }
+function epName(e) { return [e.lastName, ', ' + (e.firstName || ''), e.middleName ? ' ' + e.middleName : '', e.extName ? ' ' + e.extName : ''].join('').replace(/^, /, ''); }
+function epGradeNum(g) { var m = String(g || '').match(/(\d+)/); return m ? parseInt(m[1], 10) : 99; }
+function epSchool() {
+  var st = loadData('settings', {}) || {};
+  return {
+    name: st.schoolName || 'Dr. Bonifacio A. Masilungan Integrated National High School',
+    id: st.schoolId || '307714',
+    addr: st.address || 'Brgy. Lalayat, San Jose, Batangas',
+    sy: String(st.schoolYear || '').replace(/^S\.?Y\.?\s*/i, '').trim() || '2026-2027',
+    principal: st.principal || ''
+  };
+}
+// Ang logo ay inilalagay bilang data URL para siguradong lumabas sa print window
+var _epLogo = '';
+function epGetLogo() {
+  if (_epLogo) return Promise.resolve(_epLogo);
+  return fetch('school-logo.png').then(function(r) { return r.ok ? r.blob() : null; }).then(function(b) {
+    if (!b) return '';
+    return new Promise(function(res) { var fr = new FileReader(); fr.onload = function() { _epLogo = fr.result; res(_epLogo); }; fr.onerror = function() { res(''); }; fr.readAsDataURL(b); });
+  }).catch(function() { return ''; });
+}
+function epHeader(sc, title, sub) {
+  return '<div class="hdr">' + (_epLogo ? '<img src="' + _epLogo + '" alt="" class="logo">' : '') + '<div>' +
+    '<div class="small">Republic of the Philippines &bull; Department of Education</div>' +
+    '<div class="school">' + epEsc(sc.name) + '</div>' +
+    '<div class="small">' + epEsc(sc.addr) + ' &bull; School ID: ' + epEsc(sc.id) + '</div></div></div>' +
+    '<div class="title">' + title + '</div>' + (sub ? '<div class="sub">' + sub + '</div>' : '');
+}
+var EP_CSS = 'body{font-family:Arial,Helvetica,sans-serif;color:#111;margin:0}' +
+  '.hdr{display:flex;align-items:center;justify-content:center;gap:14px;text-align:center}' +
+  '.logo{width:58px;height:58px}.small{font-size:10.5px}.school{font-size:15px;font-weight:700;text-transform:uppercase}' +
+  '.title{text-align:center;font-size:15px;font-weight:700;margin:10px 0 2px}.sub{text-align:center;font-size:11px;margin-bottom:10px;color:#333}' +
+  'table{width:100%;border-collapse:collapse}th,td{border:1px solid #555;padding:4px 5px;font-size:10.5px;vertical-align:top}' +
+  'th{background:#e9edf5;text-align:left}thead{display:table-header-group}tr{page-break-inside:avoid}' +
+  '.foot{font-size:10px;color:#444;margin-top:8px}.sig{display:flex;justify-content:space-between;gap:30px;margin-top:34px}' +
+  '.sig div{flex:1;text-align:center;font-size:11px}.sig .line{border-top:1px solid #000;padding-top:3px;font-weight:700;min-height:14px}' +
+  '.noprint{position:fixed;top:10px;right:10px}.noprint button{padding:8px 16px;font-size:14px;cursor:pointer}' +
+  '@media print{.noprint{display:none}}';
+
+// Binubuksan agad ang window sa mismong click para hindi i-block ng browser bilang pop-up
+function epPrepWindow() {
+  var w = window.open('', '_blank');
+  if (w) { w.document.write('<p style="font-family:Arial;padding:20px">Inihahanda ang ipi-print...</p>'); w.document.close(); }
+  return w;
+}
+function epOpenWindow(html, landscape, w) {
+  w = w || window.open('', '_blank');
+  if (!w) { toast('Pinigilan ng browser ang print window. Payagan ang pop-ups para sa site na ito.', 'er'); return; }
+  w.document.open();
+  w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>DBAMINHS Enrollment</title><base href="' + location.href.replace(/[^\/]*$/, '') + '">' +
+    '<style>@page{size:A4 ' + (landscape ? 'landscape' : 'portrait') + ';margin:12mm}' + EP_CSS + '</style></head><body>' +
+    '<div class="noprint"><button onclick="window.print()">&#128424; Print</button></div>' + html +
+    '<script>window.onload=function(){setTimeout(function(){window.print()},400)}<\/script></body></html>');
+  w.document.close();
+}
+
+function openPrintEnrollments() {
+  epLoad().then(function(list) {
+    if (!list.length) { toast('Walang enrollment na ipi-print.', 'er'); return; }
+    var grades = [];
+    list.forEach(function(e) { if (e && e.gradeLevel && grades.indexOf(e.gradeLevel) === -1) grades.push(e.gradeLevel); });
+    grades.sort(function(x, y) { return epGradeNum(x) - epGradeNum(y); });
+    opM('Print Enrollments',
+      '<div class="fg"><label>Ano ang ipi-print</label><select id="epKind">' +
+        '<option value="list">Listahan (landscape, isang row bawat learner)</option>' +
+        '<option value="forms">Enrollment form ng bawat learner (isang pahina bawat isa)</option></select></div>' +
+      '<div class="fg-row"><div class="fg"><label>Grade Level</label><select id="epGrade"><option value="">Lahat</option>' +
+        grades.map(function(g) { return '<option>' + epEsc(g) + '</option>'; }).join('') + '</select></div>' +
+      '<div class="fg"><label>Status</label><select id="epStatus"><option value="">Lahat</option><option>Pending</option><option selected>Approved</option><option>Rejected</option></select></div></div>' +
+      '<div class="fg"><label>Pagkakasunod</label><select id="epSort"><option value="name">Apelyido (A-Z)</option><option value="grade">Grade level, tapos apelyido</option><option value="date">Petsa ng pag-submit</option></select></div>' +
+      '<div style="display:flex;gap:10px;margin-top:18px"><button class="btn btn-p" onclick="runPrintEnrollments()">&#128424; Print</button><button class="btn btn-s" onclick="clM()">Cancel</button></div>');
+  });
+}
+
+function runPrintEnrollments() {
+  var kind = document.getElementById('epKind').value, g = document.getElementById('epGrade').value,
+      stt = document.getElementById('epStatus').value, sort = document.getElementById('epSort').value;
+  var w = epPrepWindow();
+  if (!w) { toast('Pinigilan ng browser ang print window. Payagan ang pop-ups para sa site na ito.', 'er'); return; }
+  epLoad().then(function(list) {
+    var idx = [];
+    list.forEach(function(e, i) {
+      if (!e) return;
+      if (g && e.gradeLevel !== g) return;
+      if (stt && (e.status || 'Pending') !== stt) return;
+      idx.push(i);
+    });
+    var cmpName = function(a, b) { return epName(list[a]).localeCompare(epName(list[b])); };
+    idx.sort(sort === 'grade' ? function(a, b) { return (epGradeNum(list[a].gradeLevel) - epGradeNum(list[b].gradeLevel)) || cmpName(a, b); }
+           : sort === 'date' ? function(a, b) { return String(list[a].dateSubmitted || '').localeCompare(String(list[b].dateSubmitted || '')); }
+           : cmpName);
+    if (!idx.length) { w.close(); toast('Walang tugmang enrollment sa napiling filter.', 'er'); return; }
+    clM();
+    if (kind === 'forms') printEnrollmentForms(idx, list, w);
+    else printEnrollmentList(idx, list, g, stt, w);
+  });
+}
+
+function printEnrollmentList(idx, list, g, stt, w) {
+  var sc = epSchool();
+  var sub = 'School Year ' + epEsc(sc.sy) + ' &bull; ' + (g ? epEsc(g) : 'Lahat ng grade level') + ' &bull; ' + (stt ? epEsc(stt) : 'Lahat ng status') + ' &bull; ' + idx.length + ' learner' + (idx.length === 1 ? '' : 's');
+  var male = 0, female = 0;
+  var rows = idx.map(function(i, n) {
+    var e = list[i];
+    if (e.sex === 'Male') male++; else if (e.sex === 'Female') female++;
+    var strand = [e.track, e.strand].filter(Boolean).join(' / ');
+    var addr = [e.street, e.barangay, e.city].filter(Boolean).join(', ');
+    var parent = e.guardianName || e.motherName || e.fatherName || '';
+    return '<tr><td style="text-align:center">' + (n + 1) + '</td><td>' + epEsc(e.refNum) + '</td><td><b>' + epEsc(epName(e)) + '</b></td>' +
+      '<td>' + epEsc(e.lrn || '—') + '</td><td>' + epEsc(e.sex) + '</td><td style="text-align:center">' + epEsc(e.age) + '</td>' +
+      '<td>' + epEsc(e.gradeLevel) + '</td><td>' + epEsc(strand) + '</td><td>' + epEsc(epType(e.enrollType)) + '</td>' +
+      '<td>' + epEsc(addr) + '</td><td>' + epEsc(parent) + '</td><td style="white-space:nowrap">' + epEsc(e.cellphone) + '</td>' +
+      '<td>' + epEsc(e.status || 'Pending') + '</td></tr>';
+  }).join('');
+  var html = epHeader(sc, 'LIST OF ENROLLEES', sub) +
+    '<table><thead><tr><th>#</th><th>Ref #</th><th>Name (Last, First Middle)</th><th>LRN</th><th>Sex</th><th>Age</th><th>Grade</th><th>Track / Strand</th><th>Type</th><th>Address</th><th>Parent / Guardian</th><th>Contact</th><th>Status</th></tr></thead>' +
+    '<tbody>' + rows + '</tbody></table>' +
+    '<div class="foot">Male: <b>' + male + '</b> &nbsp; Female: <b>' + female + '</b> &nbsp; Total: <b>' + idx.length + '</b> &nbsp;&bull;&nbsp; Printed: ' + epEsc(new Date().toLocaleString('en-PH')) + '</div>' +
+    '<div class="sig"><div><div class="line">&nbsp;</div>Prepared by</div><div><div class="line">' + epEsc((sc.principal || '').toUpperCase()) + '</div>School Head</div></div>';
+  epOpenWindow(html, true, w);
+}
+
+function printEnrollmentForms(idx, listOpt, wOpt) {
+  var w = wOpt || epPrepWindow();
+  if (!w) { toast('Pinigilan ng browser ang print window. Payagan ang pop-ups para sa site na ito.', 'er'); return; }
+  var go = function(list) {
+    var sc = epSchool();
+    var row = function(label, value, wide) { return '<tr><th style="width:' + (wide ? '22%' : '18%') + '">' + label + '</th><td>' + (value ? epEsc(value) : '&nbsp;') + '</td></tr>'; };
+    var pages = idx.map(function(i, n) {
+      var e = list[i]; if (!e) return '';
+      var addr = [e.street, e.barangay, e.city, e.country, e.zipCode].filter(Boolean).join(', ');
+      var block = function(title, rows) { return '<div style="font-weight:700;font-size:12px;margin:10px 0 3px;background:#1B2A4A;color:#fff;padding:3px 6px">' + title + '</div><table>' + rows + '</table>'; };
+      return '<div style="' + (n < idx.length - 1 ? 'page-break-after:always;' : '') + '">' +
+        epHeader(sc, 'LEARNER ENROLLMENT FORM', 'School Year ' + epEsc(e.schoolYear || sc.sy) + ' &bull; Ref #: <b>' + epEsc(e.refNum) + '</b> &bull; Status: <b>' + epEsc(e.status || 'Pending') + '</b>') +
+        block('ENROLLMENT', row('Grade Level', e.gradeLevel) + row('Track / Strand', [e.track, e.strand].filter(Boolean).join(' / ')) +
+          (e.semester ? row('Semester / Term', e.semester) : '') + row('Enrollment Type', epType(e.enrollType)) +
+          row('Submission', e.submissionMethod === 'email' ? 'Email' : (e.submissionMethod ? 'Personal' : '')) +
+          row('Date Submitted', e.dateSubmitted ? new Date(e.dateSubmitted).toLocaleString('en-PH') : '')) +
+        block('LEARNER INFORMATION', row('Last Name', e.lastName) + row('First Name', e.firstName) + row('Middle Name', e.middleName) + row('Extension', e.extName) +
+          row('LRN', e.lrn) + row('PSA Birth Cert. No.', e.psaNo) + row('Birthdate', e.birthdate) + row('Age', e.age) + row('Sex', e.sex) +
+          row('Mother Tongue', e.motherTongue) + row('Indigenous People', (e.ipCommunity || 'No') + (e.ipSpecify ? ' — ' + e.ipSpecify : ''))) +
+        block('ADDRESS AND CONTACT', row('Address', addr) + row('Cellphone', e.cellphone) + (e.telephone ? row('Telephone', e.telephone) : '') + row('Email', e.email)) +
+        block('PARENTS / GUARDIAN', row('Father', e.fatherName) + row('Mother (maiden name)', e.motherName) + row('Guardian', e.guardianName)) +
+        ((e.prevSchool || e.lastGrade || e.lastSY) ? block('FOR RETURNING / TRANSFEREE LEARNERS', row('Last Grade Completed', e.lastGrade) + row('Last School Year', e.lastSY) +
+          row('Previous School', e.prevSchool) + (e.prevSchoolId ? row('School ID', e.prevSchoolId) : '') + (e.prevSchoolAddr ? row('School Address', e.prevSchoolAddr) : '')) : '') +
+        '<div class="sig"><div><div class="line">&nbsp;</div>Signature of Parent / Guardian over Printed Name</div><div><div class="line">&nbsp;</div>Received by (Enrolling Teacher / Adviser)</div></div>' +
+        '<div class="foot" style="margin-top:14px">Printed from the DBAMINHS School Portal on ' + epEsc(new Date().toLocaleString('en-PH')) + '.</div>' +
+        '</div>';
+    }).join('');
+    epOpenWindow(pages, false, w);
+  };
+  if (listOpt) go(listOpt); else epLoad().then(go);
 }
