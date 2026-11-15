@@ -456,6 +456,16 @@ tr:hover td{background:var(--cr)}
 <button class="btn btn-p" type="button" onclick="addAdminAccount()">+ Add Account</button>
 </div>
 <div id="adminAccountList"></div>
+</div></div>
+<div class="panel" style="margin-top:18px"><div class="ph"><h3>&#128274; Seguridad ng Login (Firebase Authentication)</h3></div>
+<div style="padding:16px 20px">
+<p style="font-size:13px;color:var(--g5);margin-bottom:12px">Inililipat nito ang lahat ng account ng students, teachers at parents sa Firebase Authentication. Pagkatapos, <strong>wala nang password na naka-save sa database</strong>; ang Google na ang nagbabantay. Pareho pa rin ang ID at password na gagamitin ng mga user.</p>
+<div id="secStatus" style="font-size:13px;margin-bottom:12px">Pindutin ang &ldquo;Suriin&rdquo; para makita ang kalagayan.</div>
+<div style="display:flex;gap:10px;flex-wrap:wrap">
+<button class="btn btn-s" type="button" onclick="securityCheck()">&#128269; Suriin</button>
+<button class="btn btn-p" type="button" id="secMigrateBtn" onclick="runAccountMigration()">&#128274; Ilipat ang mga Account</button>
+</div>
+<div id="secLog" style="margin-top:12px;font-size:12px;font-family:monospace;max-height:220px;overflow:auto;background:var(--g1);border-radius:8px;padding:0"></div>
 </div></div></div>
 <div class="pg" id="pg-settings"><div class="panel" style="max-width:680px"><div class="ph"><h3>&#9881; Portal Settings</h3></div><div style="padding:22px">
 <div class="fg"><label>School Name</label><input id="setName" value="Dr. Bonifacio A. Masilungan Integrated National High School"></div>
@@ -527,6 +537,7 @@ tr:hover td{background:var(--cr)}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="firebase-data.js"></script>
 <script src="admin-logic.js"></script>
 
@@ -614,5 +625,6 @@ window.previewImg = function(event) {
 console.log('INLINE FIX LOADED - News form with image upload ready!');
 </script>
 <script src="admin-password-patch.js"></script>
+<script src="admin-security.js"></script>
 </body>
 </html>

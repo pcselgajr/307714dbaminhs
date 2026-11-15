@@ -120,24 +120,125 @@ function switchMode(m){var l=m==='login';document.getElementById('loginForm').st
 function stab(el){el.parentElement.querySelectorAll('.tab').forEach(function(t){t.className='tab'});el.className='tab act'}
 function stype(el,t){stab(el);signupType=t;document.getElementById('fLrn').style.display=t==='s'?'block':'none';document.getElementById('fGender').style.display=t==='s'?'block':'none';document.getElementById('fEmp').style.display=t==='t'?'block':'none';document.getElementById('fChild').style.display=t==='p'?'block':'none';document.getElementById('fGrade').style.display=t==='s'?'block':'none'}
 
+function setLoginBusy(on){
+  var b=document.querySelector('#loginForm .btn-p');
+  if(b){b.disabled=!!on;b.style.opacity=on?'0.6':'';}
+}
+// LOGIN: Firebase Authentication ang nagbe-verify ng password (wala nang password sa database)
 function doLogin(){
-var id=document.getElementById('liId').value.trim().toLowerCase();
+var id=document.getElementById('liId').value.trim();
 var pw=document.getElementById('liPw').value;
 if(!id||!pw){toast('Please enter your ID and password.','er');return}
-var finish=function(){
-  // ang pinakabagong bersyon ng account sa Firebase ang masusunod (hal. bagong password)
-  (loadData('accounts', [])||[]).forEach(function(a){
-    var i=accounts.findIndex(function(x){return x.id===a.id});
-    if(i>-1) accounts[i]=a; else accounts.push(a);
-  });
-  var user=accounts.find(function(a){return (a.id===id||a.lrn===id||a.eid===id||(a.email&&a.email.toLowerCase()===id))&&a.pw===pw});
-  if(!user){toast('Invalid credentials. Please check your ID and password.','er');return}
-  completeLogin(user);
-};
-fetchFresh('accounts', []).then(finish).catch(function(){ finish(); });
+if(!auth){toast('Hindi pa handa ang login. I-refresh ang page.','er');return}
+setLoginBusy(true);
+lookupLogin(id).then(function(map){
+  if(map&&map.email){
+    return auth.signInWithEmailAndPassword(map.email,pw).then(function(){ return afterPortalSignIn(true); });
+  }
+  return legacyPortalLogin(id,pw);
+}).catch(function(err){
+  console.warn('Login error:',err&&err.code);
+  toast(friendlyAuthError(err),'er');
+  if(auth.currentUser) auth.signOut();
+}).then(function(){ setLoginBusy(false); });
 }
 
-// School Year label sa Student Dashboard - kinukuha sa Admin > Portal Settings > School Year
+// Lumang account (bago ang Firebase Auth): sinusuri ang lumang password at inililipat ang account
+function legacyPortalLogin(id,pw){
+  var idl=normLoginId(id);
+  return fetchFresh('accounts',[]).then(function(list){
+    var user=(list||[]).find(function(a){return a.pw&&(a.id===idl||a.lrn===id||a.eid===id||(a.email&&a.email.toLowerCase()===idl))&&a.pw===pw});
+    if(!user){toast('Mali ang ID o password, o hinihintay pa ang approval ng admin.','er');return}
+    if(String(pw).length<6){toast('Kailangang i-reset ng admin ang password mo bago ka makapag-login. Gamitin ang "Forgot password".','er');return}
+    var email=makeAuthEmail(user.id);
+    return auth.createUserWithEmailAndPassword(email,pw).then(function(cred){
+      var uid=cred.user.uid;
+      return activateIdentity({uid:uid,email:email,role:user.type,name:(user.fname||'')+' '+(user.lname||''),accountId:user.id,
+        loginIds:[user.id,user.lrn,user.eid,user.email]}).then(function(){
+        return atomicUpdate('accounts',[],function(cur){
+          cur.forEach(function(a){ if(a.id===user.id){ delete a.pw; a.uid=uid; a.authEmail=email; a.migratedAt=new Date().toISOString(); } });
+          return cur;
+        });
+      }).then(function(){ return afterPortalSignIn(true); });
+    });
+  }).catch(function(err){
+    if(err&&err.code==='permission-denied'){toast('Mali ang ID o password, o hinihintay pa ang approval ng admin.','er');return}
+    throw err;
+  });
+}
+
+// Pagkatapos ma-verify ng Firebase: kunin ang role, i-load ang datos, at buksan ang dashboard
+function afterPortalSignIn(showWelcome){
+  var u=auth.currentUser; if(!u) return Promise.resolve();
+  return getRoleDoc(u.uid).then(function(r){
+    if(!r||r.disabled||['student','teacher','parent'].indexOf(r.role)===-1){
+      window.portalRole=null;
+      return auth.signOut().then(function(){
+        toast(r&&r.disabled?'Naka-disable ang account na ito. Makipag-ugnayan sa admin.':
+          (r?'Admin account ito. Mag-login sa Admin page.':'Hinihintay pa ang approval ng admin sa account mo.'),'er');
+      });
+    }
+    window.portalRole=r;
+    return new Promise(function(res){ loadAllFromFirebase(res); }).then(function(){
+      refreshDataAccess();
+      var list=loadData('accounts',[])||[];
+      var user=list.find(function(a){return a.uid===u.uid})||list.find(function(a){return a.id===r.accountId||a.id===r.loginId});
+      if(!user){toast('Hindi mahanap ang account record. Makipag-ugnayan sa admin.','er');window.portalRole=null;return auth.signOut();}
+      accounts=list;
+      try{renderPortalContent();populateSectionDropdowns();}catch(e){}
+      completeLogin(user,showWelcome);
+      if(r.mustChange) setTimeout(function(){openChangePassword(true);},500);
+    });
+  });
+}
+
+// Kapag ni-refresh ang page habang naka-login (sa parehong tab), ibalik ang session
+var _authRestoreDone=false;
+if(auth){
+  try{auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);}catch(e){}
+  auth.onAuthStateChanged(function(u){
+    if(_authRestoreDone) return;
+    _authRestoreDone=true;
+    if(u&&!curUser){ afterPortalSignIn(false).catch(function(e){console.error(e);}); }
+  });
+}
+
+// Palitan ang sariling password (kailangan kapag pansamantalang password ang ibinigay ng admin)
+function openChangePassword(force){
+  var m=document.getElementById('chPwModal');
+  if(!m){
+    m=document.createElement('div');m.id='chPwModal';
+    m.style.cssText='display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:10000;align-items:center;justify-content:center;padding:16px';
+    m.innerHTML='<div style="background:#fff;border-radius:14px;max-width:380px;width:100%;padding:24px;box-shadow:0 10px 40px rgba(0,0,0,.25)">'+
+      '<h3 style="margin:0 0 6px;font-size:17px">&#128273; Palitan ang Password</h3><p id="chPwNote" style="font-size:13px;color:#666;margin:0 0 14px"></p>'+
+      '<div class="fg"><label>Kasalukuyang password</label><input type="password" id="chPwCur"></div>'+
+      '<div class="fg"><label>Bagong password (min. 8)</label><input type="password" id="chPwNew"></div>'+
+      '<div class="fg"><label>Ulitin ang bagong password</label><input type="password" id="chPwNew2"></div>'+
+      '<div style="display:flex;gap:10px;margin-top:14px"><button class="btn btn-p" onclick="saveChangePassword()">I-save</button><button class="btn btn-s" id="chPwCancel" onclick="document.getElementById(\'chPwModal\').style.display=\'none\'">Cancel</button></div></div>';
+    document.body.appendChild(m);
+  }
+  m.setAttribute('data-force',force?'1':'');
+  document.getElementById('chPwNote').textContent=force?'Pansamantalang password ang gamit mo. Gumawa muna ng sariling password bago magpatuloy.':'Para sa seguridad, huwag ibahagi ang password mo kahit kanino.';
+  document.getElementById('chPwCancel').style.display=force?'none':'';
+  ['chPwCur','chPwNew','chPwNew2'].forEach(function(i){document.getElementById(i).value='';});
+  m.style.display='flex';
+}
+function saveChangePassword(){
+  var cur=document.getElementById('chPwCur').value,np=document.getElementById('chPwNew').value,np2=document.getElementById('chPwNew2').value;
+  if(np.length<8){toast('Ang bagong password ay dapat hindi bababa sa 8 characters.','er');return}
+  if(np!==np2){toast('Hindi magkatugma ang bagong password.','er');return}
+  if(np===cur){toast('Iba dapat ang bagong password.','er');return}
+  var u=auth&&auth.currentUser; if(!u){toast('Mag-login muna.','er');return}
+  var cred=firebase.auth.EmailAuthProvider.credential(u.email,cur);
+  u.reauthenticateWithCredential(cred).then(function(){ return u.updatePassword(np); }).then(function(){
+    return db.collection('roles').doc(u.uid).update({mustChange:false}).catch(function(){});
+  }).then(function(){
+    if(window.portalRole) window.portalRole.mustChange=false;
+    document.getElementById('chPwModal').style.display='none';
+    toast('Napalitan na ang password mo.','su');
+  }).catch(function(err){ toast(friendlyAuthError(err),'er'); });
+}
+
 function updateSYLabels(){
   try{
     var st=loadData('settings', DEFAULT_SETTINGS)||{};
@@ -147,7 +248,7 @@ function updateSYLabels(){
   }catch(e){console.warn('updateSYLabels:',e);}
 }
 
-function completeLogin(user){
+function completeLogin(user,showWelcome){
 curUser=user;closeM();
 document.getElementById('publicSite').style.display='none';
 if(user.type==='student'){
@@ -181,7 +282,7 @@ document.getElementById('pdWelcome').textContent=user.fname;
 if(document.getElementById('pdChild'))document.getElementById('pdChild').textContent=user.childName||'Your Child';
 setTimeout(function() { loadParentGrades(); loadParentAttendance(); }, 200);
 }
-toast('Welcome, '+user.fname+'!');
+if(showWelcome!==false)toast('Welcome, '+user.fname+'!');
 }
 
 // ============================================
@@ -203,109 +304,11 @@ function closeFingerprintModal() {
 }
 
 function openFingerprintEnroll() {
-  if (!isWebAuthnAvailable()) {
-    toast('Fingerprint login is not supported on this browser/device.', 'er');
-    return;
-  }
-  if (!window.isSecureContext) {
-    toast('Fingerprint login requires a secure (HTTPS) connection.', 'er');
-    return;
-  }
-  var already = curUser && curUser.webauthnCredentialId;
-  var body = '<p style="font-size:13px;color:var(--g5);margin-bottom:14px">' +
-    (already
-      ? 'Fingerprint login is already enabled for your account on a registered device. You can re-enroll if you\'re setting this up on a new device.'
-      : 'This will use your device\'s fingerprint sensor, Face ID, or Windows Hello as a quick way to log in next time, instead of typing your password. Your password will still work as a backup.') +
-    '</p>' +
-    '<div style="display:flex;gap:10px"><button class="btn btn-p" onclick="enrollFingerprint()">&#128272; ' + (already ? 'Re-enroll on this device' : 'Set Up Fingerprint Login') + '</button><button class="btn btn-s" onclick="closeFingerprintModal()">Cancel</button></div>';
-  document.getElementById('fingerprintModalContent').innerHTML = body;
-  document.getElementById('fingerprintModal').style.display = 'flex';
+  toast('Hindi na kailangan ang Fingerprint Login: mananatili kang naka-login sa tab na ito hanggang mag-logout ka.', 'su');
 }
-
-function enrollFingerprint() {
-  var challenge = crypto.getRandomValues(new Uint8Array(32));
-  var userIdBytes = new TextEncoder().encode(curUser.id);
-  
-  navigator.credentials.create({
-    publicKey: {
-      challenge: challenge,
-      rp: { name: 'DBAMINHS Teacher Portal' },
-      user: {
-        id: userIdBytes,
-        name: curUser.email || curUser.id,
-        displayName: curUser.fname + ' ' + curUser.lname
-      },
-      pubKeyCredParams: [{ alg: -7, type: 'public-key' }, { alg: -257, type: 'public-key' }],
-      authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required' },
-      timeout: 60000,
-      attestation: 'none'
-    }
-  }).then(function(credential) {
-    var credentialId = btoa(String.fromCharCode.apply(null, new Uint8Array(credential.rawId)));
-    curUser.webauthnCredentialId = credentialId;
-    
-    // Persist to the saved accounts list in Firebase
-    var me = JSON.parse(JSON.stringify(curUser));
-    atomicUpdate('accounts', [], function(saved) {
-      var idx = saved.findIndex(function(a) { return a.id === me.id; });
-      if (idx > -1) saved[idx].webauthnCredentialId = credentialId;
-      else saved.push(me);
-      return saved;
-    }).catch(function(e) { console.error('Fingerprint save error:', e); toast('Hindi na-save ang fingerprint. Subukan ulit.', 'er'); });
-    
-    closeFingerprintModal();
-    toast('Fingerprint login enabled on this device!', 'su');
-  }).catch(function(err) {
-    console.error('Fingerprint enrollment error:', err);
-    toast('Could not set up fingerprint login: ' + err.message, 'er');
-  });
-}
-
+function enrollFingerprint() { openFingerprintEnroll(); }
 function loginWithFingerprint() {
-  if (!isWebAuthnAvailable()) {
-    toast('Fingerprint login is not supported on this browser/device.', 'er');
-    return;
-  }
-  if (!window.isSecureContext) {
-    toast('Fingerprint login requires a secure (HTTPS) connection.', 'er');
-    return;
-  }
-  
-  loadSavedAccounts();
-  var enrolled = accounts.filter(function(a) { return a.type === 'teacher' && a.webauthnCredentialId; });
-  if (enrolled.length === 0) {
-    toast('No teacher account on this device has fingerprint login set up yet. Log in with your password first, then enable it from the dashboard.', 'er');
-    return;
-  }
-  
-  var allowCredentials = enrolled.map(function(a) {
-    var binary = atob(a.webauthnCredentialId);
-    var bytes = new Uint8Array(binary.length);
-    for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-    return { id: bytes, type: 'public-key' };
-  });
-  
-  var challenge = crypto.getRandomValues(new Uint8Array(32));
-  
-  navigator.credentials.get({
-    publicKey: {
-      challenge: challenge,
-      allowCredentials: allowCredentials,
-      userVerification: 'required',
-      timeout: 60000
-    }
-  }).then(function(assertion) {
-    var credentialId = btoa(String.fromCharCode.apply(null, new Uint8Array(assertion.rawId)));
-    var matchedUser = enrolled.find(function(a) { return a.webauthnCredentialId === credentialId; });
-    if (!matchedUser) {
-      toast('Fingerprint not recognized for any enrolled account.', 'er');
-      return;
-    }
-    completeLogin(matchedUser);
-  }).catch(function(err) {
-    console.error('Fingerprint login error:', err);
-    toast('Fingerprint login failed or was cancelled.', 'er');
-  });
+  toast('Ang Fingerprint Login ay pinalitan na ng mas ligtas na login. Gamitin ang ID at password mo.', 'er');
 }
 
 // ============================================
@@ -322,65 +325,51 @@ function closeForgotPasswordModal() {
 
 function openForgotPassword() {
   var body = '<p style="font-size:13px;color:var(--g5);margin-bottom:14px">' +
-    'There is no automatic email reset for this portal. Instead, submit your ID and the new password you\'d like \u2014 a school administrator will verify your identity and approve the change. You\'ll be notified once it\'s approved.' +
+    'Ipadala ang iyong ID. Beberipikahin ng admin ng paaralan kung ikaw nga ito, at bibigyan ka ng <strong>pansamantalang password</strong> (personal o sa adviser mo). Papalitan mo ito pagka-login.' +
     '</p>' +
     '<div class="fg"><label>LRN / Employee ID / Email</label><input type="text" id="fpId" placeholder="Enter your ID or email"></div>' +
-    '<div class="fg"><label>New Password (at least 8 characters)</label><input type="password" id="fpNewPw" placeholder="Enter a new password"></div>' +
-    '<div class="fg"><label>Confirm New Password</label><input type="password" id="fpNewPw2" placeholder="Re-enter the new password"></div>' +
-    '<button class="btn btn-p btn-full" onclick="submitPasswordResetRequest()">Submit Request</button>';
+    '<div class="fg"><label>Buong pangalan</label><input type="text" id="fpName" placeholder="Hal. Juan Dela Cruz"></div>' +
+    '<div class="fg"><label>Paano ka makokontak (hal. section/adviser o cellphone)</label><input type="text" id="fpNote" placeholder="Hal. Grade 10 - Diamond, Gng. Santos"></div>' +
+    '<button class="btn btn-p btn-full" onclick="submitPasswordResetRequest()">Ipadala ang Request</button>';
   document.getElementById('forgotPasswordModalContent').innerHTML = body;
   document.getElementById('forgotPasswordModal').style.display = 'flex';
 }
 
 function submitPasswordResetRequest() {
-  loadSavedAccounts();
   var id = document.getElementById('fpId').value.trim();
-  var pw1 = document.getElementById('fpNewPw').value;
-  var pw2 = document.getElementById('fpNewPw2').value;
-  
+  var name = document.getElementById('fpName').value.trim();
+  var note = document.getElementById('fpNote').value.trim();
   if (!id) { toast('Please enter your ID or email.', 'er'); return; }
-  if (!pw1 || pw1.length < 8) { toast('New password must be at least 8 characters.', 'er'); return; }
-  if (pw1 !== pw2) { toast('Passwords do not match.', 'er'); return; }
-  
-  var idLower = id.toLowerCase();
-  var account = accounts.find(function(a) {
-    return a.id === idLower || a.lrn === id || a.eid === id || (a.email && a.email.toLowerCase() === idLower);
+  if (!name) { toast('Ilagay ang buong pangalan mo.', 'er'); return; }
+  db.collection('reset_inbox').add({
+    loginId: id.slice(0, 100), name: name.slice(0, 100), note: note.slice(0, 200),
+    at: firebase.firestore.FieldValue.serverTimestamp()
+  }).then(function() {
+    closeForgotPasswordModal();
+    toast('Naipadala na ang request. Makikipag-ugnayan ang admin para sa pansamantalang password.', 'su');
+  }).catch(function(err) {
+    console.error('reset request error:', err);
+    toast('Hindi naipadala ang request. Subukan ulit.', 'er');
   });
-  
-  if (!account) {
-    toast('No account found with that ID or email.', 'er');
-    return;
-  }
-  
-  var requests = loadData('passwordResetRequests', []);
-  // Replace any existing pending request for the same account so there's only one active request at a time.
-  requests = requests.filter(function(r) { return r.accountId !== account.id; });
-  requests.unshift({
-    id: Date.now(),
-    accountId: account.id,
-    accountType: account.type,
-    name: (account.fname || '') + ' ' + (account.lname || ''),
-    lookupId: id,
-    newPassword: pw1,
-    status: 'pending',
-    requestedAt: new Date().toISOString().split('T')[0]
-  });
-  saveData('passwordResetRequests', requests);
-  
-  closeForgotPasswordModal();
-  toast('Request submitted! An administrator will review and approve it shortly.', 'su');
 }
 
 function doLogout(){
-curUser=null;
+curUser=null;window.portalRole=null;
 document.querySelectorAll('.dash-page').forEach(function(p){p.classList.remove('act')});
 document.getElementById('publicSite').style.display='block';
 window.scrollTo({top:0});
-toast('Logged out successfully');
+var done=function(){
+  // Burahin ang pribadong datos sa memory; public na datos lang ang matitira
+  Object.keys(_cache).forEach(function(k){ if(!isPublicKey(k)) delete _cache[k]; });
+  accounts=[];
+  refreshDataAccess();
+  toast('Logged out successfully');
+};
+if(auth&&auth.currentUser) auth.signOut().then(done,done); else done();
 }
 
+
 function doSignup(){
-loadSavedAccounts();
 var fn=document.getElementById('sf').value.trim();
 var ln=document.getElementById('sl').value.trim();
 var em=document.getElementById('se').value.trim();
@@ -392,72 +381,58 @@ if(!em){toast('Please enter email.','er');return}
 if(!p1||p1.length<8){toast('Password must be at least 8 characters.','er');return}
 if(p1!==p2){toast('Passwords do not match.','er');return}
 if(!ag){toast('Please agree to Terms & Conditions.','er');return}
-var newAcc={id:em.toLowerCase(),pw:p1,type:signupType==='s'?'student':signupType==='t'?'teacher':'parent',fname:fn,lname:ln,email:em};
+var newAcc={id:em.toLowerCase(),type:signupType==='s'?'student':signupType==='t'?'teacher':'parent',fname:fn,lname:ln,email:em};
 if(signupType==='s'){
 newAcc.lrn=document.getElementById('sLrn').value.trim();
 newAcc.grade=document.getElementById('sGradeSection').value||'TBA';
 newAcc.gender=document.getElementById('sGender').value||'';
 if(!newAcc.lrn){toast('Please enter LRN.','er');return}
+if(!/^[0-9]{12}$/.test(newAcc.lrn)){toast('Ang LRN ay dapat 12 numero.','er');return}
 if(!newAcc.gender){toast('Please select your gender.','er');return}
-if(accounts.find(function(a){return a.lrn===newAcc.lrn})){toast('This LRN is already registered. Please log in instead, or contact the admin if this is a mistake.','er');return}
 newAcc.id=newAcc.lrn;
 }else if(signupType==='t'){
 newAcc.eid=document.getElementById('sEmp').value.trim();
 newAcc.dept='TBA';
 if(!newAcc.eid){toast('Please enter Employee ID.','er');return}
-if(accounts.find(function(a){return a.eid===newAcc.eid})){toast('This Employee ID is already registered. Please log in instead, or contact the admin if this is a mistake.','er');return}
 newAcc.id=newAcc.eid;
 }else{
 newAcc.childLrn=document.getElementById('sChild').value.trim();
 newAcc.childName='Your Child';
-// Try to get child's actual name from Students Directory
-var studs = loadData('students', []);
-var childRec = studs.find(function(s){ return s.lrn===newAcc.childLrn; });
-if(childRec) newAcc.childName = childRec.name;
 if(!newAcc.childLrn){toast('Please enter child LRN.','er');return}
 }
-if(accounts.find(function(a){return a.id===newAcc.id})){toast('An account with this ID already exists. Please log in instead.','er');return}
+if(newAcc.id.indexOf('/')>-1){toast('Hindi puwede ang "/" sa ID o email.','er');return}
 var signupBtn=document.querySelector('#signupForm .btn-p');
 if(signupBtn){signupBtn.disabled=true;signupBtn.style.opacity='0.6';}
 var reEnable=function(){if(signupBtn){signupBtn.disabled=false;signupBtn.style.opacity='';}};
-var dupErr=function(msg){var e=new Error(msg);e.userMessage=msg;return e;};
-// I-save ang account nang ligtas: sinusuri ulit ang duplicate laban sa pinakabagong data sa Firebase
-atomicUpdate('accounts', [], function(accts){
-  if(newAcc.lrn && accts.some(function(a){return a.lrn===newAcc.lrn})) throw dupErr('This LRN is already registered. Please log in instead, or contact the admin if this is a mistake.');
-  if(newAcc.eid && accts.some(function(a){return a.eid===newAcc.eid})) throw dupErr('This Employee ID is already registered. Please log in instead, or contact the admin if this is a mistake.');
-  if(accts.some(function(a){return a.id===newAcc.id})) throw dupErr('An account with this ID already exists. Please log in instead.');
-  accts.push(newAcc);
-  return accts;
-}).then(function(){
-  accounts.push(newAcc);
-  // Idagdag sa Pending Signups (ligtas din sa sabay-sabay na sign-up)
-  return atomicUpdate('pending', [], function(pending){
-    var maxId = 0;
-    pending.forEach(function(p) { if (p.id > maxId) maxId = p.id; });
-    pending.unshift({
-      id: maxId + 1,
-      name: fn + ' ' + ln,
-      type: newAcc.type.charAt(0).toUpperCase() + newAcc.type.slice(1),
-      email: em,
-      idnum: newAcc.lrn || newAcc.eid || newAcc.childLrn || '',
-      grade: newAcc.grade || '',
-      gender: newAcc.gender || '',
-      date: new Date().toISOString().split('T')[0]
-    });
-    return pending;
-  }).catch(function(err){ console.error('Error adding to pending:', err); });
+var stop=function(msg){var e=new Error(msg);e.userMessage=msg;throw e;};
+// 1) Tingnan kung may aprubadong account na ang ID na ito
+lookupLogin(newAcc.id).then(function(m){
+  if(m) stop(signupType==='s'?'This LRN is already registered. Please log in instead, or contact the admin if this is a mistake.':
+    signupType==='t'?'This Employee ID is already registered. Please log in instead, or contact the admin if this is a mistake.':
+    'An account with this ID already exists. Please log in instead.');
+  // 2) Gumawa ng Firebase Auth identity (hiwalay na app para hindi ma-login agad)
+  var app2=secondaryApp(), email=makeAuthEmail(newAcc.id);
+  return app2.auth().createUserWithEmailAndPassword(email,p1).then(function(cred){
+    var info={name:fn+' '+ln,type:newAcc.type.charAt(0).toUpperCase()+newAcc.type.slice(1),email:em,
+      idnum:newAcc.lrn||newAcc.eid||newAcc.childLrn||'',grade:newAcc.grade||'',gender:newAcc.gender||'',
+      date:new Date().toISOString().split('T')[0],authEmail:email,account:newAcc,
+      at:firebase.firestore.FieldValue.serverTimestamp()};
+    // 3) Ipadala sa admin para ma-approve
+    return app2.firestore().collection('signup_inbox').doc(cred.user.uid).set(info).then(function(){ return app2.auth().signOut(); });
+  });
 }).then(function(){
   reEnable();
-  toast('Account created! Welcome, '+fn+'! You can now log in.');
+  toast('Naipadala na ang sign-up mo! Makakapag-login ka kapag na-approve na ng admin.','su');
   switchMode('login');
   document.getElementById('liId').value=newAcc.id;
   document.getElementById('liPw').value='';
 }).catch(function(err){
   reEnable();
-  console.error('Signup error:', err);
-  toast(err && err.userMessage ? err.userMessage : 'Hindi na-save ang account dahil sa problema sa koneksyon. Subukan ulit.', 'er');
+  console.warn('Signup error:', err && (err.userMessage || err.code));
+  toast(err && err.userMessage ? err.userMessage : friendlyAuthError(err), 'er');
 });
 }
+
 
 function sdTab(el,id){el.parentElement.querySelectorAll('button').forEach(function(b){b.className=''});el.className='act';['sdGrades','sdSched','sdTasks','sdAtt','sdAnn'].forEach(function(x){var e=document.getElementById(x);if(e)e.style.display=x===id?'block':'none'})}
 function tdTab(el,id){el.parentElement.querySelectorAll('button').forEach(function(b){b.className=''});el.className='act';['tdClasses','tdGrade','tdAttendance','tdQuiz','tdSchedule','tdTasks','tdAnnounce'].forEach(function(x){var e=document.getElementById(x);if(e)e.style.display=x===id?'block':'none'})}
@@ -719,6 +694,9 @@ function submitAndLockGrades() {
     count: n
   };
   saveData('gradeLock', locks);
+  // Ang tunay na lock ay nasa server (locks/{section_term}); hindi na ito mabubuksan ng adviser
+  db.collection('locks').doc(getReleaseKey(cls, term)).set({locked: true, by: locks[getReleaseKey(cls, term)].by, at: locks[getReleaseKey(cls, term)].at})
+    .catch(function(e) { console.warn('lock doc write failed:', e && e.code); });
   updateGradeLockPanel();
   updateGradeView();
   toast('Grades submitted at naka-lock na.', 'su');

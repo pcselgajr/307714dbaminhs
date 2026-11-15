@@ -329,7 +329,7 @@ td{padding:12px 16px;border-bottom:1px solid var(--g1);font-size:13.5px}
 
 <!-- ==================== DASHBOARDS ==================== -->
 <div class="dash-page" id="studentDash">
-<div class="dash-top"><div class="dash-top-brand"><img src="school-logo.png" alt=""><span>DBAMINHS Student Portal</span></div><div class="dash-top-right"><div class="dash-user"><div class="dash-avatar" id="sdAv">J</div><span id="sdName">Student</span></div><button class="dash-logout" style="margin-right:8px" onclick="openELibrary()">&#128218; E-Library</button><button class="dash-logout" onclick="doLogout()">Logout &#10140;</button></div></div>
+<div class="dash-top"><div class="dash-top-brand"><img src="school-logo.png" alt=""><span>DBAMINHS Student Portal</span></div><div class="dash-top-right"><div class="dash-user"><div class="dash-avatar" id="sdAv">J</div><span id="sdName">Student</span></div><button class="dash-logout" style="margin-right:8px" onclick="openELibrary()">&#128218; E-Library</button><button class="dash-logout" style="background:var(--g2);color:var(--n);margin-right:8px" onclick="openChangePassword(false)" title="Palitan ang password">&#128273; Password</button><button class="dash-logout" onclick="doLogout()">Logout &#10140;</button></div></div>
 <div class="dash-body">
 <div class="dash-welcome"><h2>&#128075; Welcome back, <span id="sdWelcome">Student</span>!</h2><p>Here's your academic overview for <span id="sdSY">SY 2025-2026</span></p></div>
 <div class="dash-stat-row"><div class="dash-stat"><b id="sdStatAvg">--</b><small>Gen. Average</small></div><div class="dash-stat"><b id="sdStatAtt">--</b><small>Attendance</small></div><div class="dash-stat"><b id="sdStatSubjects">--</b><small>Subjects</small></div><div class="dash-stat"><b id="sdStatTerms">0</b><small>Terms Released</small></div></div>
@@ -349,7 +349,7 @@ td{padding:12px 16px;border-bottom:1px solid var(--g1);font-size:13.5px}
 </div></div>
 
 <div class="dash-page" id="teacherDash">
-<div class="dash-top"><div class="dash-top-brand"><img src="school-logo.png" alt=""><span>DBAMINHS Teacher Portal</span></div><div class="dash-top-right"><div class="dash-user"><div class="dash-avatar" id="tdAv">T</div><span id="tdName">Teacher</span></div><button class="dash-logout" style="margin-right:8px" onclick="openELibrary()">&#128218; E-Library</button><button class="dash-logout" style="background:var(--g2);color:var(--n);margin-right:8px" onclick="openFingerprintEnroll()">&#128272; Fingerprint Login</button><button class="dash-logout" onclick="doLogout()">Logout &#10140;</button></div></div>
+<div class="dash-top"><div class="dash-top-brand"><img src="school-logo.png" alt=""><span>DBAMINHS Teacher Portal</span></div><div class="dash-top-right"><div class="dash-user"><div class="dash-avatar" id="tdAv">T</div><span id="tdName">Teacher</span></div><button class="dash-logout" style="margin-right:8px" onclick="openELibrary()">&#128218; E-Library</button><button class="dash-logout" style="background:var(--g2);color:var(--n);margin-right:8px" onclick="openChangePassword(false)" title="Palitan ang password">&#128273; Password</button><button class="dash-logout" onclick="doLogout()">Logout &#10140;</button></div></div>
 <div class="dash-body">
 <div class="dash-welcome" style="background:linear-gradient(135deg,var(--n),var(--nl))"><h2>&#128075; Welcome, <span id="tdWelcome">Teacher</span>!</h2><p>Manage your classes and students</p></div>
 <div class="dash-stat-row"><div class="dash-stat"><b id="tStatClasses">0</b><small id="tStatClassesLabel">Sections</small></div><div class="dash-stat"><b id="tStatStudents">0</b><small>Students</small></div><div class="dash-stat"><b id="tStatPending">0</b><small id="tStatPendingLabel">Sections w/ Grades</small></div><div class="dash-stat"><b id="tStatAttendance">--</b><small>Avg. Attendance</small></div></div>
@@ -527,7 +527,7 @@ Sa cell: <code style="background:var(--w);padding:2px 6px;border-radius:4px;font
 </div></div>
 
 <div class="dash-page" id="parentDash">
-<div class="dash-top"><div class="dash-top-brand"><img src="school-logo.png" alt=""><span>DBAMINHS Parent Portal</span></div><div class="dash-top-right"><div class="dash-user"><div class="dash-avatar" id="pdAv">P</div><span id="pdName">Parent</span></div><button class="dash-logout" style="margin-right:8px" onclick="openELibrary()">&#128218; E-Library</button><button class="dash-logout" onclick="doLogout()">Logout &#10140;</button></div></div>
+<div class="dash-top"><div class="dash-top-brand"><img src="school-logo.png" alt=""><span>DBAMINHS Parent Portal</span></div><div class="dash-top-right"><div class="dash-user"><div class="dash-avatar" id="pdAv">P</div><span id="pdName">Parent</span></div><button class="dash-logout" style="margin-right:8px" onclick="openELibrary()">&#128218; E-Library</button><button class="dash-logout" style="background:var(--g2);color:var(--n);margin-right:8px" onclick="openChangePassword(false)" title="Palitan ang password">&#128273; Password</button><button class="dash-logout" onclick="doLogout()">Logout &#10140;</button></div></div>
 <div class="dash-body">
 <div class="dash-welcome" style="background:linear-gradient(135deg,#2D8B46,#1a6830)"><h2>&#128075; Welcome, <span id="pdWelcome">Parent</span>!</h2><p>Monitor your child's academic progress</p></div>
 <div class="dash-stat-row"><div class="dash-stat"><b id="pdStatAvg">--</b><small>Child's Average</small></div><div class="dash-stat"><b id="pdStatAtt">--</b><small>Attendance</small></div><div class="dash-stat"><b id="pdStatSubjects">--</b><small>Subjects</small></div><div class="dash-stat"><b id="pdStatTerms">0</b><small>Terms Released</small></div></div>
@@ -554,7 +554,6 @@ Sa cell: <code style="background:var(--w);padding:2px 6px;border-radius:4px;font
 <div class="fg"><label>Password</label><input type="password" id="liPw" placeholder="Enter your password"></div>
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><label style="font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer;color:var(--g5)"><input type="checkbox" style="width:auto"> Remember me</label><a href="#" onclick="openForgotPassword();return false" style="font-size:13px;color:var(--o);font-weight:600">Forgot Password?</a></div>
 <button class="btn btn-p btn-full" onclick="doLogin()">Log In &#10148;</button>
-<button class="btn btn-s btn-full" style="margin-top:8px" onclick="loginWithFingerprint()">&#128272; Login with Fingerprint</button>
 <p style="margin-top:14px;font-size:13px;color:var(--g5);text-align:center">No account? <a href="#" onclick="switchMode('signup');return false" style="color:var(--o);font-weight:600">Sign Up Here</a></p>
 
 </div>
@@ -654,6 +653,7 @@ Sa cell: <code style="background:var(--w);padding:2px 6px;border-radius:4px;font
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="firebase-data.js"></script>
 <script src="portal-app.js"></script>
 </body>

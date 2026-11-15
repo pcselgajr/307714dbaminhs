@@ -35,6 +35,9 @@ function saveData(key, data) {
     console.log('Saved to Firebase:', key);
   }).catch(function(err) {
     console.error('Firebase save error:', key, err);
+    if (err && err.code === 'permission-denied' && typeof toast === 'function') {
+      toast('Hindi na-save: wala kang permiso o naka-lock na ito.', 'er');
+    }
   });
 }
 
@@ -68,15 +71,113 @@ function fetchFresh(key, defaults) {
   });
 }
 
-// Load ALL data from Firestore into cache (called on page load)
+// ============================================
+// AUTH + SEGURIDAD
+// Firebase Authentication ang nagbe-verify ng login. Ang role ng bawat user ay nasa
+// collection na `roles/{uid}`, at ang LRN / Employee ID / email ay naka-map sa
+// panloob na Auth email sa `login_map/{id}`. Walang password na naka-save sa database.
+// ============================================
+var auth = (firebase.auth ? firebase.auth() : null);
+var AUTH_EMAIL_DOMAIN = 'u.dbaminhs.org';
+window.portalRole = null;   // {role, loginId, name, ...} kapag naka-login at may role
+
+// Mga document na puwedeng basahin kahit hindi naka-login (homepage at DTR)
+var PUBLIC_KEYS = ['settings', 'news', 'events', 'achievements', 'alumni', 'gallery', 'history',
+                   'dtr_settings', 'dtr_roster', 'dtr_daily_code', 'dtr_employees'];
+function isPublicKey(k) {
+  return PUBLIC_KEYS.indexOf(k) > -1 || /^dtr_code_/.test(k) || /^dtr_\d{4}-\d{2}-\d{2}$/.test(k);
+}
+// Puwedeng magdagdag ang isang pahina (hal. DTR) ng iba pang public key na kailangan nito
+window.EXTRA_PUBLIC_KEYS = window.EXTRA_PUBLIC_KEYS || null;
+function hasDataAccess() { return !!(auth && auth.currentUser && window.portalRole); }
+
+function normLoginId(id) { return String(id || '').trim().toLowerCase(); }
+function makeAuthEmail(loginId) {
+  var local = normLoginId(loginId).replace(/@/g, '.at.').replace(/[^a-z0-9._-]/g, '_')
+    .replace(/\.{2,}/g, '.').replace(/^[._-]+|[._-]+$/g, '').slice(0, 40) || 'user';
+  var r = Math.random().toString(36).slice(2, 8);
+  return local + '.' + r + '@' + AUTH_EMAIL_DOMAIN;
+}
+
+// Pangalawang Firebase app: para makagawa ang admin ng Auth account ng iba
+// nang hindi siya nala-logout sa sarili niyang session.
+var _secondaryApp = null;
+function secondaryApp() {
+  if (!_secondaryApp) {
+    _secondaryApp = firebase.initializeApp(firebaseConfig, 'secondary');
+    try { _secondaryApp.auth().setPersistence(firebase.auth.Auth.Persistence.NONE); } catch (e) {}
+  }
+  return _secondaryApp;
+}
+// Gumagawa ng bagong Auth identity (email + password). Ibinabalik ang {uid, email}.
+function createAuthIdentity(loginId, password) {
+  var a = secondaryApp().auth();
+  var email = makeAuthEmail(loginId);
+  return a.createUserWithEmailAndPassword(email, password).then(function(cred) {
+    var uid = cred.user.uid;
+    return a.signOut().then(function() { return {uid: uid, email: email}; });
+  });
+}
+
+function lookupLogin(id) {
+  var key = normLoginId(id);
+  if (!key || key.indexOf('/') > -1) return Promise.resolve(null);
+  return db.collection('login_map').doc(key).get().then(function(d) { return d.exists ? d.data() : null; });
+}
+function getRoleDoc(uid) {
+  return db.collection('roles').doc(uid).get().then(function(d) { return d.exists ? d.data() : null; });
+}
+// I-activate ang isang identity: isulat ang role at ang mga login ID na tumuturo rito.
+// `loginIds` ay listahan; ang unang ID ay laging isinusulat, ang iba ay kung wala pang may-ari.
+function activateIdentity(opts) {
+  var ids = (opts.loginIds || []).map(normLoginId).filter(function(x, i, a) { return x && x.indexOf('/') === -1 && a.indexOf(x) === i; });
+  var roleData = {role: opts.role, loginId: ids[0] || '', name: opts.name || '', email: opts.email,
+                  mustChange: !!opts.mustChange, updated: firebase.firestore.FieldValue.serverTimestamp()};
+  if (opts.accountId) roleData.accountId = opts.accountId;
+  return db.collection('roles').doc(opts.uid).set(roleData).then(function() {
+    return Promise.all(ids.map(function(id, i) {
+      var ref = db.collection('login_map').doc(id);
+      var write = function() { return ref.set({email: opts.email, uid: opts.uid, loginId: ids[0]}); };
+      if (i === 0 || opts.forceAll) return write();
+      return ref.get().then(function(d) {
+        if (!d.exists || d.data().loginId === ids[0]) return write();
+      }).catch(function() {});
+    }));
+  });
+}
+function friendlyAuthError(err) {
+  var c = (err && err.code) || '';
+  if (c === 'auth/wrong-password' || c === 'auth/invalid-credential' || c === 'auth/invalid-login-credentials' || c === 'auth/user-not-found') return 'Mali ang ID o password.';
+  if (c === 'auth/too-many-requests') return 'Masyadong maraming maling subok. Maghintay ng ilang minuto bago subukan ulit.';
+  if (c === 'auth/network-request-failed') return 'Walang internet o mahina ang koneksyon. Subukan ulit.';
+  if (c === 'auth/weak-password') return 'Masyadong mahina ang password (hindi bababa sa 8 characters).';
+  if (c === 'auth/user-disabled') return 'Naka-disable ang account na ito. Makipag-ugnayan sa admin.';
+  if (c === 'auth/requires-recent-login') return 'Mag-login ulit bago palitan ang password.';
+  if (c === 'permission-denied') return 'Wala kang permiso para dito.';
+  return 'May problema: ' + ((err && err.message) || err);
+}
+
+// Load data mula sa Firestore papunta sa cache.
+// Kapag naka-login (may role): buong collection. Kung hindi: ang mga public document lang.
 function loadAllFromFirebase(callback) {
-  db.collection('portal_data').get().then(function(snapshot) {
-    snapshot.forEach(function(doc) {
-      try {
-        _cache[doc.id] = JSON.parse(doc.data().data);
-      } catch(e) {}
+  var p;
+  if (hasDataAccess()) {
+    p = db.collection('portal_data').get().then(function(snapshot) {
+      snapshot.forEach(function(doc) {
+        try { _cache[doc.id] = JSON.parse(doc.data().data); } catch (e) {}
+      });
     });
-    console.log('All data loaded from Firebase! Keys:', Object.keys(_cache).join(', '));
+  } else {
+    var keys = PUBLIC_KEYS.slice();
+    try { if (typeof window.EXTRA_PUBLIC_KEYS === 'function') keys = keys.concat(window.EXTRA_PUBLIC_KEYS() || []); } catch (e) {}
+    p = Promise.all(keys.map(function(k) {
+      return db.collection('portal_data').doc(k).get().then(function(doc) {
+        if (doc.exists) { try { _cache[k] = JSON.parse(doc.data().data); } catch (e) {} }
+      }).catch(function(err) { console.warn('Hindi mabasa:', k, err && err.code); });
+    }));
+  }
+  p.then(function() {
+    console.log('Data loaded from Firebase! Keys:', Object.keys(_cache).join(', '));
     if (callback) callback();
   }).catch(function(err) {
     console.error('Firebase load error:', err);
@@ -84,20 +185,45 @@ function loadAllFromFirebase(callback) {
   });
 }
 
-// Listen for real-time changes (for portal to auto-update when admin edits)
-function listenForChanges(callback) {
-  db.collection('portal_data').onSnapshot(function(snapshot) {
-    snapshot.docChanges().forEach(function(change) {
-      if (change.type === 'modified' || change.type === 'added') {
-        try {
-          _cache[change.doc.id] = JSON.parse(change.doc.data().data);
-          console.log('Real-time update:', change.doc.id);
-        } catch(e) {}
-      }
+// Real-time na pag-update. Kapag naka-login: buong collection; kung hindi: mga public document lang.
+var _listenCallbacks = [], _unsubs = [], _listenMode = null;
+function _applyListeners() {
+  var mode = hasDataAccess() ? 'all' : 'public';
+  if (mode === _listenMode || !_listenCallbacks.length) return;
+  _unsubs.forEach(function(u) { try { u(); } catch (e) {} });
+  _unsubs = [];
+  _listenMode = mode;
+  var fire = function() { _listenCallbacks.forEach(function(cb) { try { cb(); } catch (e) { console.error(e); } }); };
+  var onErr = function(err) { console.warn('Listener stopped:', err && err.code); };
+  if (mode === 'all') {
+    _unsubs.push(db.collection('portal_data').onSnapshot(function(snapshot) {
+      snapshot.docChanges().forEach(function(change) {
+        if (change.type === 'modified' || change.type === 'added') {
+          try { _cache[change.doc.id] = JSON.parse(change.doc.data().data); } catch (e) {}
+        }
+      });
+      fire();
+    }, onErr));
+  } else {
+    var keys = PUBLIC_KEYS.slice();
+    try { if (typeof window.EXTRA_PUBLIC_KEYS === 'function') keys = keys.concat(window.EXTRA_PUBLIC_KEYS() || []); } catch (e) {}
+    keys.forEach(function(k) {
+      var first = true;
+      _unsubs.push(db.collection('portal_data').doc(k).onSnapshot(function(doc) {
+        if (doc.exists) { try { _cache[k] = JSON.parse(doc.data().data); } catch (e) {} }
+        if (first) { first = false; return; }
+        fire();
+      }, onErr));
     });
-    if (callback) callback();
-  });
+  }
 }
+function listenForChanges(callback) {
+  if (callback) _listenCallbacks.push(callback);
+  _listenMode = null;
+  _applyListeners();
+}
+// Tawagin pagkatapos mag-login o mag-logout para lumipat ang listener
+function refreshDataAccess() { _applyListeners(); }
 
 function getNextId(arr) {
   var max = 0;

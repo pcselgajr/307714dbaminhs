@@ -515,6 +515,7 @@ function apv(id){
       P=P.filter(function(x){return x.id!==id});
       syncPending(P);
       rP();uS();
+      activatePending(p);
       toast(p.name+' (Parent) approved! Can now login.','su');
     }
   }
@@ -535,6 +536,7 @@ function confirmApvStudent(id){
   saveData('students',S);
   P=P.filter(function(x){return x.id!==id});
   syncPending(P);
+  activatePending(p,{lrn:lrn,grade:grade});
   clM();rS();rP();uS();
   toast(p.name+' approved and added to Students!','su');
 }
@@ -550,6 +552,7 @@ function confirmApvTeacher(id){
   saveData('teachers',T);
   P=P.filter(function(x){return x.id!==id});
   syncPending(P);
+  activatePending(p,{eid:eid});
   clM();rT();rP();uS();
   toast(p.name+' approved and added to Teachers!','su');
 }
@@ -576,6 +579,8 @@ function approveAll(){
   });
   saveData('students',S);
   saveData('teachers',T);
+  var skippedIds=skipped.join('|');
+  P.forEach(function(p){ if(skippedIds.indexOf('('+(p.type==='Student'?'duplicate LRN: ':'duplicate Employee ID: ')+p.idnum+')')===-1) activatePending(p); });
   // Only clear non-skipped pending records
   if(skipped.length>0){
     P=P.filter(function(p){

@@ -127,12 +127,21 @@ var SCHOOL_RADIUS = 200;
 var currentEmployee = null;
 var videoStream = null;
 
-function findTeacherName(eid) {
-  var teachers = loadData('teachers', []);
-  for (var i = 0; i < teachers.length; i++) {
-    if (String(teachers[i].eid) === String(eid)) return teachers[i].name;
+// Mga DTR record ng nakaraang 30 araw at ang code ngayong araw (public na document)
+window.EXTRA_PUBLIC_KEYS = function() {
+  var keys = [], d = new Date();
+  for (var i = 0; i < 30; i++) {
+    var x = new Date(d.getFullYear(), d.getMonth(), d.getDate() - i);
+    var k = x.getFullYear() + '-' + (x.getMonth()+1<10?'0':'') + (x.getMonth()+1) + '-' + (x.getDate()<10?'0':'') + x.getDate();
+    keys.push('dtr_' + k);
+    if (i === 0) keys.push('dtr_code_' + k);
   }
-  return null;
+  return keys;
+};
+
+function findTeacherName(eid) {
+  var p = findAllowedEmployee(eid);
+  return p ? p.name : null;
 }
 
 function updateClock() {
@@ -184,6 +193,13 @@ function setupDTRMode() {
 // Hinahanap ang employee sa Teachers Directory o sa Non-teaching Staff list ng Admin
 function findAllowedEmployee(eid) {
   var key = String(eid).trim().toLowerCase();
+  // dtr_roster: listahan ng Employee ID at pangalan na ginagawa ng Admin (public)
+  var roster = loadData('dtr_roster', null);
+  if (roster) {
+    for (var rid in roster) {
+      if (String(rid).trim().toLowerCase() === key) return {id: String(rid).trim(), name: roster[rid].name, type: roster[rid].type || 'staff'};
+    }
+  }
   var teachers = loadData('teachers', []) || [];
   for (var i = 0; i < teachers.length; i++) {
     if (String(teachers[i].eid || '').trim().toLowerCase() === key) return {id: String(teachers[i].eid).trim(), name: teachers[i].name, type: 'teacher'};
