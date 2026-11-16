@@ -102,6 +102,7 @@ loadAllFromFirebase(function() {
 listenForChanges(function() {
   renderPortalContent();
   if (typeof updateGradeLockPanel === 'function') updateGradeLockPanel();
+  if (curUser && curUser.type === 'teacher' && typeof updateGradeView === 'function') { try { updateGradeView(); } catch (e) {} }
   if (typeof renderGradeRequestList === 'function') renderGradeRequestList();
   if (curUser && curUser.type === 'student' && typeof loadStudentSchedule === 'function') loadStudentSchedule();
   if (typeof updateSYLabels === 'function') updateSYLabels();
@@ -266,6 +267,7 @@ curUser.sections = (teacherRecord && teacherRecord.sections && teacherRecord.sec
 setTimeout(function() {
   try { populateSectionDropdowns(); } catch(e) { console.error('populateSectionDropdowns error:', e); }
   try { updateReleaseToggle(); } catch(e) { console.error('updateReleaseToggle error:', e); }
+  try { updateGradeView(); updateGradeLockPanel(); } catch(e) { console.error('updateGradeView error:', e); }
   try { loadMyClasses(); } catch(e) { console.error('loadMyClasses error:', e); }
   try { loadTeacherQuizzes(); } catch(e) { console.error('loadTeacherQuizzes error:', e); }
   try { updateTeacherStats(); } catch(e) { console.error('updateTeacherStats error:', e); }
@@ -4412,7 +4414,7 @@ function loadStudentTasks() {
 })();
 (function() {
   var _oc = completeLogin;
-  completeLogin = function(user) { _oc(user); try { if (user && user.type === 'student') setTimeout(loadStudentTasks, 200); } catch (e) {} };
+  completeLogin = function(user, showWelcome) { _oc(user, showWelcome); try { if (user && user.type === 'student') setTimeout(loadStudentTasks, 200); } catch (e) {} };
 })();
 
 // ============================================
