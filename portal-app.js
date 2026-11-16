@@ -1324,6 +1324,7 @@ function loadStudentGrades() {
   }
 
   var html = '<h3>&#128202; My Grades</h3>';
+  var shown = 0;
 
   releasedTerms.forEach(function(term) {
     var key = 'grades_' + (grade || '').replace(/\s/g, '_') + '_' + term;
@@ -1336,8 +1337,10 @@ function loadStudentGrades() {
     if (studentRelease[studentReleaseKey] === false) return; // hidden only if explicitly set to false
 
     html += buildTermGradeTable(term, grade, data, lrn).html;
+    shown++;
   });
 
+  if (!shown) html += '<div style="padding:24px;text-align:center;color:var(--g5);font-size:14px">&#128274; Wala ka pang grade na naka-release. Lalabas ito kapag nai-upload at nai-release na ng adviser mo.</div>';
   el.innerHTML = html || '<div style="padding:24px;text-align:center;color:var(--g5);font-size:14px">&#128274; Wala ka pang grade na naka-release. Lalabas ito kapag nai-upload at nai-release na ng adviser mo.</div>';
 
   // Update student stats
