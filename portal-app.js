@@ -1338,7 +1338,7 @@ function loadStudentGrades() {
     html += buildTermGradeTable(term, grade, data, lrn).html;
   });
 
-  el.innerHTML = html || '<div style="padding:24px;text-align:center;color:var(--g5);font-size:14px">&#128274; No released grades found.</div>';
+  el.innerHTML = html || '<div style="padding:24px;text-align:center;color:var(--g5);font-size:14px">&#128274; Wala ka pang grade na naka-release. Lalabas ito kapag nai-upload at nai-release na ng adviser mo.</div>';
 
   // Update student stats
   updateStudentStats(lrn, grade, releasedTerms, studentRelease);
