@@ -1303,12 +1303,12 @@ function buildTermGradeTable(term, section, termData, lrn) {
 
 function loadStudentGrades() {
   if (!curUser || curUser.type !== 'student') return;
-  var lrn = curUser.lrn;
+  var lrn = curUser.lrn || curUser.id;
   var grade = curUser.grade; // student's section
-  if (!lrn) return;
 
   var el = document.getElementById('sdGrades');
   if (!el) return;
+  if (!lrn) { el.innerHTML = '<h3>&#128202; My Grades</h3><div style="padding:24px;text-align:center;color:var(--g5);font-size:14px">Walang LRN ang account na ito. Makipag-ugnayan sa admin.</div>'; return; }
 
   var releaseData = loadData('gradeRelease', {});
   var studentRelease = loadData('gradeStudentRelease', {});
@@ -4088,14 +4088,16 @@ function updateTeacherStats() {
   if (el4) el4.textContent = avgAtt;
 }
 
-// Hook into login to load grades
-var _origLogin = doLogin;
-doLogin = function() {
-  _origLogin();
-  if (curUser) {
-    setTimeout(function() { loadStudentGrades(); loadStudentAttendance(); loadStudentSchedule(); loadStudentQuizzes(); }, 100);
-  }
-};
+// Pagka-login (kasama ang pag-restore ng session): i-load ang grades, attendance at schedule ng student
+(function() {
+  var _origComplete = completeLogin;
+  completeLogin = function(user, showWelcome) {
+    _origComplete(user, showWelcome);
+    if (user && user.type === 'student') {
+      setTimeout(function() { loadStudentGrades(); loadStudentAttendance(); loadStudentSchedule(); loadStudentQuizzes(); }, 100);
+    }
+  };
+})();
 
 // ============================================
 // E-LIBRARY — para lang sa mga naka-login (students, teachers, parents)
@@ -4209,8 +4211,8 @@ function renderELibrary(resetSubject) {
 // Pagkatapos mag-login galing sa E-Library card, buksan agad ang E-Library
 (function() {
   var _origComplete = completeLogin;
-  completeLogin = function(user) {
-    _origComplete(user);
+  completeLogin = function(user, showWelcome) {
+    _origComplete(user, showWelcome);
     if (_elibAfterLogin) { _elibAfterLogin = false; setTimeout(openELibrary, 300); }
   };
   var _origLogout = doLogout;

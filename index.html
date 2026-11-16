@@ -334,14 +334,7 @@ td{padding:12px 16px;border-bottom:1px solid var(--g1);font-size:13.5px}
 <div class="dash-welcome"><h2>&#128075; Welcome back, <span id="sdWelcome">Student</span>!</h2><p>Here's your academic overview for <span id="sdSY">SY 2025-2026</span></p></div>
 <div class="dash-stat-row"><div class="dash-stat"><b id="sdStatAvg">--</b><small>Gen. Average</small></div><div class="dash-stat"><b id="sdStatAtt">--</b><small>Attendance</small></div><div class="dash-stat"><b id="sdStatSubjects">--</b><small>Subjects</small></div><div class="dash-stat"><b id="sdStatTerms">0</b><small>Terms Released</small></div></div>
 <div class="dash-nav"><button class="act" onclick="sdTab(this,'sdGrades')">&#128202; Grades</button><button onclick="sdTab(this,'sdSched')">&#128197; Schedule</button><button onclick="sdTab(this,'sdTasks');loadStudentTasks()">&#128221; Assignments</button><button onclick="sdTab(this,'sdAtt')">&#128203; Attendance</button><button onclick="sdTab(this,'sdAnn');loadStudentAnnouncements()">&#128227; Announcements</button></div>
-<div id="sdGrades" class="dash-card"><h3>&#128202; My Grades &mdash; 2nd Semester</h3><table><thead><tr><th>Subject</th><th>1st Qtr</th><th>2nd Qtr</th><th>3rd Qtr</th><th>4th Qtr</th><th>Final</th><th>Remarks</th></tr></thead><tbody>
-<tr><td>Mathematics</td><td>87</td><td>89</td><td>90</td><td>88</td><td>88.5</td><td><span class="badge b-g">Passed</span></td></tr>
-<tr><td>Science</td><td>91</td><td>88</td><td>92</td><td>90</td><td>90.3</td><td><span class="badge b-g">Passed</span></td></tr>
-<tr><td>English</td><td>85</td><td>87</td><td>86</td><td>88</td><td>86.5</td><td><span class="badge b-g">Passed</span></td></tr>
-<tr><td>Filipino</td><td>90</td><td>92</td><td>91</td><td>93</td><td>91.5</td><td><span class="badge b-g">Passed</span></td></tr>
-<tr><td>Araling Panlipunan</td><td>88</td><td>86</td><td>89</td><td>87</td><td>87.5</td><td><span class="badge b-g">Passed</span></td></tr>
-<tr><td>MAPEH</td><td>92</td><td>93</td><td>91</td><td>94</td><td>92.5</td><td><span class="badge b-g">Passed</span></td></tr>
-</tbody></table></div>
+<div id="sdGrades" class="dash-card"><h3>&#128202; My Grades</h3><div style="padding:24px;text-align:center;color:var(--g5);font-size:14px">Loading grades...</div></div>
 <div id="sdSched" class="dash-card" style="display:none"><div id="sdSchedContent"><div style="text-align:center;padding:24px;color:var(--g5)">No schedule uploaded yet.</div></div></div>
 <div id="sdTasks" class="dash-card" style="display:none"><h3>&#128221; Assignments &amp; Tasks</h3><div id="sdTasksContent"><div style="text-align:center;padding:16px;color:var(--g5);font-size:13px">Wala pang assignment.</div></div></div>
 <div id="sdAtt" class="dash-card" style="display:none"><div id="sdAttContent"><div style="text-align:center;padding:24px;color:var(--g5)">No attendance records yet.</div></div></div>
