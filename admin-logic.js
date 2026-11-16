@@ -712,11 +712,16 @@ function renderSections() {
     html += '<div style="display:flex;align-items:center;gap:8px">';
     html += '<span style="flex:1;font-size:14px">' + s.name + '</span>';
     html += '<span style="font-size:11px;padding:3px 8px;border-radius:12px;background:' + color + '20;color:' + color + ';font-weight:600">' + s.cluster + '</span>';
-    html += '<button class="abtn" title="Edit Specialized Subjects" onclick="editSectionSubjects(' + i + ')" style="width:28px;height:28px;font-size:12px">&#9998;</button>';
+    html += '<button class="abtn" title="Edit Subjects (bawat term sa SHS)" onclick="editSectionSubjects(' + i + ')" style="width:28px;height:28px;font-size:12px">&#9998;</button>';
     html += '<button class="abtn del" title="Remove" onclick="removeSection(' + i + ')" style="width:28px;height:28px;font-size:12px">&#10005;</button>';
     html += '</div>';
-    if (hasCustom) {
-      html += '<div style="font-size:12px;color:var(--g5);padding-left:2px">Specialized Subjects: ' + s.subjects.join(', ') + '</div>';
+    if (s.subjectsByTerm) {
+      ['Term_1','Term_2','Term_3'].forEach(function(t){
+        var l = s.subjectsByTerm[t];
+        html += '<div style="font-size:12px;color:var(--g5);padding-left:2px"><b>' + t.replace('_',' ') + ':</b> ' + (l && l.length ? subjEsc(l.join(', ')) : '<i>default</i>') + '</div>';
+      });
+    } else if (hasCustom) {
+      html += '<div style="font-size:12px;color:var(--g5);padding-left:2px">Specialized Subjects: ' + subjEsc(s.subjects.join(', ')) + '</div>';
     }
     html += '</div>';
   });
@@ -753,15 +758,37 @@ function addSection() {
   toast(name + ' (' + cluster + ') added!', 'su');
 }
 
+function subjEsc(v){return String(v==null?'':v).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function parseSubjectList(raw){
+  // Isang subject bawat linya (puwede ring hiwalay sa kuwit kung iisang linya lang)
+  var parts = raw.indexOf('\n') > -1 ? raw.split('\n') : raw.split(',');
+  var out = [];
+  parts.forEach(function(s){ s = s.trim(); if (s && out.indexOf(s) === -1) out.push(s); });
+  return out;
+}
 function editSectionSubjects(index) {
   if (!SETTINGS.sections) SETTINGS.sections = getSections().slice();
   var sec = SETTINGS.sections[index];
   if (typeof sec !== 'object') return;
-  var current = (sec.subjects && sec.subjects.length > 0) ? sec.subjects.join(', ') : '';
-  var body = '<p style="font-size:13px;color:var(--g5);margin-bottom:12px">Editing specialized subjects for <b>' + sec.name + '</b>. Leave blank to use the default ' + sec.cluster + ' subject list instead.</p>' +
-    '<textarea id="editSubjectsInput" placeholder="e.g. Biology, Chemistry" style="width:100%;min-height:90px;padding:10px 14px;border:1.5px solid var(--g2);border-radius:8px;font-size:14px;font-family:var(--fb);box-sizing:border-box">' + current + '</textarea>' +
-    '<div style="display:flex;gap:10px;margin-top:14px"><button class="btn btn-p" onclick="saveSectionSubjects(' + index + ')">&#128190; Save</button><button class="btn btn-s" onclick="clM()">Cancel</button></div>';
-  opM('Edit Specialized Subjects', body);
+  var ta = 'width:100%;min-height:110px;padding:10px 14px;border:1.5px solid var(--g2);border-radius:8px;font-size:13px;font-family:var(--fb);box-sizing:border-box';
+  var current = (sec.subjects && sec.subjects.length > 0) ? sec.subjects.join('\n') : '';
+  var body;
+  if (sec.cluster === 'JHS') {
+    body = '<p style="font-size:13px;color:var(--g5);margin-bottom:12px">Subjects ng <b>' + subjEsc(sec.name) + '</b>, isa bawat linya. Iwanang blangko para gamitin ang default na JHS subjects.</p>' +
+      '<textarea id="editSubjectsInput" style="' + ta + '">' + subjEsc(current) + '</textarea>';
+  } else {
+    var byT = sec.subjectsByTerm || {};
+    body = '<p style="font-size:13px;color:var(--g5);margin-bottom:12px">Sa SHS, magkakaiba ang subjects bawat term. Ilagay ang <b>BUONG listahan</b> ng subjects (core at specialized) ng <b>' + subjEsc(sec.name) + '</b> para sa bawat term, <b>isa bawat linya</b>. Kapag blangko ang isang term, gagamitin ang default na listahan sa ibaba.</p>';
+    ['Term_1','Term_2','Term_3'].forEach(function(t){
+      var v = (byT[t] && byT[t].length) ? byT[t].join('\n') : '';
+      body += '<div style="margin-bottom:10px"><label style="font-size:13px;font-weight:700">' + t.replace('_',' ') + '</label>' +
+        '<textarea id="editSubj_' + t + '" placeholder="Hal.\nGeneral Mathematics\nEarth and Life Science" style="' + ta + '">' + subjEsc(v) + '</textarea></div>';
+    });
+    body += '<details style="margin-bottom:6px"><summary style="font-size:12px;color:var(--g5);cursor:pointer">Default na specialized subjects (kapag blangko ang term)</summary>' +
+      '<textarea id="editSubjectsInput" style="' + ta + ';min-height:70px;margin-top:6px">' + subjEsc(current) + '</textarea></details>';
+  }
+  body += '<div style="display:flex;gap:10px;margin-top:14px"><button class="btn btn-p" onclick="saveSectionSubjects(' + index + ')">&#128190; Save</button><button class="btn btn-s" onclick="clM()">Cancel</button></div>';
+  opM('Subjects: ' + sec.name, body);
 }
 
 function saveSectionSubjects(index) {
@@ -769,10 +796,15 @@ function saveSectionSubjects(index) {
   var sec = SETTINGS.sections[index];
   var input = document.getElementById('editSubjectsInput');
   var raw = input ? input.value.trim() : '';
-  if (raw) {
-    sec.subjects = raw.split(',').map(function(s) { return s.trim(); }).filter(function(s) { return s.length > 0; });
-  } else {
-    delete sec.subjects;
+  if (raw) sec.subjects = parseSubjectList(raw); else delete sec.subjects;
+  if (sec.cluster !== 'JHS') {
+    var byT = {};
+    ['Term_1','Term_2','Term_3'].forEach(function(t){
+      var el = document.getElementById('editSubj_' + t);
+      var list = el ? parseSubjectList(el.value.trim()) : [];
+      if (list.length) byT[t] = list;
+    });
+    if (Object.keys(byT).length) sec.subjectsByTerm = byT; else delete sec.subjectsByTerm;
   }
   saveData('settings', SETTINGS);
   clM();

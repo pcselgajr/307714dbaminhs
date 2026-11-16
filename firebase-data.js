@@ -309,7 +309,17 @@ var CLUSTER_SUBJECTS = {
   'ICT': ['Broadband Installation','Computer Programming (.NET Technology)','Computer Programming (Java)','Computer Programming (Oracle Database)','Computer Systems Servicing','Contact Center Services']
 };
 
-function getSubjectsForSection(sectionName, sections) {
+// Lahat ng subject ng section sa Term 1 hanggang 3 (para sa consolidated report at SF9).
+// Sa SHS, magkakaiba ang subject bawat term; pinagsasama ang mga ito ayon sa pagkakasunod.
+function getSectionSubjectsAllTerms(sectionName, sections) {
+  var out = [];
+  ['Term_1', 'Term_2', 'Term_3'].forEach(function(t) {
+    getSubjectsForSection(sectionName, sections, t).forEach(function(s) { if (out.indexOf(s) === -1) out.push(s); });
+  });
+  return out;
+}
+
+function getSubjectsForSection(sectionName, sections, term) {
   var sec = null;
   var name = sectionName.toLowerCase();
   if (sections) {
@@ -321,6 +331,11 @@ function getSubjectsForSection(sectionName, sections) {
   }
   
   var cluster = sec ? sec.cluster : null;
+
+  // SUBJECTS BAWAT TERM (SHS): kapag may listahan para sa term na ito, iyon ang buong listahan
+  if (term && sec && sec.subjectsByTerm && sec.subjectsByTerm[term] && sec.subjectsByTerm[term].length > 0) {
+    return sec.subjectsByTerm[term].slice();
+  }
   
   // CUSTOM SUBJECTS: if this section has its own manually-edited subject list, use it directly.
   // This takes priority over the fixed cluster lists below, so editing subjects in

@@ -597,7 +597,7 @@ function openGradeRequestModal(lrn) {
 
   var settings = loadData('settings', DEFAULT_SETTINGS);
   var secs = (settings.sections && settings.sections.length > 0) ? settings.sections : DEFAULT_SECTIONS;
-  var allSubjects = getSubjectsForSection(cls, secs).slice();
+  var allSubjects = getSubjectsForSection(cls, secs, getSelectedTerm()).slice();
   if (allSubjects.indexOf('Music & Arts') > -1) allSubjects.push('MAPEH');
 
   var modal = document.getElementById('gradeEditModal');
@@ -760,7 +760,7 @@ function downloadTemplate() {
   var cls = document.getElementById('gradeClass').value;
   var settings = loadData('settings', DEFAULT_SETTINGS);
   var secs = (settings.sections && settings.sections.length > 0) ? settings.sections : DEFAULT_SECTIONS;
-  var subjects = getSubjectsForSection(cls, secs);
+  var subjects = getSubjectsForSection(cls, secs, getSelectedTerm());
 
   var students = loadData('students', DEFAULT_STUDENTS);
   var classStudents = students.filter(function(s){ return s.grade === cls && s.status === 'Active'; });
@@ -872,7 +872,7 @@ function handleCSVUpload(event) {
     var cls = document.getElementById('gradeClass').value;
     var settings = loadData('settings', DEFAULT_SETTINGS);
     var secs = (settings.sections && settings.sections.length > 0) ? settings.sections : DEFAULT_SECTIONS;
-    var baseSubjects = getSubjectsForSection(cls, secs);
+    var baseSubjects = getSubjectsForSection(cls, secs, getSelectedTerm());
     var allSubjects = baseSubjects.slice();
     if (baseSubjects.indexOf('Music & Arts') > -1) allSubjects.push('MAPEH');
     
@@ -995,7 +995,7 @@ function updateGradeView() {
 
   var settings = loadData('settings', DEFAULT_SETTINGS);
   var secs = (settings.sections && settings.sections.length > 0) ? settings.sections : DEFAULT_SECTIONS;
-  var baseSubjects = getSubjectsForSection(cls, secs);
+  var baseSubjects = getSubjectsForSection(cls, secs, getSelectedTerm());
   var allSubjects = baseSubjects.slice();
   if (baseSubjects.indexOf('Music & Arts') > -1) allSubjects.push('MAPEH');
 
@@ -1122,7 +1122,7 @@ function openGradeEditModal(lrn) {
 
   var settings = loadData('settings', DEFAULT_SETTINGS);
   var secs = (settings.sections && settings.sections.length > 0) ? settings.sections : DEFAULT_SECTIONS;
-  var baseSubjects = getSubjectsForSection(cls, secs);
+  var baseSubjects = getSubjectsForSection(cls, secs, getSelectedTerm());
   var allSubjects = baseSubjects.slice();
   if (baseSubjects.indexOf('Music & Arts') > -1) allSubjects.push('MAPEH');
 
@@ -1241,7 +1241,7 @@ function gradeEsc(v) {
   });
 }
 
-function getExpectedSubjects(section, termData) {
+function getExpectedSubjects(section, termData, term) {
   var present = {};
   Object.keys(termData || {}).forEach(function(l) {
     var g = (termData[l] && termData[l].grades) || {};
@@ -1251,7 +1251,7 @@ function getExpectedSubjects(section, termData) {
   try {
     var settings = loadData('settings', DEFAULT_SETTINGS);
     var secs = (settings.sections && settings.sections.length > 0) ? settings.sections : DEFAULT_SECTIONS;
-    order = getSubjectsForSection(section || '', secs).slice();
+    order = getSubjectsForSection(section || '', secs, term).slice();
     if (order.indexOf('Music & Arts') > -1 && order.indexOf('MAPEH') === -1) order.push('MAPEH');
   } catch (e) { order = []; }
   var out = order.filter(function(s) { return present[s]; });
@@ -1263,7 +1263,7 @@ function getExpectedSubjects(section, termData) {
 function buildTermGradeTable(term, section, termData, lrn) {
   var record = termData[lrn] || {};
   var g = record.grades || {};
-  var expected = getExpectedSubjects(section, termData);
+  var expected = getExpectedSubjects(section, termData, term);
   var total = 0, count = 0, missing = [];
   var html = '<div style="margin-bottom:20px"><div style="font-size:15px;font-weight:700;color:var(--n);margin-bottom:10px;padding:8px 12px;background:var(--g1);border-radius:8px;border-left:4px solid var(--o)">' + term.replace('_', ' ') + '</div>';
   html += '<div style="overflow-x:auto"><table><thead><tr><th>Subject</th><th>Grade</th><th>Remarks</th></tr></thead><tbody>';
@@ -2334,7 +2334,7 @@ function printGradeSummary(term) {
 
   var settings = loadData('settings', DEFAULT_SETTINGS);
   var secs = (settings.sections && settings.sections.length > 0) ? settings.sections : DEFAULT_SECTIONS;
-  var baseSubjects = getSubjectsForSection(cls, secs);
+  var baseSubjects = getSubjectsForSection(cls, secs, selectedTerm);
   var allSubjects = baseSubjects.slice();
   if (baseSubjects.indexOf('Music & Arts') > -1) allSubjects.push('MAPEH');
 
@@ -2406,7 +2406,7 @@ function printGradePerLearner(term) {
 
   var settings = loadData('settings', DEFAULT_SETTINGS);
   var secs = (settings.sections && settings.sections.length > 0) ? settings.sections : DEFAULT_SECTIONS;
-  var baseSubjects = getSubjectsForSection(cls, secs);
+  var baseSubjects = getSubjectsForSection(cls, secs, selectedTerm);
   var allSubjects = baseSubjects.slice();
   if (baseSubjects.indexOf('Music & Arts') > -1) allSubjects.push('MAPEH');
 
@@ -2466,7 +2466,7 @@ function printConsolidatedSummary() {
 
   var settings = loadData('settings', DEFAULT_SETTINGS);
   var secs = (settings.sections && settings.sections.length > 0) ? settings.sections : DEFAULT_SECTIONS;
-  var baseSubjects = getSubjectsForSection(cls, secs);
+  var baseSubjects = getSectionSubjectsAllTerms(cls, secs);
   var allSubjects = baseSubjects.slice();
   if (baseSubjects.indexOf('Music & Arts') > -1) allSubjects.push('MAPEH');
 
@@ -2540,7 +2540,7 @@ function printConsolidatedPerLearner() {
 
   var settings = loadData('settings', DEFAULT_SETTINGS);
   var secs = (settings.sections && settings.sections.length > 0) ? settings.sections : DEFAULT_SECTIONS;
-  var baseSubjects = getSubjectsForSection(cls, secs);
+  var baseSubjects = getSectionSubjectsAllTerms(cls, secs);
   var allSubjects = baseSubjects.slice();
   if (baseSubjects.indexOf('Music & Arts') > -1) allSubjects.push('MAPEH');
 
@@ -2604,7 +2604,7 @@ function exportSF9CSV() {
 
   var settings = loadData('settings', DEFAULT_SETTINGS);
   var secs = (settings.sections && settings.sections.length > 0) ? settings.sections : DEFAULT_SECTIONS;
-  var baseSubjects = getSubjectsForSection(cls, secs);
+  var baseSubjects = getSectionSubjectsAllTerms(cls, secs);
 
   var terms = ['Term_1', 'Term_2', 'Term_3'];
   var termData = {};
@@ -2771,7 +2771,7 @@ function printSF9(lrn) {
 
   var settings = loadData('settings', DEFAULT_SETTINGS);
   var secs = (settings.sections && settings.sections.length > 0) ? settings.sections : DEFAULT_SECTIONS;
-  var baseSubjects = getSubjectsForSection(cls, secs);
+  var baseSubjects = getSectionSubjectsAllTerms(cls, secs);
 
   var terms = ['Term_1', 'Term_2', 'Term_3'];
   var termData = {};
@@ -4294,7 +4294,7 @@ function fillTaskSubjects() {
   try {
     var settings = loadData('settings', DEFAULT_SETTINGS);
     var secs = (settings.sections && settings.sections.length > 0) ? settings.sections : DEFAULT_SECTIONS;
-    subs = getSubjectsForSection(sec || '', secs) || [];
+    subs = getSectionSubjectsAllTerms(sec || '', secs) || [];
   } catch (e) {}
   subs = subs.filter(function(x, i) { return subs.indexOf(x) === i; });
   dl.innerHTML = subs.map(function(x) { return '<option value="' + taskEsc(x) + '">'; }).join('');
