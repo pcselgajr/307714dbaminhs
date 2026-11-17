@@ -209,11 +209,118 @@ function syncDtrRoster() {
       tries++;
       if (typeof P !== 'undefined' && P && window.currentAdmin) {
         clearInterval(wait);
-        syncInboxes().then(function() { syncLocks(); syncDtrRoster(); });
+        syncInboxes().then(function() { syncLocks(); syncDtrRoster(); startInboxListeners(); try { uS(); } catch (e) {} });
       } else if (tries > 40) clearInterval(wait);
     }, 500);
   };
 })();
+
+
+// ============================================
+// DASHBOARD: totoong bilang (walang demo data), real-time na inbox, at gumaganang Refresh
+// ============================================
+function dashGradeLevel(sec) {
+  var m = String(sec || '').match(/(?:^|[^0-9])(7|8|9|10|11|12)(?![0-9])/);
+  return m ? +m[1] : null;
+}
+function dashPendingItems() {
+  var items = [];
+  var pend = (typeof P !== 'undefined' && P) ? P.length : 0;
+  if (pend) items.push({n: pend, label: 'sign-up na naghihintay ng approval', page: 'pending', color: 'var(--o)'});
+  var pw = (typeof PWRESET !== 'undefined' && PWRESET) ? PWRESET.filter(function(r) { return r.status === 'pending'; }).length : 0;
+  if (pw) items.push({n: pw, label: 'password reset request', page: 'pwreset', color: 'var(--wa)'});
+  var en = loadData('enrollments', []) || [];
+  if (!Array.isArray(en)) en = Object.values(en);
+  var enP = en.filter(function(e) { return !e.status || e.status === 'Pending'; }).length;
+  if (enP) items.push({n: enP, label: 'online enrollment na hindi pa napoproseso', page: 'enrollments', color: 'var(--inf)'});
+  var gr = 0;
+  Object.keys(_cache).forEach(function(k) { if (k.indexOf('gradeReq_') === 0 && _cache[k] && _cache[k].status === 'pending') gr++; });
+  if (gr) items.push({n: gr, label: 'request ng pagtatama ng grade', page: 'gradelock', color: 'var(--su)'});
+  return items;
+}
+function renderDashboard() {
+  var list = (typeof S !== 'undefined' && S) ? S : [];
+  var counts = {7: 0, 8: 0, 9: 0, 10: 0, 11: 0, 12: 0}, other = 0;
+  // Opisyal na enrollment mula sa Settings (g7–g12); kung wala, bilang ng students sa portal
+  var st = (typeof SETTINGS !== 'undefined' && SETTINGS) ? SETTINGS : {};
+  var fromSettings = [7, 8, 9, 10, 11, 12].some(function(g) { return parseInt(st['g' + g], 10) > 0; });
+  if (fromSettings) [7, 8, 9, 10, 11, 12].forEach(function(g) { counts[g] = parseInt(st['g' + g], 10) || 0; });
+  else list.forEach(function(s) { var g = dashGradeLevel(s.grade); if (g) counts[g]++; else other++; });
+  var max = Math.max.apply(null, Object.values(counts).concat([1]));
+  var bars = document.getElementById('dashBars');
+  if (bars) {
+    bars.innerHTML = [7, 8, 9, 10, 11, 12].map(function(g) {
+      var h = Math.round(counts[g] / max * 90);
+      return '<div class="bcol"><div class="bv">' + counts[g] + '</div><div class="bar" style="height:' + Math.max(h, 2) + '%;background:var(--' + (g >= 11 ? 'n' : 'o') + ')"></div><div class="bl">G' + g + '</div></div>';
+    }).join('');
+  }
+  var jhs = counts[7] + counts[8] + counts[9] + counts[10], shs = counts[11] + counts[12], tot = jhs + shs;
+  var pj = tot ? Math.round(jhs / tot * 100) : 0, ps = tot ? 100 - pj : 0;
+  var donut = document.getElementById('dashDonut');
+  if (donut) {
+    donut.innerHTML = '<svg width="110" height="110" viewBox="0 0 42 42"><circle cx="21" cy="21" r="15.9" fill="none" stroke="var(--g2)" stroke-width="4"/>' +
+      (tot ? '<circle cx="21" cy="21" r="15.9" fill="none" stroke="var(--o)" stroke-width="4" stroke-dasharray="' + pj + ' ' + (100 - pj) + '" stroke-dashoffset="25"/>' +
+             '<circle cx="21" cy="21" r="15.9" fill="none" stroke="var(--n)" stroke-width="4" stroke-dasharray="' + ps + ' ' + (100 - ps) + '" stroke-dashoffset="' + (25 - pj) + '"/>' : '') +
+      '<text x="21" y="22" text-anchor="middle" font-size="6" font-weight="700" fill="var(--g9)" font-family="var(--fb)">' + (fromSettings ? tot : list.length).toLocaleString() + '</text></svg>' +
+      '<div class="dleg"><div class="dli"><div class="dld" style="background:var(--o)"></div>JHS &mdash; ' + jhs + ' (' + pj + '%)</div>' +
+      '<div class="dli"><div class="dld" style="background:var(--n)"></div>SHS &mdash; ' + shs + ' (' + ps + '%)</div>' +
+      (other ? '<div class="dli" style="color:var(--g5)">Walang grade level: ' + other + '</div>' : '') +
+      '<div class="dli" style="color:var(--g5);font-size:11px">' + (fromSettings ? 'Mula sa opisyal na enrollment (Settings)' : 'Mula sa mga student sa portal') + '</div></div>';
+  }
+  var items = dashPendingItems();
+  var act = document.getElementById('dashActivity');
+  if (act) {
+    act.innerHTML = items.length ? items.map(function(it) {
+      return '<div class="act-item" style="cursor:pointer" onclick="dashGo(\'' + it.page + '\')"><div class="act-dot" style="background:' + it.color + '"></div><div><p><strong>' + it.n + '</strong> ' + it.label + '</p><div class="time">I-click para buksan</div></div></div>';
+    }).join('') : '<div class="act-item"><div class="act-dot" style="background:var(--su)"></div><div><p>Walang naghihintay na asikasuhin. &#10003;</p></div></div>';
+  }
+  var dot = document.getElementById('notifDot');
+  if (dot) dot.style.display = items.length ? '' : 'none';
+}
+function dashGo(page) {
+  var btn = Array.prototype.find.call(document.querySelectorAll('.sl'), function(b) { return (b.getAttribute('onclick') || '').indexOf("go('" + page + "'") > -1; });
+  go(page, btn || document.createElement('div'));
+}
+function showAdminNotifs() {
+  var items = dashPendingItems();
+  if (!items.length) { toast('Walang naghihintay na asikasuhin.', 'su'); return; }
+  dashGo('dash');
+  toast(items.map(function(it) { return it.n + ' ' + it.label; }).join(' · '), 'su');
+}
+window.updateDashChart = function() { try { renderDashboard(); } catch (e) {} };
+(function() {
+  var inner = window.uS;
+  if (inner) window.uS = function() { inner(); try { renderDashboard(); } catch (e) { console.warn('dashboard:', e); } };
+})();
+
+// Real-time: kusang lalabas ang bagong sign-up, reset request at enrollment habang bukas ang dashboard
+var _inboxUnsubs = [];
+function startInboxListeners() {
+  if (!secIsAdmin() || _inboxUnsubs.length) return;
+  var timers = {};
+  var run = function(name, fn) {
+    clearTimeout(timers[name]);
+    timers[name] = setTimeout(function() { fn().then(function() { try { uS(); } catch (e) {} }).catch(function(e) { console.warn(name, e); }); }, 400);
+  };
+  [['signup_inbox', syncSignupInbox], ['reset_inbox', syncResetInbox], ['enroll_inbox', syncEnrollInbox]].forEach(function(x) {
+    _inboxUnsubs.push(db.collection(x[0]).onSnapshot(function(snap) {
+      if (!snap.empty) run(x[0], x[1]);
+    }, function(err) { console.warn('inbox listener ' + x[0] + ':', err && err.code); }));
+  });
+}
+
+// Refresh button: kunin ulit ang lahat ng datos at ang mga bagong padala
+function adminRefresh() {
+  toast('Kinukuha ang pinakabagong datos...', 'su');
+  syncInboxes().then(function() {
+    loadAllFromFirebase(function() {
+      initData();
+      try { renderAll(); } catch (e) { console.warn(e); }
+      try { uS(); } catch (e) {}
+      toast('Na-refresh ang datos.', 'su');
+    });
+  });
+}
 
 // ---------- Paglipat ng mga lumang account sa Firebase Authentication ----------
 function secLog(msg, color) {

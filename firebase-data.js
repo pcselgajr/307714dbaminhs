@@ -268,26 +268,9 @@ var DEFAULT_EVENTS = [
   {id:4,name:'Brigada Eskwela 2026',date:'2026-05-20',time:'7:00 AM',venue:'School Campus',status:'Upcoming',desc:'School clean-up and preparation'},
   {id:5,name:'First Day of Classes SY 2026-2027',date:'2026-06-02',time:'7:30 AM',venue:'All Classrooms',status:'Upcoming',desc:'New school year begins'}
 ];
-var DEFAULT_STUDENTS = [
-  {id:1,lrn:'136789012345',name:'Juan Dela Cruz',grade:'Grade 10 - Rizal',contact:'09171234567',status:'Active'},
-  {id:2,lrn:'136789012346',name:'Maria Santos',grade:'Grade 9 - Mabini',contact:'09181234567',status:'Active'},
-  {id:3,lrn:'136789012347',name:'Pedro Reyes',grade:'Grade 11 - ABM',contact:'09191234567',status:'Active'},
-  {id:4,lrn:'136789012348',name:'Ana Garcia',grade:'Grade 7 - Bonifacio',contact:'09201234567',status:'Active'},
-  {id:5,lrn:'136789012349',name:'Carlos Mendoza',grade:'Grade 12 - HUMSS',contact:'09211234567',status:'Active'},
-  {id:6,lrn:'136789012350',name:'Sofia Villanueva',grade:'Grade 8 - Luna',contact:'09221234567',status:'Inactive'}
-];
-var DEFAULT_TEACHERS = [
-  {id:1,eid:'T-2024-001',name:'Mrs. Elena Bautista',dept:'Mathematics',pos:'Head Teacher III',contact:'09171111111'},
-  {id:2,eid:'T-2024-002',name:'Mr. Ricardo Torres',dept:'Science',pos:'Teacher II',contact:'09172222222'},
-  {id:3,eid:'T-2024-003',name:'Ms. Patricia Lim',dept:'English',pos:'Teacher I',contact:'09173333333'},
-  {id:4,eid:'T-2024-004',name:'Mr. Jose Fernandez',dept:'Filipino',pos:'Master Teacher I',contact:'09174444444'},
-  {id:5,eid:'T-2024-005',name:'Mrs. Carmen Ramos',dept:'TLE',pos:'Teacher III',contact:'09175555555'}
-];
-var DEFAULT_PENDING = [
-  {id:1,name:'Angelo Martinez',type:'Student',email:'angelo@email.com',idnum:'136789012351',date:'2026-04-03'},
-  {id:2,name:'Rica Gonzales',type:'Parent',email:'rica@email.com',idnum:'136789012345',date:'2026-04-02'},
-  {id:3,name:'Mark Villanueva',type:'Student',email:'mark@email.com',idnum:'136789012352',date:'2026-04-01'}
-];
+var DEFAULT_STUDENTS = [];  // walang demo data: totoong datos lang mula sa Firebase
+var DEFAULT_TEACHERS = [];  // walang demo data: totoong datos lang mula sa Firebase
+var DEFAULT_PENDING = [];  // walang demo data: totoong datos lang mula sa Firebase
 var DEFAULT_SETTINGS = {
   schoolName:'Dr. Bonifacio A. Masilungan Integrated National High School',
   schoolId:'307714',schoolYear:'2025-2026',address:'Brgy. Lalayat, San Jose, Batangas',
