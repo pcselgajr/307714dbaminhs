@@ -322,7 +322,20 @@ function deleteParentAccount(pid) {
   }
 }
 
-function rP(){document.getElementById('pB').innerHTML=P.map(function(p){return '<tr><td><strong>'+p.name+'</strong></td><td><span class="badge b-pe">'+p.type+'</span></td><td>'+p.email+'</td><td style="font-family:monospace;font-size:12px">'+p.idnum+'</td><td>'+formatDate(p.date)+'</td><td><div class="ab"><button class="abtn apv" title="Approve" onclick="apv('+p.id+')">&#10003;</button><button class="abtn del" title="Reject" onclick="rej('+p.id+')">&#10005;</button></div></td></tr>'}).join('')}
+// ---------- Pag-iwas sa dobleng pangalan ----------
+// Pinaghahambing ang pangalan nang hindi pinapansin ang malaki/maliit na titik, espasyo, tuldok at kuwit,
+// at kahit magkaiba ang ayos ("Juan Dela Cruz" = "DELA CRUZ, JUAN").
+function nameKey(n){return String(n||'').toLowerCase().replace(/[^a-zñ\s]/g,' ').split(/\s+/).filter(Boolean).sort().join(' ');}
+function findDupStudent(name,lrn){var k=nameKey(name);if(!k)return null;return S.find(function(x){return nameKey(x.name)===k&&String(x.lrn||'')!==String(lrn||'')})||null;}
+function findDupTeacher(name,eid){var k=nameKey(name);if(!k)return null;return T.find(function(x){return nameKey(x.name)===k&&String(x.eid||'')!==String(eid||'')})||null;}
+function dupOf(p){return p.type==='Student'?findDupStudent(p.name,p.idnum):p.type==='Teacher'?findDupTeacher(p.name,p.idnum):null;}
+function confirmNotDup(d,kind){
+  if(!d)return true;
+  var info=kind==='Student'?('LRN '+(d.lrn||'—')+', '+(d.grade||'walang section')):('Employee ID '+(d.eid||'—')+', '+(d.dept||''));
+  return confirm('POSIBLENG DOBLE: May '+(kind==='Student'?'student':'teacher')+' na sa listahan na ganito rin ang pangalan:\n\n'+d.name+' ('+info+')\n\nSigurado ka bang ibang tao ito at gusto mo pa ring ituloy?');
+}
+
+function rP(){document.getElementById('pB').innerHTML=P.map(function(p){var d=dupOf(p);return '<tr><td><strong>'+p.name+'</strong>'+(d?'<div style="font-size:11px;color:#b45309;margin-top:3px" title="May kaparehong pangalan na sa listahan">&#9888;&#65039; Posibleng doble: '+d.name+' ('+(p.type==='Student'?'LRN '+(d.lrn||'—')+', '+(d.grade||''):'EID '+(d.eid||'—'))+')</div>':'')+'</td><td><span class="badge b-pe">'+p.type+'</span></td><td>'+p.email+'</td><td style="font-family:monospace;font-size:12px">'+p.idnum+'</td><td>'+formatDate(p.date)+'</td><td><div class="ab"><button class="abtn apv" title="Approve" onclick="apv('+p.id+')">&#10003;</button><button class="abtn del" title="Reject" onclick="rej('+p.id+')">&#10005;</button></div></td></tr>'}).join('')}
 
 function rPwReset(){
   var pending = PWRESET.filter(function(r){ return r.status==='pending'; });
@@ -419,9 +432,9 @@ function svN(eid){var o={title:document.getElementById('mf1').value,cat:document
 
 function svE(eid){var o={name:document.getElementById('mf1').value,date:document.getElementById('mf2').value,time:document.getElementById('mf3').value,venue:document.getElementById('mf4').value,desc:document.getElementById('mf6')?document.getElementById('mf6').value:'',status:document.getElementById('mf5').value};if(!o.name){toast('Enter event name','er');return};if(eid){var i=E.findIndex(function(x){return x.id===eid});if(i>-1)E[i]=Object.assign(E[i],o)}else{o.id=getNextId(E);E.unshift(o)};saveData('events',E);clM();rE();toast(eid?'Event updated! Portal synced.':'Event added! Portal synced.','su')}
 
-function svS(eid){var o={lrn:document.getElementById('mf1').value,name:document.getElementById('mf2').value,grade:document.getElementById('mf3').value,contact:document.getElementById('mf4').value,status:document.getElementById('mf5').value,gender:document.getElementById('mf6')?document.getElementById('mf6').value:''};if(!o.name){toast('Enter name','er');return};if(eid){var i=S.findIndex(function(x){return x.id===eid});if(i>-1)S[i]=Object.assign(S[i],o)}else{if(o.lrn&&S.find(function(x){return x.lrn===o.lrn})){toast('Cannot add — LRN "'+o.lrn+'" is already in the Students Directory.','er');return;}o.id=getNextId(S);S.unshift(o)};saveData('students',S);clM();rS();uS();toast(eid?'Student updated!':'Student added!','su')}
+function svS(eid){var o={lrn:document.getElementById('mf1').value,name:document.getElementById('mf2').value,grade:document.getElementById('mf3').value,contact:document.getElementById('mf4').value,status:document.getElementById('mf5').value,gender:document.getElementById('mf6')?document.getElementById('mf6').value:''};if(!o.name){toast('Enter name','er');return};if(eid){var i=S.findIndex(function(x){return x.id===eid});if(i>-1)S[i]=Object.assign(S[i],o)}else{if(o.lrn&&S.find(function(x){return x.lrn===o.lrn})){toast('Cannot add — LRN "'+o.lrn+'" is already in the Students Directory.','er');return;}if(!confirmNotDup(findDupStudent(o.name,o.lrn),'Student'))return;o.id=getNextId(S);S.unshift(o)};saveData('students',S);clM();rS();uS();toast(eid?'Student updated!':'Student added!','su')}
 
-function svT(eid){var o={eid:document.getElementById('mf1').value,name:document.getElementById('mf2').value,dept:document.getElementById('mf3').value,pos:document.getElementById('mf4').value,contact:document.getElementById('mf5v')?document.getElementById('mf5v').value:'',sections:Array.prototype.slice.call(document.querySelectorAll('.advSecCb:checked')).map(function(cb){return cb.value})};if(!o.name){toast('Enter name','er');return};if(eid){var i=T.findIndex(function(x){return x.id===eid});if(i>-1)T[i]=Object.assign(T[i],o)}else{o.id=getNextId(T);T.unshift(o)};saveData('teachers',T);clM();rT();uS();toast(eid?'Teacher updated!':'Teacher added!','su')}
+function svT(eid){var o={eid:document.getElementById('mf1').value,name:document.getElementById('mf2').value,dept:document.getElementById('mf3').value,pos:document.getElementById('mf4').value,contact:document.getElementById('mf5v')?document.getElementById('mf5v').value:'',sections:Array.prototype.slice.call(document.querySelectorAll('.advSecCb:checked')).map(function(cb){return cb.value})};if(!o.name){toast('Enter name','er');return};if(eid){var i=T.findIndex(function(x){return x.id===eid});if(i>-1)T[i]=Object.assign(T[i],o)}else{if(o.eid&&T.find(function(x){return String(x.eid)===String(o.eid)})){toast('Cannot add — Employee ID "'+o.eid+'" is already in the Teachers Directory.','er');return;}if(!confirmNotDup(findDupTeacher(o.name,o.eid),'Teacher'))return;o.id=getNextId(T);T.unshift(o)};saveData('teachers',T);clM();rT();uS();toast(eid?'Teacher updated!':'Teacher added!','su')}
 
 function edN(id){var d=N.find(function(x){return x.id===id});if(d)openNM(d)}
 function edE(id){var d=E.find(function(x){return x.id===id});if(d)openEM(d)}
@@ -532,6 +545,7 @@ function confirmApvStudent(id){
     toast('Cannot approve — LRN "'+lrn+'" is already in the Students Directory. Delete the existing record first if you want to re-enroll this student.','er');
     return;
   }
+  if(!confirmNotDup(findDupStudent(p.name,lrn),'Student'))return;
   S.unshift({id:getNextId(S),lrn:lrn,name:p.name,grade:grade,gender:p.gender||'',contact:p.email,status:status});
   saveData('students',S);
   P=P.filter(function(x){return x.id!==id});
@@ -548,6 +562,8 @@ function confirmApvTeacher(id){
   var name=document.getElementById('apvName').value||p.name;
   var dept=document.getElementById('apvDept').value;
   var pos=document.getElementById('apvPos').value;
+  if(T.find(function(x){return String(x.eid)===String(eid)})){toast('Cannot approve — Employee ID "'+eid+'" is already in the Teachers Directory.','er');return;}
+  if(!confirmNotDup(findDupTeacher(name,eid),'Teacher'))return;
   T.unshift({id:getNextId(T),eid:eid,name:name,dept:dept,pos:pos,contact:p.email});
   saveData('teachers',T);
   P=P.filter(function(x){return x.id!==id});
@@ -558,41 +574,27 @@ function confirmApvTeacher(id){
 }
 function rej(id){if(!confirm('Reject this signup?'))return;P=P.filter(function(x){return x.id!==id});syncPending(P);rP();uS();toast('Signup rejected','su')}
 function approveAll(){
-  if(!confirm('Approve all '+P.length+' pending signups?'))return;
-  var skipped=[];
+  if(!confirm('Approve all '+P.length+' pending signups?\n\nHindi isasama ang may parehong LRN/Employee ID o posibleng dobleng pangalan; maiiwan sila sa listahan para isa-isahin mo.'))return;
+  var skipped=[],approved=[];
   P.forEach(function(p){
     if(p.type==='Student'){
-      // Skip if LRN already exists in Students Directory
-      if(S.find(function(x){return x.lrn===p.idnum})){
-        skipped.push(p.name+' (duplicate LRN: '+p.idnum+')');
-        return;
-      }
+      if(S.find(function(x){return x.lrn===p.idnum})){skipped.push(p.name+' (parehong LRN)');return;}
+      if(findDupStudent(p.name,p.idnum)){skipped.push(p.name+' (posibleng doble)');return;}
       S.unshift({id:getNextId(S),lrn:p.idnum,name:p.name,grade:(p.grade && p.grade!=='') ? p.grade : 'TBA',gender:p.gender||'',contact:p.email,status:'Active'});
     } else if(p.type==='Teacher'){
-      // Skip if EID already exists in Teachers Directory
-      if(T.find(function(x){return x.eid===p.idnum})){
-        skipped.push(p.name+' (duplicate Employee ID: '+p.idnum+')');
-        return;
-      }
+      if(T.find(function(x){return String(x.eid)===String(p.idnum)})){skipped.push(p.name+' (parehong Employee ID)');return;}
+      if(findDupTeacher(p.name,p.idnum)){skipped.push(p.name+' (posibleng doble)');return;}
       T.unshift({id:getNextId(T),eid:p.idnum,name:p.name,dept:'TBA',pos:'Teacher I',contact:p.email});
     }
+    approved.push(p);
   });
   saveData('students',S);
   saveData('teachers',T);
-  var skippedIds=skipped.join('|');
-  P.forEach(function(p){ if(skippedIds.indexOf('('+(p.type==='Student'?'duplicate LRN: ':'duplicate Employee ID: ')+p.idnum+')')===-1) activatePending(p); });
-  // Only clear non-skipped pending records
-  if(skipped.length>0){
-    P=P.filter(function(p){
-      if(p.type==='Student') return !!S.find(function(x){return x.lrn===p.idnum}) === false;
-      if(p.type==='Teacher') return !!T.find(function(x){return x.eid===p.idnum}) === false;
-      return false;
-    });
-    toast('Approved with '+skipped.length+' skipped (duplicate): '+skipped.join(', '),'er');
-  } else {
-    P=[];
-    toast('All signups approved!','su');
-  }
+  approved.forEach(function(p){ activatePending(p); });
+  var ids=approved.map(function(p){return p.id;});
+  P=P.filter(function(p){return ids.indexOf(p.id)===-1;});
+  if(skipped.length>0) toast(approved.length+' ang na-approve. Naiwan para suriin: '+skipped.join(', '),'er');
+  else toast('All signups approved!','su');
   syncPending(P);
   rP();rS();rT();uS();
 }
